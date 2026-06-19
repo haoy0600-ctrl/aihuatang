@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { HANDDRAWN_STYLES } from '@/config/styles'
 
+export const maxDuration = 600
+
 const IMAGE_API_KEY = process.env.IMAGE_API_KEY || ''
 
 const WUYIN_TEXT_TO_IMAGE_URL = 'https://api.wuyinkeji.com/api/async/image_gpt'
@@ -108,8 +110,8 @@ async function submitWuyinTask(prompt: string, aspectRatio: string, modelType: s
 }
 
 async function pollWuyinResult(taskId: string): Promise<string> {
-  const maxRetries = 60
-  const retryDelay = 3000
+  const maxRetries = 120
+  const retryDelay = 2000
 
   for (let i = 0; i < maxRetries; i++) {
     const url = `${WUYIN_ASYNC_DETAIL_URL}?key=${IMAGE_API_KEY}&id=${taskId}`

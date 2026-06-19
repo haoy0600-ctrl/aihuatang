@@ -366,6 +366,7 @@ export default function DashboardPage() {
           aspectRatio: selectedRatio,
           modelType: selectedModel,
         }),
+        signal: AbortSignal.timeout(600000),
       })
 
       const data = await response.json()
