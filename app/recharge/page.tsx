@@ -161,102 +161,107 @@ export default function RechargePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0D17]">
-      <header className="bg-[#0B0D17] border-b border-[#202B3A]">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full px-4 sm:px-6 py-3 gap-2">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="w-9 h-9 bg-[#10B981] border border-[#202B3A] flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-              <span className="text-[#0B0D17] font-bold text-sm">AI</span>
-            </div>
-            <h1 className="text-lg font-black tracking-widest bg-gradient-to-r from-[#00F2FE] via-[#94A3B8] to-[#00E676] bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(0,242,254,0.6)] hover:drop-shadow-[0_0_20px_rgba(0,242,254,0.9)] transition-all duration-300 select-none italic">AI画堂</h1>
-          </Link>
+    <div className="min-h-screen bg-[#040D0A]">
+      <header className="bg-[#040D0A] border-b border-[#142D24]">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center w-full py-3">
+            <Link href="/" className="flex items-center gap-1.5 h-10 select-none hover:opacity-80 transition-opacity">
+              <img 
+                src="/logo.svg" 
+                alt="AI画堂" 
+                className="w-9 h-9 object-contain"
+              />
+              <span className="text-xl font-sans font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#03F09C] to-[#00F2FE]">AI</span>
+              <span className="text-xl font-normal text-transparent bg-clip-text bg-gradient-to-r from-[#00F2FE] to-[#03F09C] tracking-widest font-art ml-1">画堂</span>
+            </Link>
 
-          <nav className="flex items-center gap-2 sm:gap-4">
-            <Link href="/dashboard" className="px-3 sm:px-4 py-2 bg-[#141923] text-white font-bold text-xs sm:text-sm border border-[#202B3A] hover:bg-[#1a2230] hover:border-[#00F2FE] transition-all">
-              创作
-            </Link>
-            <Link href="/records" className="px-3 sm:px-4 py-2 bg-[#141923] text-white font-bold text-xs sm:text-sm border border-[#202B3A] hover:bg-[#1a2230] hover:border-[#00F2FE] transition-all">
-              记录
-            </Link>
-            <Link href="/recharge" className="px-3 sm:px-4 py-2 bg-[#10B981] text-[#0B0D17] font-bold text-xs sm:text-sm border border-[#202B3A] shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-              充值
-            </Link>
-          </nav>
+            <nav className="flex items-center gap-3">
+              <Link href="/dashboard" className="px-4 py-2 bg-[#091511]/60 backdrop-blur-sm text-white font-bold text-sm border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-lg">
+                创作
+              </Link>
+              <Link href="/records" className="px-4 py-2 bg-[#091511]/60 backdrop-blur-sm text-white font-bold text-sm border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-lg">
+                记录
+              </Link>
+              <Link href="/recharge" className="px-4 py-2 bg-[#10B981] text-[#040D0A] font-bold text-sm border border-[#142D24] shadow-[0_0_10px_rgba(16,185,129,0.3)] hover:shadow-[0_0_15px_rgba(16,185,129,0.5)] transition-all rounded-lg">
+                充值
+              </Link>
+            </nav>
 
-          <div className="flex items-center gap-2 sm:gap-4">
-            <div className="flex items-center gap-2 text-xs text-[#00F2FE]">
-              <span className="hidden sm:inline">{new Date().toLocaleDateString('zh-CN')}</span>
-              <span className="text-white font-mono font-bold text-sm">{currentTime}</span>
-            </div>
-            <div className="px-2 sm:px-3 py-1.5 bg-[#141923] border border-[#202B3A] flex items-center gap-1.5">
-              <span className="w-2 h-2 bg-[#10B981] border border-[#202B3A]"></span>
-              <span className="text-xs text-[#00F2FE] hidden sm:inline">积分</span>
-              <span className="font-bold text-white text-sm">{profile?.credits || 0}</span>
-            </div>
-            <div className="relative">
-              <button 
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-9 h-9 bg-[#141923] border border-[#202B3A] flex items-center justify-center hover:border-[#00F2FE] transition-colors"
-              >
-                <span className="text-white font-bold text-sm">
-                  {user?.email ? user.email.substring(0, 2).toUpperCase() : 'HA'}
-                </span>
-              </button>
-              
-              {showUserMenu && (
-                <div className="absolute right-0 top-10 w-56 bg-[#141923] border border-[#202B3A] shadow-lg z-50">
-                  <div className="p-4 border-b border-[#202B3A]">
-                    <p className="text-xs text-[#00F2FE] mb-1">当前账号</p>
-                    <p className="text-sm text-white font-medium truncate">{user?.email || '未登录'}</p>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-xs text-[#10B981]">
+                <span>{new Date().toLocaleDateString('zh-CN')}</span>
+                <span className="text-white font-mono font-bold text-sm">{currentTime}</span>
+              </div>
+              <div className="px-3 py-1.5 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] flex items-center gap-1.5 rounded-lg">
+                <span className="w-2 h-2 bg-[#10B981] rounded-full"></span>
+                <span className="text-xs text-[#10B981]">积分</span>
+                <span className="font-bold text-white text-sm">{profile?.credits || 0}</span>
+              </div>
+              <div className="relative">
+                <button 
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="w-9 h-9 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] flex items-center justify-center hover:border-[#10B981] transition-colors rounded-lg"
+                >
+                  <span className="text-white font-bold text-sm">
+                    {user?.email ? user.email.substring(0, 2).toUpperCase() : 'HA'}
+                  </span>
+                </button>
+                
+                {showUserMenu && (
+                  <div className="absolute right-0 top-10 w-56 bg-[#091511]/95 backdrop-blur-md border border-[#142D24] shadow-2xl z-50 rounded-xl overflow-hidden">
+                    <div className="p-4 border-b border-[#142D24]">
+                      <p className="text-xs text-[#10B981] mb-1">当前账号</p>
+                      <p className="text-sm text-white font-medium truncate">{user?.email || '未登录'}</p>
+                    </div>
+                    <div className="p-2">
+                      <Link href="/dashboard" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg">
+                        创作工坊
+                      </Link>
+                      <Link href="/records" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg">
+                        生成记录
+                      </Link>
+                      <div className="border-t border-[#142D24] my-1"></div>
+                      <button 
+                        onClick={() => { window.location.href = '/profile'; setShowUserMenu(false) }}
+                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg"
+                      >
+                        个人中心
+                      </button>
+                      <button 
+                        onClick={() => { if (supabase) supabase.auth.signOut(); window.location.href = '/login'; }}
+                        className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#142D24] transition-colors rounded-lg"
+                      >
+                        退出登录
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-2">
-                    <Link href="/dashboard" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors">
-                      创作工坊
-                    </Link>
-                    <Link href="/records" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors">
-                      生成记录
-                    </Link>
-                    <div className="border-t border-[#202B3A] my-1"></div>
-                    <button 
-                      onClick={() => { window.location.href = '/profile'; setShowUserMenu(false) }}
-                      className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors"
-                    >
-                      个人中心
-                    </button>
-                    <button 
-                      onClick={() => { if (supabase) supabase.auth.signOut(); window.location.href = '/login'; }}
-                      className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#1a2230] transition-colors"
-                    >
-                      退出登录
-                    </button>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
       </header>
 
       <main className="p-4 sm:p-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-white">积分充值</h2>
-              <p className="text-sm text-[#00F2FE] mt-1">当前余额：<span className="text-[#00E676] font-bold">{profile?.credits || 0}</span> 积分</p>
+              <h2 className="text-lg font-bold text-white">积分充值</h2>
+              <p className="text-xs text-[#10B981] mt-0.5">当前余额：<span className="text-[#00E676] font-bold">{profile?.credits || 0}</span> 积分</p>
             </div>
-            <div className="bg-[#141923] border border-[#202B3A] px-4 py-2 sm:py-3">
-              <p className="text-[#00F2FE] text-xs sm:text-sm">🎁 新用户福利：注册即送3积分，免费体验AI生图！</p>
+            <div className="bg-[#091511] border border-[#142D24] px-3 py-1.5 rounded-lg">
+              <p className="text-[#10B981] text-xs">🎁 新用户福利：注册即送3积分，免费体验AI生图！</p>
             </div>
           </div>
 
           {successMessage && (
-            <div className="mb-6 p-4 bg-[#10B981]/20 border border-[#10B981] text-[#10B981] text-center text-sm sm:text-base">
+            <div className="mb-4 p-3 bg-[#10B981]/20 border border-[#10B981] text-[#10B981] text-center text-sm rounded-lg">
               {successMessage}
             </div>
           )}
 
-          {/* 充值套餐卡片 - 响应式布局 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
+          {/* 充值套餐卡片 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
             {PACKAGES.map((pkg) => (
               <div
                 key={pkg.id}
@@ -264,43 +269,43 @@ export default function RechargePage() {
                   setSelectedPackage(pkg.id)
                   setCustomAmount('')
                 }}
-                className={`relative cursor-pointer border transition-all ${
+                className={`relative cursor-pointer border transition-all rounded-xl ${
                   selectedPackage === pkg.id
-                    ? 'border-[#00E676] shadow-[0_0_20px_rgba(0,230,118,0.3)]'
-                    : 'border-[#202B3A] hover:border-[#00F2FE] hover:shadow-[0_0_15px_rgba(0,242,254,0.2)]'
-                } bg-[#141923] p-4 sm:p-6`}
+                    ? 'border-[#10B981] shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                    : 'border-[#142D24] hover:border-[#10B981] hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                } bg-[#091511]/60 backdrop-blur-md p-5`}
               >
                 {selectedPackage === pkg.id && (
-                  <div className="absolute top-3 right-3 w-5 h-5 bg-[#00E676] border border-[#00E676] flex items-center justify-center">
-                    <span className="text-[#0A0F1D] font-bold text-xs">✓</span>
+                  <div className="absolute top-2 right-2 w-5 h-5 bg-[#10B981] rounded-full flex items-center justify-center">
+                    <span className="text-[#040D0A] font-bold text-xs">✓</span>
                   </div>
                 )}
                 
-                <h3 className="text-sm text-[#00F2FE] mb-2">{pkg.name}</h3>
-                <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{pkg.credits}</div>
-                <div className="text-xs sm:text-sm text-[#00F2FE] mb-1">积分</div>
-                <div className="flex items-baseline gap-1 mt-3">
-                  <span className="text-sm text-[#00F2FE]">¥</span>
-                  <span className="text-xl sm:text-2xl font-bold text-white">{pkg.price}</span>
+                <h3 className="text-xs text-[#10B981] mb-1">{pkg.name}</h3>
+                <div className="text-xl font-bold text-white mb-0.5">{pkg.credits}</div>
+                <div className="text-xs text-[#10B981] mb-1">积分</div>
+                <div className="flex items-baseline gap-1 mt-2">
+                  <span className="text-xs text-[#10B981]">¥</span>
+                  <span className="text-lg font-bold text-white">{pkg.price}</span>
                 </div>
                 
                 {pkg.bonus && (
-                  <div className="mt-4 px-3 py-1.5 bg-[#00E676]/20 border border-[#00E676] inline-block">
-                    <span className="text-[#00E676] text-xs font-bold">{pkg.bonus}</span>
+                  <div className="mt-3 px-2 py-1 bg-[#10B981]/20 border border-[#10B981] inline-block rounded">
+                    <span className="text-[#10B981] text-xs font-bold">{pkg.bonus}</span>
                   </div>
                 )}
               </div>
             ))}
           </div>
 
-          {/* 自定义充值与支付方式 - 响应式并排 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8">
-            <div className="bg-[#141923] border border-[#202B3A] p-4 sm:p-6">
-              <h3 className="text-base sm:text-lg font-bold text-white mb-4">自定义充值</h3>
+          {/* 自定义充值与支付方式 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="bg-[#091511]/60 backdrop-blur-md border border-[#142D24] p-5 rounded-xl">
+              <h3 className="text-sm font-bold text-white mb-3">自定义充值</h3>
               
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-3">
                 <div className="flex-1">
-                  <label className="block text-[#00F2FE] text-xs mb-1">充值金额（元）</label>
+                  <label className="block text-[#10B981] text-xs mb-1">充值金额（元）</label>
                   <input
                     type="number"
                     value={customAmount}
@@ -309,90 +314,90 @@ export default function RechargePage() {
                     onClick={handleCustomFocus}
                     placeholder="最低10元起充"
                     min="10"
-                    className={`w-full px-4 py-3 border text-white focus:outline-none transition-all ${
+                    className={`w-full px-3 py-2 border text-white text-sm focus:outline-none transition-all rounded-lg ${
                       selectedPackage === 'custom'
-                        ? 'bg-[#0A0F1D] border-[#00F2FE] ring-1 ring-[#00F2FE]'
-                        : 'bg-[#0A0F1D] border-[#202B3A] focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE]'
-                    } placeholder-[#ABC4FF]`}
+                        ? 'bg-[#040D0A] border-[#10B981] ring-1 ring-[#10B981]'
+                        : 'bg-[#040D0A] border-[#142D24] focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]'
+                    } placeholder-[#64748B]`}
                   />
                 </div>
                 
-                <span className="text-[#00F2FE] text-xl font-bold self-center hidden sm:block">=</span>
+                <span className="text-[#10B981] text-lg font-bold self-center hidden sm:block">=</span>
                 
                 <div className="flex-1">
-                  <label className="block text-[#00F2FE] text-xs mb-1">获得积分</label>
-                  <div className={`w-full px-4 py-3 border bg-[#0A0F1D] ${
+                  <label className="block text-[#10B981] text-xs mb-1">获得积分</label>
+                  <div className={`w-full px-3 py-2 border bg-[#040D0A] rounded-lg ${
                     selectedPackage === 'custom'
-                      ? 'border-[#00F2FE] ring-1 ring-[#00F2FE]'
-                      : 'border-[#202B3A]'
+                      ? 'border-[#10B981] ring-1 ring-[#10B981]'
+                      : 'border-[#142D24]'
                   }`}>
-                    <span className="text-lg sm:text-xl font-bold text-[#00F2FE]">
+                    <span className="text-base font-bold text-[#10B981]">
                       {getSelectedCredits()}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <p className="text-[#00F2FE] text-xs mb-4">按 1:10 比例换算，最低10元起充</p>
+              <p className="text-[#10B981] text-xs mb-3">按 1:10 比例换算，最低10元起充</p>
 
               <button
                 onClick={handleRecharge}
                 disabled={isProcessing || (selectedPackage === 'custom' && (parseInt(customAmount || '0') < 10))}
-                className={`w-full px-6 py-3 sm:py-4 bg-[#00E676] text-[#0A0F1D] font-bold text-sm sm:text-base border border-[#202B3A] shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all ${
+                className={`w-full px-4 py-2.5 bg-[#10B981] text-[#040D0A] font-bold text-sm border border-[#142D24] shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all rounded-lg ${
                   isProcessing || (selectedPackage === 'custom' && (parseInt(customAmount || '0') < 10))
                     ? 'opacity-50 cursor-not-allowed'
-                    : 'hover:shadow-[0_0_20px_rgba(0,230,118,0.6)]'
+                    : 'hover:shadow-[0_0_20px_rgba(16,185,129,0.6)]'
                 }`}
               >
                 {isProcessing ? '处理中...' : `确认充值 ¥${getSelectedPrice()}`}
               </button>
             </div>
 
-            <div className="bg-[#141923] border border-[#202B3A] p-4 sm:p-6">
-              <h3 className="text-base sm:text-lg font-bold text-white mb-4">支付方式</h3>
+            <div className="bg-[#091511]/60 backdrop-blur-md border border-[#142D24] p-5 rounded-xl">
+              <h3 className="text-sm font-bold text-white mb-3">支付方式</h3>
               
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div
                   onClick={() => setPaymentMethod('alipay')}
-                  className={`flex items-center gap-3 sm:gap-4 p-3 sm:p-4 cursor-pointer border transition-all ${
+                  className={`flex items-center gap-3 p-2.5 cursor-pointer border transition-all rounded-lg ${
                     paymentMethod === 'alipay'
-                      ? 'border-[#00F2FE] bg-[#00F2FE]/5'
-                      : 'border-[#202B3A] hover:border-[#00F2FE]'
+                      ? 'border-[#10B981] bg-[#10B981]/5'
+                      : 'border-[#142D24] hover:border-[#10B981]'
                   }`}
                 >
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center flex-shrink-0">
+                  <div className="w-7 h-7 flex items-center justify-center flex-shrink-0">
                     {getPaymentIcon('alipay')}
                   </div>
-                  <span className="flex-1 text-white font-bold text-sm sm:text-base">支付宝</span>
+                  <span className="flex-1 text-white font-bold text-sm">支付宝</span>
                   {paymentMethod === 'alipay' && (
-                    <div className="w-5 h-5 bg-[#00F2FE] border border-[#00F2FE] flex items-center justify-center flex-shrink-0">
-                      <span className="text-[#0B0D17] font-bold text-xs">✓</span>
+                    <div className="w-4 h-4 bg-[#10B981] rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-[#040D0A] font-bold text-xs">✓</span>
                     </div>
                   )}
                 </div>
 
                 <div
                   onClick={() => setPaymentMethod('wechat')}
-                  className={`flex items-center gap-3 sm:gap-4 p-3 sm:p-4 cursor-pointer border transition-all ${
+                  className={`flex items-center gap-3 p-2.5 cursor-pointer border transition-all rounded-lg ${
                     paymentMethod === 'wechat'
-                      ? 'border-[#00F2FE] bg-[#00F2FE]/5'
-                      : 'border-[#202B3A] hover:border-[#00F2FE]'
+                      ? 'border-[#10B981] bg-[#10B981]/5'
+                      : 'border-[#142D24] hover:border-[#10B981]'
                   }`}
                 >
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center flex-shrink-0">
+                  <div className="w-7 h-7 flex items-center justify-center flex-shrink-0">
                     {getPaymentIcon('wechat')}
                   </div>
-                  <span className="flex-1 text-white font-bold text-sm sm:text-base">微信支付</span>
+                  <span className="flex-1 text-white font-bold text-sm">微信支付</span>
                   {paymentMethod === 'wechat' && (
-                    <div className="w-5 h-5 bg-[#00F2FE] border border-[#00F2FE] flex items-center justify-center flex-shrink-0">
-                      <span className="text-[#0B0D17] font-bold text-xs">✓</span>
+                    <div className="w-4 h-4 bg-[#10B981] rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-[#040D0A] font-bold text-xs">✓</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-[#0A0F1D] border border-[#202B3A]">
-                <p className="text-[#00F2FE] text-xs">
+              <div className="mt-3 p-2.5 bg-[#040D0A] border border-[#142D24] rounded-lg">
+                <p className="text-[#10B981] text-xs">
                   <span className="font-bold">💡 温馨提示：</span><br />
                   • 充值成功后积分即时到账<br />
                   • 积分无使用期限，可累积使用<br />
@@ -402,10 +407,10 @@ export default function RechargePage() {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             <Link
               href="/dashboard"
-              className="flex-1 px-6 py-3 sm:py-4 bg-[#141923] text-white font-bold text-center text-sm sm:text-base border border-[#202B3A] hover:border-[#00F2FE] hover:text-[#00F2FE] transition-all"
+              className="flex-1 px-4 py-2.5 bg-[#091511] text-white font-bold text-center text-sm border border-[#142D24] hover:border-[#10B981] hover:text-[#10B981] transition-all rounded-lg"
             >
               返回创作
             </Link>

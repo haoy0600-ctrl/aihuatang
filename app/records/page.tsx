@@ -42,7 +42,6 @@ export default function RecordsPage() {
   const [batchMode, setBatchMode] = useState(false)
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set())
   const [downloading, setDownloading] = useState(false)
-  const [hoveredRecordId, setHoveredRecordId] = useState<string | null>(null)
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const [showImagePreview, setShowImagePreview] = useState(false)
 
@@ -172,6 +171,25 @@ export default function RecordsPage() {
     }
   }
 
+  const downloadAllImages = async (urls: string[]) => {
+    for (let i = 0; i < urls.length; i++) {
+      try {
+        const response = await fetch(urls[i])
+        const blob = await response.blob()
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(blob)
+        a.download = `AI画堂_卡片_${i + 1}.png`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        // 微小延迟防止浏览器拦截并发下载
+        await new Promise(resolve => setTimeout(resolve, 300))
+      } catch (error) {
+        console.error(`下载第 ${i + 1} 张图片失败:`, error)
+      }
+    }
+  }
+
   const handleBatchDelete = async () => {
     if (selectedRecords.size === 0) return
     if (!confirm(`确定要删除选中的 ${selectedRecords.size} 条记录吗？`)) return
@@ -264,11 +282,14 @@ export default function RecordsPage() {
     <div className="min-h-screen bg-[#0B0D17]">
       <header className="bg-[#0B0D17] border-b border-[#202B3A]">
         <div className="flex justify-between items-center w-full px-6 py-3">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="w-9 h-9 bg-[#10B981] border border-[#202B3A] flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-              <span className="text-[#0B0D17] font-bold text-sm">AI</span>
-            </div>
-            <h1 className="text-lg font-black tracking-widest bg-gradient-to-r from-[#00F2FE] via-[#94A3B8] to-[#00E676] bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(0,242,254,0.6)] hover:drop-shadow-[0_0_20px_rgba(0,242,254,0.9)] transition-all duration-300 select-none italic">AI画堂</h1>
+          <Link href="/" className="flex items-center gap-1.5 h-10 select-none hover:opacity-80 transition-opacity">
+            <img 
+              src="/logo.svg" 
+              alt="AI画堂" 
+              className="w-9 h-9 object-contain"
+            />
+            <span className="text-xl font-sans font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#03F09C] to-[#00F2FE]">AI</span>
+            <span className="text-xl font-normal text-transparent bg-clip-text bg-gradient-to-r from-[#00F2FE] to-[#03F09C] tracking-widest font-art ml-1">画堂</span>
           </Link>
 
           <nav className="flex items-center gap-4">
@@ -591,29 +612,21 @@ export default function RecordsPage() {
                   <p className="text-xs text-[#00F2FE] mb-3 uppercase">全部图片 ({JSON.parse(selectedRecord.image_urls).length}张)</p>
                   <div className="grid grid-cols-3 gap-3">
                     {JSON.parse(selectedRecord.image_urls).map((url: string, index: number) => (
-                      <div 
+                      <a 
                         key={index} 
-                        className="relative aspect-square bg-[#0A0F1D] border border-[#202B3A] overflow-hidden group cursor-pointer"
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="relative aspect-square bg-[#0A0F1D] border border-[#202B3A] overflow-hidden group cursor-pointer hover:border-[#00F2FE] transition-all"
                       >
                         <img src={url} alt={`图 ${index + 1}`} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-1">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDownload(url, index) }}
-                            className="w-8 h-8 bg-[#00F2FE] text-[#0A0F1D] flex items-center justify-center text-xs font-bold"
-                          >
-                            📥
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleCopyLink(url) }}
-                            className="w-8 h-8 bg-[#94A3B8] text-[#0A0F1D] flex items-center justify-center text-xs font-bold"
-                          >
-                            📋
-                          </button>
-                        </div>
                         <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-black/60 text-[#00F2FE] text-[10px]">
                           {index + 1}
                         </div>
-                      </div>
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-2xl">🔍</span>
+                        </div>
+                      </a>
                     ))}
                   </div>
                 </div>
@@ -625,6 +638,15 @@ export default function RecordsPage() {
                   className="flex-1 py-3 bg-[#0B0D17] border border-[#202B3A] text-white font-bold text-sm hover:border-[#00F2FE] transition-all"
                 >
                   关闭
+                </button>
+                <button
+                  onClick={() => {
+                    const urls = JSON.parse(selectedRecord.image_urls)
+                    downloadAllImages(urls)
+                  }}
+                  className="flex-1 py-3 bg-[#00F2FE] text-[#0A0F1D] font-bold text-sm border border-[#00F2FE] shadow-[0_0_15px_rgba(0,242,254,0.4)] hover:shadow-[0_0_20px_rgba(0,242,254,0.6)] transition-all"
+                >
+                  📥 一键批量下载全部图片
                 </button>
                 <button
                   onClick={() => {

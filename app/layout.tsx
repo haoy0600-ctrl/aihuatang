@@ -1,8 +1,13 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Ma_Shan_Zheng } from 'next/font/google'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
+const maShanZheng = Ma_Shan_Zheng({ 
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-art',
+})
 
 export const metadata: Metadata = {
   title: 'AI画堂 - 自媒体高质感图形设计与智能排版素材工具箱',
@@ -15,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" className={maShanZheng.variable}>
       <body className={inter.className}>{children}</body>
     </html>
   )

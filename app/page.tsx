@@ -40,13 +40,12 @@ export default function HomePage() {
   ]
 
   return (
-    <div className="h-screen max-h-screen w-screen max-w-[100vw] overflow-hidden flex flex-col justify-between p-6 bg-[#0B0D17] text-white">
+    <div className="h-screen max-h-screen w-screen max-w-[100vw] overflow-hidden flex flex-col justify-between p-6 bg-[#040D0A] text-white">
       <header className="flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <div className="w-9 h-9 bg-[#10B981] border border-[#202B3A] flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-            <span className="text-[#0B0D17] font-bold text-sm">AI</span>
-          </div>
-          <span className="text-lg font-black tracking-widest bg-gradient-to-r from-[#00F2FE] via-[#94A3B8] to-[#00E676] bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(0,242,254,0.6)] hover:drop-shadow-[0_0_20px_rgba(0,242,254,0.9)] transition-all duration-300 select-none italic">AI画堂</span>
+        <Link href="/" className="flex items-center gap-1.5 h-10 select-none hover:opacity-80 transition-opacity">
+          <img src="/logo.svg" alt="AI画堂" className="w-9 h-9 object-contain" />
+          <span className="text-xl font-sans font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#03F09C] to-[#00F2FE]">AI</span>
+          <span className="text-xl font-normal text-transparent bg-clip-text bg-gradient-to-r from-[#00F2FE] to-[#03F09C] tracking-widest font-art ml-1">画堂</span>
         </Link>
 
         <nav className="flex items-center gap-4">
@@ -81,22 +80,19 @@ export default function HomePage() {
       <main className="flex-1 flex flex-col justify-center items-center">
         <div className="max-w-4xl mx-auto text-center space-y-4">
           <div className="space-y-2">
-            <h1 className="text-4xl lg:text-6xl font-black tracking-widest leading-none">
-              <span className="bg-gradient-to-r from-[#00F2FE] via-[#94A3B8] to-[#00E676] bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(0,242,254,0.6)] italic">AI画堂</span>
-            </h1>
-            <p className="text-xl lg:text-2xl font-bold text-white tracking-wide">
+            <h1 className="text-4xl lg:text-6xl font-bold text-white tracking-wide">
               自媒体爆款图形设计与智能排版素材工具箱
-            </p>
+            </h1>
           </div>
           <p className="text-sm lg:text-base text-[#94A3B8] max-w-xl mx-auto leading-relaxed">
             输入文本或参考图，一键批量生成专属高画质知识卡片与手绘板书
           </p>
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#00E676] text-[#0A0F1D] rounded-lg border border-[#202B3A] text-base font-bold shadow-[0_0_15px_rgba(0,230,118,0.4)] hover:shadow-[0_0_20px_rgba(0,230,118,0.6)] transition-all"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#00E676] text-[#0A0F1D] rounded-none border border-[#202B3A] text-base font-bold shadow-[0_0_15px_rgba(0,230,118,0.4)] hover:shadow-[0_0_20px_rgba(0,230,118,0.6)] transition-all"
           >
             立即免费开启
-            <span className="text-lg text-[#00F2FE]">→</span>
+            <span className="text-lg text-[#0A0F1D]">→</span>
           </Link>
         </div>
 

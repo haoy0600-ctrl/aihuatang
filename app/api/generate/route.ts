@@ -26,39 +26,14 @@ type GenerateRequest = {
 }
 
 function splitTextToSentences(text: string): string[] {
-  const sentences: string[] = []
-  
-  const numberedPattern = /(\(\d+\)|[\u2460-\u2468]\.|[\u3007\u00b7\u002e]\d+|^\s*\d+\.\s*)/gm
-  const lines = text.split('\n').filter(line => line.trim())
-  
-  for (const line of lines) {
-    const trimmedLine = line.trim()
-    if (!trimmedLine) continue
-    
-    const matches: { start: number; end: number; text: string }[] = []
-    let match
-    while ((match = numberedPattern.exec(trimmedLine)) !== null) {
-      matches.push({
-        start: match.index,
-        end: match.index + match[0].length,
-        text: match[0]
-      })
-    }
-    
-    if (matches.length > 0) {
-      matches.forEach((m, i) => {
-        const nextMatch = matches[i + 1]
-        const content = trimmedLine.substring(m.end, nextMatch?.start).trim()
-        if (content) {
-          sentences.push(content)
-        }
-      })
-    } else {
-      sentences.push(trimmedLine)
-    }
+  // 完全禁用自动切分逻辑
+  // 用户输入的所有文本（包括换行、空格等格式）100%保留在当前卡上
+  // 只有当用户主动点击 "+" 添加新的 Tab 时，才会在新卡片上渲染
+  const trimmedText = text.trim()
+  if (!trimmedText) {
+    return []
   }
-  
-  return sentences.length > 0 ? sentences : [text]
+  return [trimmedText]
 }
 
 function getStyleByName(styleName: string) {

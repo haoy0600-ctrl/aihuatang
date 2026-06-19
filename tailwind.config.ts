@@ -15,6 +15,9 @@ export default {
       boxShadow: {
         brutal: '4px 4px 0px 0px #1E293B',
       },
+      fontFamily: {
+        art: ['var(--font-art)', '"Ma Shan Zheng"', 'cursive'],
+      },
     },
   },
   plugins: [],
