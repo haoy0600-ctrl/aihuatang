@@ -570,8 +570,9 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="flex-1 grid grid-cols-12 gap-4 p-4 overflow-hidden">
-        <div className="col-span-3 flex flex-col gap-4 h-full overflow-y-auto pr-1">
+      <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden">
+        {/* 左侧：参数配置区 */}
+        <div className="lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto pr-1">
           <div>
             <h2 className="text-lg font-bold mb-1 text-white">创作工坊</h2>
             <p className="text-xs text-[#00F2FE]">输入内容，选择风格，生成知识卡片</p>
@@ -583,7 +584,7 @@ export default function DashboardPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setGenMode('text')}
-                  className={`flex-1 py-2.5 text-sm font-bold border border-[#202B3A] transition-all ${
+                  className={`flex-1 py-3.5 md:py-4 text-sm font-bold border border-[#202B3A] transition-all ${
                     genMode === 'text'
                       ? 'bg-[#00E676] text-[#0A0F1D] shadow-[0_0_15px_rgba(0,230,118,0.4)]'
                       : 'bg-[#0B0D17] text-white hover:bg-[#1a2230]'
@@ -593,7 +594,7 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={() => setGenMode('image')}
-                  className={`flex-1 py-2.5 text-sm font-bold border border-[#202B3A] transition-all ${
+                  className={`flex-1 py-3.5 md:py-4 text-sm font-bold border border-[#202B3A] transition-all ${
                     genMode === 'image'
                       ? 'bg-[#00E676] text-[#0A0F1D] shadow-[0_0_15px_rgba(0,230,118,0.4)]'
                       : 'bg-[#0B0D17] text-white hover:bg-[#1a2230]'
@@ -623,7 +624,7 @@ export default function DashboardPage() {
                       <button
                         key={index}
                         onClick={() => setActiveTab(index + 1)}
-                        className={`relative w-8 h-8 text-sm font-bold border border-[#202B3A] transition-all duration-200 ${
+                        className={`relative w-9 h-9 md:w-10 md:h-10 text-sm font-bold border border-[#202B3A] transition-all duration-200 ${
                           isActive
                             ? 'bg-[#00F2FE] text-[#0B0D17] ring-2 ring-emerald-500 ring-offset-2 ring-offset-[#0D111A] shadow-[0_0_15px_rgba(0,242,254,0.6)]'
                             : isEmpty
@@ -654,7 +655,7 @@ export default function DashboardPage() {
                   {totalTabs < 10 && (
                     <button
                       onClick={handleAddTab}
-                      className="w-8 h-8 text-sm font-bold border border-dashed border-[#202B3A] bg-[#0B0D17] text-[#00F2FE] hover:border-[#10B981] hover:text-[#10B981] transition-all"
+                      className="w-9 h-9 md:w-10 md:h-10 text-sm font-bold border border-dashed border-[#202B3A] bg-[#0B0D17] text-[#00F2FE] hover:border-[#10B981] hover:text-[#10B981] transition-all"
                     >
                       +
                     </button>
@@ -674,7 +675,7 @@ export default function DashboardPage() {
                   value={textSegments[activeTab - 1] || ''}
                   onChange={(e) => handleTextChange(e.target.value)}
                   placeholder="请输入内容..."
-                  className="w-full px-4 py-3 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none resize-none h-32 placeholder-[#ABC4FF]"
+                  className="w-full px-4 py-4 md:py-5 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none resize-none h-32 md:h-48 lg:h-56 placeholder-[#ABC4FF]"
                 />
 
                 <div className="flex justify-between items-center mt-2">
@@ -729,7 +730,7 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <button
                   onClick={() => setSelectedModel('GPT-Image-2')}
-                  className={`w-full px-4 py-3 border border-[#202B3A] text-left transition-all flex items-center justify-between ${
+                  className={`w-full px-4 py-4 md:py-5 border border-[#202B3A] text-left transition-all flex items-center justify-between ${
                     selectedModel === 'GPT-Image-2'
                       ? 'bg-[#10B981] shadow-[0_0_10px_rgba(16,185,129,0.3)]'
                       : 'bg-[#0B0D17] hover:bg-[#1a2230]'
@@ -743,7 +744,7 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={() => setSelectedModel('NanoBanana2')}
-                  className={`w-full px-4 py-3 border border-[#202B3A] text-left transition-all flex items-center justify-between ${
+                  className={`w-full px-4 py-4 md:py-5 border border-[#202B3A] text-left transition-all flex items-center justify-between ${
                     selectedModel === 'NanoBanana2'
                       ? 'bg-[#10B981] shadow-[0_0_10px_rgba(16,185,129,0.3)]'
                       : 'bg-[#0B0D17] hover:bg-[#1a2230]'
@@ -763,7 +764,7 @@ export default function DashboardPage() {
               <select
                 value={selectedRatio}
                 onChange={(e) => setSelectedRatio(e.target.value)}
-                className="w-full px-4 py-3 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none appearance-none cursor-pointer"
+                className="w-full px-4 py-4 md:py-5 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none appearance-none cursor-pointer"
               >
                 {ASPECT_RATIOS.map((ratio) => (
                   <option key={ratio.value} value={ratio.value} className="bg-[#141923]">
@@ -778,7 +779,7 @@ export default function DashboardPage() {
               <select
                 value={selectedQuality}
                 onChange={(e) => setSelectedQuality(e.target.value)}
-                className="w-full px-4 py-3 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none appearance-none cursor-pointer"
+                className="w-full px-4 py-4 md:py-5 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none appearance-none cursor-pointer"
               >
                 {QUALITY_OPTIONS.map((quality) => (
                   <option key={quality.value} value={quality.value} className="bg-[#141923]">
@@ -790,7 +791,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="col-span-4 flex flex-col justify-start gap-4 h-full overflow-y-auto pr-1">
+        {/* 中间：风格定义与生成按钮 */}
+        <div className="lg:col-span-4 flex flex-col justify-start gap-4 h-full overflow-y-auto pr-1">
           <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-lg">
             <h3 className="text-sm font-bold mb-4 text-white">🎨 风格定义</h3>
 
@@ -799,7 +801,7 @@ export default function DashboardPage() {
               <select
                 value={selectedStyleId || ''}
                 onChange={(e) => handleStyleChange(Number(e.target.value))}
-                className="w-full px-4 py-3 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none appearance-none cursor-pointer"
+                className="w-full px-4 py-4 md:py-5 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none appearance-none cursor-pointer"
               >
                 <option value="" className="bg-[#141923]">选择风格...</option>
                 {customStylesList.length > 0 && (
@@ -831,7 +833,7 @@ export default function DashboardPage() {
                 value={customStyleName}
                 onChange={(e) => setCustomStyleName(e.target.value)}
                 placeholder="输入风格名称..."
-                className="w-full px-4 py-3 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none placeholder-[#ABC4FF]"
+                className="w-full px-4 py-4 md:py-5 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none placeholder-[#ABC4FF]"
               />
             </div>
 
@@ -842,7 +844,7 @@ export default function DashboardPage() {
                 onChange={(e) => setCustomStylePrompt(e.target.value)}
                 placeholder="输入风格描述..."
                 rows={8}
-                className="w-full px-4 py-3 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none resize-none min-h-[200px] placeholder-[#ABC4FF]"
+                className="w-full px-4 py-4 md:py-5 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none resize-none min-h-[200px] md:min-h-[240px] placeholder-[#ABC4FF]"
               />
             </div>
 
@@ -922,7 +924,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="col-span-5 flex flex-col items-center justify-center h-full overflow-hidden bg-[#141923] border border-[#202B3A] p-4 rounded-lg">
+        {/* 右侧：生成预览区 */}
+        <div className="lg:col-span-5 flex flex-col items-center justify-center h-full overflow-hidden bg-[#141923] border border-[#202B3A] p-4 rounded-lg">
           <h3 className="text-sm font-bold mb-3 text-white">🖼 生成预览</h3>
           
           <div className="flex-1 w-full flex items-center justify-center overflow-hidden">

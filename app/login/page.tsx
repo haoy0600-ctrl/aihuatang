@@ -34,6 +34,11 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotError, setForgotError] = useState('')
+  const [isSendingReset, setIsSendingReset] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>
@@ -336,6 +341,41 @@ export default function LoginPage() {
     }
   }
 
+  const handleForgotPassword = async () => {
+    setForgotError('')
+
+    if (!supabase) {
+      setForgotError('系统配置未完成，请稍后重试')
+      return
+    }
+
+    if (!forgotEmail) {
+      setForgotError('请输入邮箱地址')
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@qq\.com$/
+    if (!emailRegex.test(forgotEmail)) {
+      setForgotError('请输入有效的QQ邮箱')
+      return
+    }
+
+    setIsSendingReset(true)
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/login`,
+    })
+
+    if (resetError) {
+      setForgotError(`发送失败: ${resetError.message}`)
+      setIsSendingReset(false)
+      return
+    }
+
+    setIsSendingReset(false)
+    setResetSent(true)
+  }
+
   const handleSetPassword = async () => {
     setPasswordError('')
 
@@ -521,7 +561,12 @@ export default function LoginPage() {
             </p>
             
             <p className="text-center text-xs text-[#475569] mt-2">
-              忘记密码？
+              <button
+                onClick={() => { setShowForgotPassword(true); setForgotEmail(''); setForgotError(''); setResetSent(false); }}
+                className="text-[#00E676] hover:underline transition-colors"
+              >
+                忘记密码？
+              </button>
             </p>
           </div>
         ) : (
@@ -664,16 +709,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <div className="text-center mt-8">
-          <div className="text-[10px] text-[#475569] space-y-1">
-            <p>© 2025 AI画堂 · 粤ICP备xxxxxxxx号-x · 粤公网安备 xxxxxxxx号</p>
-            <p>
-              <a href="/privacy" className="hover:text-[#00E676] transition-colors">隐私政策</a>
-              <span className="mx-2">·</span>
-              <a href="/protocol" className="hover:text-[#00E676] transition-colors">服务协议</a>
-            </p>
-          </div>
-        </div>
+
       </div>
 
       {showSetPassword && (
@@ -767,6 +803,70 @@ export default function LoginPage() {
                 {isSettingPassword ? '保存中...' : '确认设置'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* 忘记密码弹窗 */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-md bg-[#1E293B] border border-[#334155] rounded-lg p-8">
+            <h3 className="text-xl font-bold text-white mb-6 text-center">🔐 重置密码</h3>
+            
+            {resetSent ? (
+              <div className="text-center space-y-4">
+                <div className="p-4 bg-[#00E676]/10 border border-[#00E676]/30 text-[#00E676] rounded-lg text-sm">
+                  重置邮件已发送！请检查您的QQ邮箱，点击邮件中的链接完成密码重置。
+                </div>
+                <button
+                  onClick={() => setShowForgotPassword(false)}
+                  className="w-full py-3 bg-[#00E676] text-[#0D111A] font-bold text-sm rounded-lg shadow-[0_0_15px_rgba(0,230,118,0.4)] hover:shadow-[0_0_20px_rgba(0,230,118,0.6)] transition-all"
+                >
+                  知道了
+                </button>
+              </div>
+            ) : (
+              <>
+                {forgotError && (
+                  <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg">
+                    {forgotError}
+                  </div>
+                )}
+
+                <div className="mb-6">
+                  <label className="text-sm text-[#94A3B8] font-medium mb-2 block">QQ邮箱</label>
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="请输入您的QQ邮箱..."
+                    className="w-full px-4 py-3 bg-[#0D111A] border border-[#334155] rounded-lg text-white focus:border-[#00E676] focus:outline-none placeholder-[#475569] transition-all"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowForgotPassword(false)
+                      setForgotEmail('')
+                      setForgotError('')
+                      setResetSent(false)
+                    }}
+                    className="flex-1 py-3 bg-[#334155] text-[#94A3B8] font-bold text-sm rounded-lg hover:bg-[#475569] transition-all"
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleForgotPassword}
+                    disabled={isSendingReset}
+                    className={`flex-1 py-3 bg-[#00E676] text-[#0D111A] font-bold text-sm rounded-lg shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all ${
+                      isSendingReset ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-[0_0_20px_rgba(0,230,118,0.6)]'
+                    }`}
+                  >
+                    {isSendingReset ? '发送中...' : '发送重置链接'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
