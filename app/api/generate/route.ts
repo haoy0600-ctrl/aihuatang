@@ -80,15 +80,20 @@ function buildFinalPrompt(translatedText: string, styleName: string, customStyle
   return `${translatedText}, cartoon hand-drawn style, cute illustration, vibrant pastel colors, clean thick line art, neat infographic layout`
 }
 
-async function submitWuyinTask(prompt: string, aspectRatio: string, modelType: string): Promise<string> {
-  const url = modelType === 'NanoBanana2' || modelType === 'nanobanana' 
+async function submitWuyinTask(prompt: string, aspectRatio: string, modelType: string, referenceImage?: string): Promise<string> {
+  const isImageMode = !!referenceImage
+  const url = isImageMode 
     ? WUYIN_IMAGE_TO_IMAGE_URL 
     : WUYIN_TEXT_TO_IMAGE_URL
 
-  const body = {
+  const body: Record<string, any> = {
     prompt: prompt,
     size: aspectRatio,
     count: 1,
+  }
+
+  if (isImageMode && referenceImage) {
+    body.image = referenceImage
   }
 
   const response = await fetch(url, {
@@ -369,7 +374,8 @@ export async function POST(request: NextRequest) {
       const prompt = `reference image style transfer, ${styleKeywords}, ${layoutDirectives}`
       finalPrompts.push(prompt)
 
-      const taskId = await submitWuyinTask(prompt, aspectRatio, modelType)
+      const firstReferenceImage = referenceImages[0]
+      const taskId = await submitWuyinTask(prompt, aspectRatio, modelType, firstReferenceImage)
       const originUrl = await pollWuyinResult(taskId)
       const permanentUrl = await downloadAndUploadToSupabase(originUrl, userId, 0)
       imageUrls.push(permanentUrl)

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
+import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 
 interface GenerationRecord {
   id: string
@@ -34,6 +35,7 @@ export default function RecordsPage() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<{ credits: number } | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showChangePassword, setShowChangePassword] = useState(false)
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null)
   const [selectedRecord, setSelectedRecord] = useState<GenerationRecord | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -315,6 +317,12 @@ export default function RecordsPage() {
                       积分充值
                     </Link>
                     <div className="border-t border-[#202B3A] my-1"></div>
+                    <button 
+                      onClick={() => { router.push('/profile'); setShowUserMenu(false) }}
+                      className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors"
+                    >
+                      个人中心
+                    </button>
                     <button 
                       onClick={() => { if (supabase) supabase.auth.signOut(); window.location.href = '/login'; }}
                       className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#1a2230] transition-colors"
@@ -671,6 +679,11 @@ export default function RecordsPage() {
           </div>
         </div>
       )}
+
+      <ChangePasswordModal
+        show={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+      />
     </div>
   )
 }

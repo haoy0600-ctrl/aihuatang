@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { HANDDRAWN_STYLES, HanddrawnStyle } from '@/config/styles'
+import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 
 interface UserProfile {
   id: string
@@ -67,10 +68,6 @@ export default function DashboardPage() {
   const [customStylesList, setCustomStylesList] = useState<CustomStyle[]>([])
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmNewPassword, setConfirmNewPassword] = useState('')
-  const [passwordChangeError, setPasswordChangeError] = useState('')
-  const [isChangingPassword, setIsChangingPassword] = useState(false)
 
   useEffect(() => {
     const updateTime = () => {
@@ -216,48 +213,6 @@ export default function DashboardPage() {
       await supabase.auth.signOut()
     }
     router.push('/login')
-  }
-
-  const handleChangePassword = async () => {
-    setPasswordChangeError('')
-
-    if (!newPassword) {
-      setPasswordChangeError('请输入新密码')
-      return
-    }
-
-    if (newPassword.length < 6) {
-      setPasswordChangeError('密码长度至少6位')
-      return
-    }
-
-    if (newPassword !== confirmNewPassword) {
-      setPasswordChangeError('两次输入的密码不一致')
-      return
-    }
-
-    setIsChangingPassword(true)
-
-    if (!supabase) {
-      setPasswordChangeError('系统配置未完成')
-      setIsChangingPassword(false)
-      return
-    }
-
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
-    })
-
-    if (error) {
-      setPasswordChangeError(`修改密码失败: ${error.message}`)
-    } else {
-      setShowChangePassword(false)
-      setNewPassword('')
-      setConfirmNewPassword('')
-      alert('密码修改成功！下次登录请使用新密码')
-    }
-
-    setIsChangingPassword(false)
   }
 
   const handleAddTab = () => {
@@ -414,11 +369,9 @@ export default function DashboardPage() {
           inputContents: genMode === 'text' ? validInputs : [],
           referenceImages: genMode === 'image' ? uploadedImages : [],
           styleName: customStyleName || style.name,
-          styleKeywords: style.styleKeywords,
-          layoutDirectives: customStylePrompt || style.layoutDirectives,
+          customStyle: customStylePrompt,
           aspectRatio: selectedRatio,
           modelType: selectedModel,
-          imageCount: outputCount,
         }),
       })
 
@@ -488,7 +441,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="h-screen w-screen max-w-[100vw] max-h-[100vh] overflow-hidden flex flex-col bg-[#0B0D17]">
+    <div className="min-h-screen w-full flex flex-col bg-[#0B0D17]">
       <header className="bg-[#0B0D17] border-b border-[#202B3A] flex-shrink-0">
         <div className="flex justify-between items-center w-full px-6 py-3">
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
@@ -549,13 +502,13 @@ export default function DashboardPage() {
                     >
                       积分充值
                     </button>
-                    <div className="border-t border-[#202B3A] my-1"></div>
                     <button 
-                      onClick={() => { setShowChangePassword(true); setShowUserMenu(false) }}
+                      onClick={() => { router.push('/profile'); setShowUserMenu(false) }}
                       className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors"
                     >
-                      修改密码
+                      个人中心
                     </button>
+                    <div className="border-t border-[#202B3A] my-1"></div>
                     <button 
                       onClick={() => { handleLogout(); setShowUserMenu(false) }}
                       className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#1a2230] transition-colors"
@@ -570,22 +523,23 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="grid grid-cols-1 md:grid-cols-[320px,1fr] min-h-[calc(100vh-64px)]">
-        {/* 左侧：参数配置区 - PC平板端独立内滚 */}
-        <div className="hidden md:flex flex-col gap-4 h-[calc(100vh-64px)] overflow-y-auto pr-1 pb-4">
-          <div className="bg-[#141923] border border-[#202B3A] p-4 flex-1 flex flex-col overflow-hidden rounded-lg">
-            <div>
-              <h2 className="text-lg font-bold mb-1 text-white">创作工坊</h2>
-              <p className="text-xs text-[#00F2FE]">输入内容，选择风格，生成知识卡片</p>
-            </div>
-            <div className="mb-4">
+      <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-2 p-2 overflow-hidden">
+        {/* 左侧：参数配置区 */}
+        <div className="lg:col-span-3 flex flex-col gap-2 h-full overflow-y-auto pr-0">
+          <div>
+            <h2 className="text-lg font-bold mb-1 text-white">创作工坊</h2>
+            <p className="text-xs text-[#00F2FE]">输入内容，选择风格，生成知识卡片</p>
+          </div>
+
+          <div className="bg-[#141923] border border-[#202B3A] p-2 flex-1 flex flex-col overflow-hidden rounded-lg">
+            <div className="mb-2">
               <label className="text-xs text-[#00F2FE] mb-1.5 block">生成模式</label>
               <div className="flex gap-2">
                 <button
                   onClick={() => setGenMode('text')}
-                  className={`flex-1 py-3.5 md:py-4 text-sm font-bold border border-[#202B3A] transition-all ${
+                  className={`flex-1 py-2 text-xs font-bold border border-[#202B3A] transition-all ${
                     genMode === 'text'
-                      ? 'bg-[#00E676] text-[#0A0F1D] shadow-[0_0_15px_rgba(0,230,118,0.4)]'
+                      ? 'bg-[#00E676] text-[#0A0F1D] shadow-[0_0_10px_rgba(0,230,118,0.4)]'
                       : 'bg-[#0B0D17] text-white hover:bg-[#1a2230]'
                   }`}
                 >
@@ -593,9 +547,9 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={() => setGenMode('image')}
-                  className={`flex-1 py-3.5 md:py-4 text-sm font-bold border border-[#202B3A] transition-all ${
+                  className={`flex-1 py-2 text-xs font-bold border border-[#202B3A] transition-all ${
                     genMode === 'image'
-                      ? 'bg-[#00E676] text-[#0A0F1D] shadow-[0_0_15px_rgba(0,230,118,0.4)]'
+                      ? 'bg-[#00E676] text-[#0A0F1D] shadow-[0_0_10px_rgba(0,230,118,0.4)]'
                       : 'bg-[#0B0D17] text-white hover:bg-[#1a2230]'
                   }`}
                 >
@@ -605,7 +559,7 @@ export default function DashboardPage() {
             </div>
 
             {genMode === 'text' && (
-              <div className="mb-4">
+              <div className="mb-2">
                 <label className="text-xs text-[#00F2FE] mb-1.5 block">文字内容</label>
                 
                 <div className="flex items-center gap-1.5 mb-2">
@@ -674,7 +628,7 @@ export default function DashboardPage() {
                   value={textSegments[activeTab - 1] || ''}
                   onChange={(e) => handleTextChange(e.target.value)}
                   placeholder="请输入内容..."
-                  className="w-full px-4 py-4 md:py-5 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none resize-none h-32 md:h-48 lg:h-56 placeholder-[#ABC4FF]"
+                  className="w-full px-3 py-3 bg-[#0B0D17] border border-[#202B3A] text-xs text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none resize-none h-28 placeholder-[#ABC4FF]"
                 />
 
                 <div className="flex justify-between items-center mt-2">
@@ -685,11 +639,11 @@ export default function DashboardPage() {
             )}
 
             {genMode === 'image' && (
-              <div className="mb-4">
+              <div className="mb-3">
                 <label className="text-xs text-[#00F2FE] mb-1.5 block">参考图片</label>
                 
                 <div
-                  className="border border-dashed border-[#202B3A] p-5 text-center hover:border-[#10B981] hover:border-solid transition-all cursor-pointer bg-[#0B0D17]"
+                  className="border border-dashed border-[#202B3A] p-4 text-center hover:border-[#10B981] hover:border-solid transition-all cursor-pointer bg-[#0B0D17]"
                 >
                   <input
                     type="file"
@@ -724,46 +678,46 @@ export default function DashboardPage() {
               </div>
             )}
 
-            <div className="mb-4">
+            <div className="mb-2">
               <label className="text-xs text-[#00F2FE] mb-1.5 block">模型选择</label>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <button
                   onClick={() => setSelectedModel('GPT-Image-2')}
-                  className={`w-full px-4 py-4 md:py-5 border border-[#202B3A] text-left transition-all flex items-center justify-between ${
+                  className={`w-full px-3 py-3 border border-[#202B3A] text-left transition-all flex items-center justify-between ${
                     selectedModel === 'GPT-Image-2'
                       ? 'bg-[#10B981] shadow-[0_0_10px_rgba(16,185,129,0.3)]'
                       : 'bg-[#0B0D17] hover:bg-[#1a2230]'
                   }`}
                 >
                   <div>
-                    <div className={`text-sm font-bold ${selectedModel === 'GPT-Image-2' ? 'text-black' : 'text-white'}`}>GPT-Image-2</div>
+                    <div className={`text-xs font-bold ${selectedModel === 'GPT-Image-2' ? 'text-black' : 'text-white'}`}>GPT-Image-2</div>
                     <div className="text-[10px] text-[#00F2FE]">更高质量更多分析</div>
                   </div>
-                  <div className={`text-xs font-bold ${selectedModel === 'GPT-Image-2' ? 'text-black' : 'text-[#10B981]'}`}>⚡ 3 积分</div>
+                  <div className={`text-[10px] font-bold ${selectedModel === 'GPT-Image-2' ? 'text-black' : 'text-[#10B981]'}`}>⚡ 3 积分</div>
                 </button>
                 <button
                   onClick={() => setSelectedModel('NanoBanana2')}
-                  className={`w-full px-4 py-4 md:py-5 border border-[#202B3A] text-left transition-all flex items-center justify-between ${
+                  className={`w-full px-3 py-3 border border-[#202B3A] text-left transition-all flex items-center justify-between ${
                     selectedModel === 'NanoBanana2'
                       ? 'bg-[#10B981] shadow-[0_0_10px_rgba(16,185,129,0.3)]'
                       : 'bg-[#0B0D17] hover:bg-[#1a2230]'
                   }`}
                 >
                   <div>
-                    <div className={`text-sm font-bold ${selectedModel === 'NanoBanana2' ? 'text-black' : 'text-white'}`}>NanoBanana2</div>
+                    <div className={`text-xs font-bold ${selectedModel === 'NanoBanana2' ? 'text-black' : 'text-white'}`}>NanoBanana2</div>
                     <div className="text-[10px] text-[#00F2FE]">快速图像生成</div>
                   </div>
-                  <div className={`text-xs font-bold ${selectedModel === 'NanoBanana2' ? 'text-black' : 'text-[#10B981]'}`}>⚡ 3 积分</div>
+                  <div className={`text-[10px] font-bold ${selectedModel === 'NanoBanana2' ? 'text-black' : 'text-[#10B981]'}`}>⚡ 5 积分</div>
                 </button>
               </div>
             </div>
 
-            <div className="mb-4">
+            <div className="mb-2">
               <label className="text-xs text-[#00F2FE] mb-1.5 block">画面比例</label>
               <select
                 value={selectedRatio}
                 onChange={(e) => setSelectedRatio(e.target.value)}
-                className="w-full px-4 py-4 md:py-5 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none appearance-none cursor-pointer"
+                className="w-full px-3 py-3 bg-[#0B0D17] border border-[#202B3A] text-xs text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none appearance-none cursor-pointer"
               >
                 {ASPECT_RATIOS.map((ratio) => (
                   <option key={ratio.value} value={ratio.value} className="bg-[#141923]">
@@ -778,7 +732,7 @@ export default function DashboardPage() {
               <select
                 value={selectedQuality}
                 onChange={(e) => setSelectedQuality(e.target.value)}
-                className="w-full px-4 py-4 md:py-5 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none appearance-none cursor-pointer"
+                className="w-full px-3 py-3 bg-[#0B0D17] border border-[#202B3A] text-xs text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none appearance-none cursor-pointer"
               >
                 {QUALITY_OPTIONS.map((quality) => (
                   <option key={quality.value} value={quality.value} className="bg-[#141923]">
@@ -790,19 +744,17 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 右侧：风格定义与生成预览容器 - MD及以上两栏并排 */}
-        <div className="hidden md:flex flex-col gap-4 h-[calc(100vh-64px)] overflow-hidden">
-          {/* 中间：风格定义与生成按钮 */}
-          <div className="flex-1 overflow-y-auto pr-1">
-            <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-lg h-full flex flex-col">
-              <h3 className="text-sm font-bold mb-4 text-white">🎨 风格定义</h3>
+        {/* 中间：风格定义与生成按钮 */}
+        <div className="lg:col-span-4 flex flex-col justify-start gap-2 h-full overflow-y-auto pr-0">
+          <div className="bg-[#141923] border border-[#202B3A] p-2 rounded-lg">
+            <h3 className="text-xs font-bold mb-2 text-white">🎨 风格定义</h3>
 
-            <div className="mb-4">
-              <label className="text-xs text-[#00F2FE] mb-1.5 block">系统风格</label>
+            <div className="mb-2">
+              <label className="text-[10px] text-[#00F2FE] mb-1 block">系统风格</label>
               <select
                 value={selectedStyleId || ''}
                 onChange={(e) => handleStyleChange(Number(e.target.value))}
-                className="w-full px-4 py-4 md:py-5 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none appearance-none cursor-pointer"
+                className="w-full px-3 py-2.5 bg-[#0B0D17] border border-[#202B3A] text-xs text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none appearance-none cursor-pointer"
               >
                 <option value="" className="bg-[#141923]">选择风格...</option>
                 {customStylesList.length > 0 && (
@@ -827,40 +779,40 @@ export default function DashboardPage() {
               </select>
             </div>
 
-            <div className="mb-4">
-              <label className="text-xs text-[#00F2FE] mb-1.5 block">风格名称</label>
+            <div className="mb-2">
+              <label className="text-[10px] text-[#00F2FE] mb-1 block">风格名称</label>
               <input
                 type="text"
                 value={customStyleName}
                 onChange={(e) => setCustomStyleName(e.target.value)}
                 placeholder="输入风格名称..."
-                className="w-full px-4 py-4 md:py-5 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none placeholder-[#ABC4FF]"
+                className="w-full px-3 py-2.5 bg-[#0B0D17] border border-[#202B3A] text-xs text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none placeholder-[#ABC4FF]"
               />
             </div>
 
-            <div className="mb-5">
-              <label className="text-xs text-[#00F2FE] mb-1.5 block">风格描述 Prompt</label>
+            <div className="mb-2">
+              <label className="text-[10px] text-[#00F2FE] mb-1 block">风格描述 Prompt</label>
               <textarea
                 value={customStylePrompt}
                 onChange={(e) => setCustomStylePrompt(e.target.value)}
                 placeholder="输入风格描述..."
-                rows={8}
-                className="w-full px-4 py-4 md:py-5 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none resize-none min-h-[200px] md:min-h-[240px] placeholder-[#ABC4FF]"
+                rows={4}
+                className="w-full px-3 py-2.5 bg-[#0B0D17] border border-[#202B3A] text-xs text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none resize-none min-h-[100px] placeholder-[#ABC4FF]"
               />
             </div>
 
-            <div className="mb-4">
-              <h4 className="text-xs font-bold mb-2 text-white">✨ 我的自定义风格</h4>
+            <div className="mb-2">
+              <h4 className="text-[10px] font-bold mb-1.5 text-white">✨ 我的自定义风格</h4>
               {customStylesList.length === 0 ? (
-                <div className="py-3">
-                  <p className="text-xs text-[#00F2FE] font-normal">暂无自定义风格，可在上方输入名称与描述后点击下方保存</p>
+                <div className="py-2">
+                  <p className="text-[10px] text-[#00F2FE] font-normal">暂无自定义风格，可在上方输入名称与描述后点击下方保存</p>
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {customStylesList.map((style) => (
                     <div
                       key={style.id}
-                      className={`border border-[#202B3A] px-3 py-1.5 text-xs font-mono font-medium cursor-pointer transition-all flex items-center gap-2 ${
+                      className={`border border-[#202B3A] px-2.5 py-1 text-[10px] font-mono font-medium cursor-pointer transition-all flex items-center gap-1.5 ${
                         selectedStyleId === style.id
                           ? 'bg-[#10B981] text-black shadow-[0_0_10px_rgba(16,185,129,0.3)]'
                           : 'bg-[#0B0D17] text-white hover:bg-[#1a2230]'
@@ -884,7 +836,7 @@ export default function DashboardPage() {
 
             <button
               onClick={handleSaveCustomStyle}
-              className="w-full py-2.5 bg-[#0B0D17] border border-[#202B3A] text-sm text-white hover:border-[#10B981] hover:text-[#10B981] transition-all"
+              className="w-full py-2 bg-[#0B0D17] border border-[#202B3A] text-xs text-white hover:border-[#10B981] hover:text-[#10B981] transition-all"
             >
               💾 保存自定义风格
             </button>
@@ -893,13 +845,13 @@ export default function DashboardPage() {
           <button
             onClick={handleGenerate}
             disabled={generationStatus === 'loading'}
-            className={`w-full py-4 bg-[#00E676] text-[#0A0F1D] font-bold text-lg border border-[#202B3A] transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(0,230,118,0.4)] ${
-              generationStatus === 'loading' ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-[0_0_20px_rgba(0,230,118,0.6)]'
+            className={`w-full py-2.5 bg-[#00E676] text-[#0A0F1D] font-bold text-sm border border-[#202B3A] transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(0,230,118,0.4)] ${
+              generationStatus === 'loading' ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-[0_0_15px_rgba(0,230,118,0.6)]'
             }`}
           >
             {generationStatus === 'loading' ? (
               <>
-                <div className="w-5 h-5 border-2 border-[#0A0F1D] border-t-transparent animate-spin"></div>
+                <div className="w-3 h-3 border-2 border-[#0A0F1D] border-t-transparent animate-spin"></div>
                 生成中...
               </>
             ) : (
@@ -907,8 +859,8 @@ export default function DashboardPage() {
             )}
           </button>
 
-          <div className="bg-[#141923] border border-[#202B3A] p-4 text-center">
-            <div className="flex justify-center gap-4 text-sm">
+          <div className="bg-[#141923] border border-[#202B3A] p-2 text-center">
+            <div className="flex justify-center gap-3 text-xs">
               <span className="text-[#00F2FE]">
                 模型单价: <span className="font-bold text-[#00E676]">{modelPrice}</span> 积分
               </span>
@@ -919,15 +871,15 @@ export default function DashboardPage() {
                 总成本: <span className="font-bold text-[#00E676]">{totalCost}</span> 积分
               </span>
             </div>
-            <div className="mt-2 text-xs text-[#00F2FE]">
+            <div className="mt-1.5 text-[10px] text-[#00F2FE]">
               余额: <span className="font-bold text-white">{profile?.credits || 0}</span> 积分
             </div>
           </div>
         </div>
 
         {/* 右侧：生成预览区 */}
-        <div className="flex-1 flex flex-col items-center justify-center overflow-hidden bg-[#141923] border border-[#202B3A] p-4 rounded-lg">
-          <h3 className="text-sm font-bold mb-3 text-white">🖼 生成预览</h3>
+        <div className="lg:col-span-5 flex flex-col items-center justify-center h-full overflow-hidden bg-[#141923] border border-[#202B3A] p-2 rounded-lg">
+          <h3 className="text-xs font-bold mb-2 text-white">🖼 生成预览</h3>
           
           <div className="flex-1 w-full flex items-center justify-center overflow-hidden">
             <div
@@ -971,67 +923,12 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-        </div>
       </main>
 
-      {showChangePassword && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-md bg-[#141923] border border-[#202B3A] p-8 rounded-lg">
-            <h3 className="text-xl font-bold text-white mb-6 text-center">🔐 修改密码</h3>
-            
-            {passwordChangeError && (
-              <div className="mb-4 p-3 bg-red-500/20 border border-red-500 text-red-400 text-sm">
-                {passwordChangeError}
-              </div>
-            )}
-
-            <div className="mb-4">
-              <label className="text-xs text-[#00F2FE] mb-1.5 block">新密码</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="请输入新密码（至少6位）"
-                className="w-full px-4 py-3 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none placeholder-[#ABC4FF]"
-              />
-            </div>
-
-            <div className="mb-6">
-              <label className="text-xs text-[#00F2FE] mb-1.5 block">确认新密码</label>
-              <input
-                type="password"
-                value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
-                placeholder="请再次输入新密码"
-                className="w-full px-4 py-3 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none placeholder-[#ABC4FF]"
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowChangePassword(false)
-                  setNewPassword('')
-                  setConfirmNewPassword('')
-                  setPasswordChangeError('')
-                }}
-                className="flex-1 py-3 bg-[#0B0D17] border border-[#202B3A] text-white font-bold text-sm hover:border-[#00F2FE] transition-all"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleChangePassword}
-                disabled={isChangingPassword}
-                className={`flex-1 py-3 bg-[#00E676] text-[#0A0F1D] font-bold text-sm border border-[#202B3A] shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all ${
-                  isChangingPassword ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-[0_0_20px_rgba(0,230,118,0.6)]'
-                }`}
-              >
-                {isChangingPassword ? '保存中...' : '确认修改'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ChangePasswordModal
+        show={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+      />
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 
 type SelectedPackageType = '10' | '30' | '100' | 'custom'
 type PaymentMethodType = 'alipay' | 'wechat'
@@ -23,6 +24,7 @@ export default function RechargePage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showChangePassword, setShowChangePassword] = useState(false)
 
   useEffect(() => {
     const updateTime = () => {
@@ -216,6 +218,12 @@ export default function RechargePage() {
                     </Link>
                     <div className="border-t border-[#202B3A] my-1"></div>
                     <button 
+                      onClick={() => { window.location.href = '/profile'; setShowUserMenu(false) }}
+                      className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors"
+                    >
+                      个人中心
+                    </button>
+                    <button 
                       onClick={() => { if (supabase) supabase.auth.signOut(); window.location.href = '/login'; }}
                       className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#1a2230] transition-colors"
                     >
@@ -404,6 +412,11 @@ export default function RechargePage() {
           </div>
         </div>
       </main>
+
+      <ChangePasswordModal
+        show={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+      />
     </div>
   )
 }
