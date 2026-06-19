@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { HANDDRAWN_STYLES } from '@/config/styles'
 
-const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/chat/completions'
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || ''
 const IMAGE_API_KEY = process.env.IMAGE_API_KEY || ''
 
 const WUYIN_TEXT_TO_IMAGE_URL = 'https://api.wuyinkeji.com/api/async/image_gpt'
@@ -65,54 +63,6 @@ function splitTextToSentences(text: string): string[] {
 
 function getStyleByName(styleName: string) {
   return HANDDRAWN_STYLES.find(s => s.name === styleName)
-}
-
-async function callDeepSeekForSingleSentence(sentence: string): Promise<string> {
-  const systemPrompt = `You are a precise English subject translator for AI image generation.
-YOUR TASK:
-- Translate the user's Chinese text into a concise English subject description
-- Focus ONLY on the main visual subjects, objects, and scenes
-- DO NOT add any artistic style descriptors, color descriptions, or mood words
-- Keep your response under 50 tokens
-- Output ONLY the translated English text, nothing else
-
-Example:
-Input: "一只可爱的猫咪在草地上玩耍"
-Output: "a cute cat playing on grass"
-
-Input: "未来城市的霓虹夜景"
-Output: "neon night view of futuristic city"`
-
-  const response = await fetch(DEEPSEEK_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Translate: ${sentence}` },
-      ],
-      temperature: 0.2,
-      max_tokens: 80,
-    }),
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`)
-  }
-
-  const data = await response.json()
-  const translatedText = data.choices?.[0]?.message?.content || ''
-
-  if (!translatedText) {
-    throw new Error('DeepSeek returned empty translation')
-  }
-
-  return translatedText.trim()
 }
 
 function buildFinalPrompt(translatedText: string, styleName: string, customStyle?: string): string {
@@ -256,8 +206,8 @@ async function generateSingleImage(
   userId: string,
   index: number
 ): Promise<string> {
-  const translatedText = await callDeepSeekForSingleSentence(sentence)
-  console.log(`Sentence ${index} translation: ${translatedText}`)
+  const translatedText = sentence
+  console.log(`Sentence ${index}: ${translatedText}`)
 
   const finalPrompt = buildFinalPrompt(translatedText, styleName, customStyle)
   console.log(`Sentence ${index} final prompt: ${finalPrompt}`)
@@ -410,8 +360,7 @@ export async function POST(request: NextRequest) {
       }
 
       for (const sentence of sentences) {
-        const translatedText = await callDeepSeekForSingleSentence(sentence)
-        finalPrompts.push(buildFinalPrompt(translatedText, styleName, customStyle))
+        finalPrompts.push(buildFinalPrompt(sentence, styleName, customStyle))
       }
     } else if (isImageMode) {
       const style = getStyleByName(styleName)
