@@ -34,3 +34,4 @@ next-env.d.ts
 .vscode/
 *.swp
 *.swo
+node_modules
