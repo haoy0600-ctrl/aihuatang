@@ -40,19 +40,24 @@ function getStyleByName(styleName: string) {
   return HANDDRAWN_STYLES.find(s => s.name === styleName)
 }
 
-function buildFinalPrompt(translatedText: string, styleName: string, customStyle?: string): string {
+function buildFinalPrompt(inputText: string, styleName: string, customStyle?: string): string {
   if (customStyle && customStyle.trim()) {
-    return `${translatedText}, ${customStyle.trim()}`
+    return customStyle.trim()
   }
 
   const style = getStyleByName(styleName)
-  if (style) {
-    const styleKeywords = style.styleKeywords || ''
-    const layoutDirectives = style.layoutDirectives || ''
-    return `${translatedText}, ${styleKeywords}, ${layoutDirectives}, neat infographic layout, zero text bleeding, clean vector style, abstract icon placeholders instead of text`
-  }
+  const stylePrompt = style 
+    ? `${style.styleKeywords || ''}, ${style.layoutDirectives || ''}`
+    : 'cartoon hand-drawn style, cute illustration, vibrant pastel colors, clean thick line art, neat infographic layout'
 
-  return `${translatedText}, cartoon hand-drawn style, cute illustration, vibrant pastel colors, clean thick line art, neat infographic layout`
+  const textToPrint = inputText.trim()
+
+  return `[SCENE DESCRIPTION]: ${stylePrompt}, professional educational infographic, clean layout, high quality, masterpiece
+[CORE TASK]: Render a high-quality educational card based on the scene description above.
+[CRITICAL TEXT REQUIREMENT]: Inside the illustration, you MUST accurately print the exact text specified inside the separators below without any spelling or character mistakes. The text contains English words, phonetic transcriptions, and Chinese translations. Use clear, legible fonts for both English and Chinese characters.
+=== EXACT TEXT TO PRINT START ===
+"${textToPrint}"
+=== EXACT TEXT TO PRINT END ===`
 }
 
 async function submitWuyinTask(prompt: string, aspectRatio: string, modelType: string, referenceImage?: string): Promise<string> {
