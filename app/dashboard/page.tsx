@@ -609,19 +609,48 @@ export default function DashboardPage() {
                 <label className="text-xs text-[#00F2FE] mb-1.5 block">文字内容</label>
                 
                 <div className="flex items-center gap-1.5 mb-2">
-                  {Array.from({ length: totalTabs }).map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setActiveTab(index + 1)}
-                      className={`w-8 h-8 text-sm font-bold border border-[#202B3A] transition-all ${
-                        activeTab === index + 1
-                          ? 'bg-[#10B981] text-black shadow-[0_0_10px_rgba(16,185,129,0.5)]'
-                          : 'bg-[#0B0D17] text-white hover:bg-[#1a2230]'
-                      }`}
-                    >
-                      {index + 1}
-                    </button>
-                  ))}
+                  {Array.from({ length: totalTabs }).map((_, index) => {
+                    const textContent = textSegments[index] || ''
+                    const textLength = textContent.length
+                    const isActive = activeTab === index + 1
+                    
+                    // 状态判断
+                    const isEmpty = textLength === 0
+                    const hasContent = textLength > 0 && textLength <= 150
+                    const isOverLength = textLength > 150
+                    
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => setActiveTab(index + 1)}
+                        className={`relative w-8 h-8 text-sm font-bold border border-[#202B3A] transition-all duration-200 ${
+                          isActive
+                            ? 'bg-[#00F2FE] text-[#0B0D17] ring-2 ring-emerald-500 ring-offset-2 ring-offset-[#0D111A] shadow-[0_0_15px_rgba(0,242,254,0.6)]'
+                            : isEmpty
+                              ? 'bg-[#0B0D17] text-[#64748B] hover:bg-[#1E293B] hover:text-[#94A3B8]'
+                              : 'bg-[#0B0D17] text-white hover:bg-[#1E293B] hover:shadow-[0_0_8px_rgba(16,185,129,0.3)]'
+                        }`}
+                      >
+                        {index + 1}
+                        
+                        {/* 状态微章 - 有内容时显示 */}
+                        {hasContent && (
+                          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                            <span className="absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
+                          </span>
+                        )}
+                        
+                        {/* 状态微章 - 字数过多警告 */}
+                        {isOverLength && (
+                          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                            <span className="absolute inline-flex h-3 w-3 rounded-full bg-amber-400 opacity-75 animate-ping"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.8)]"></span>
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
                   {totalTabs < 10 && (
                     <button
                       onClick={handleAddTab}
