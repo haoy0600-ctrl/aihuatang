@@ -150,7 +150,7 @@ export default function RecordsPage() {
       setCopiedPrompt(id)
       setTimeout(() => setCopiedPrompt(null), 2000)
     } catch {
-      prompt('请复制提示词:', prompt)
+      alert('复制失败，请手动复制提示词')
     }
   }
 
