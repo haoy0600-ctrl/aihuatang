@@ -570,15 +570,14 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden">
-        {/* 左侧：参数配置区 */}
-        <div className="lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto pr-1">
-          <div>
-            <h2 className="text-lg font-bold mb-1 text-white">创作工坊</h2>
-            <p className="text-xs text-[#00F2FE]">输入内容，选择风格，生成知识卡片</p>
-          </div>
-
+      <main className="grid grid-cols-1 md:grid-cols-[320px,1fr] min-h-[calc(100vh-64px)]">
+        {/* 左侧：参数配置区 - PC平板端独立内滚 */}
+        <div className="hidden md:flex flex-col gap-4 h-[calc(100vh-64px)] overflow-y-auto pr-1 pb-4">
           <div className="bg-[#141923] border border-[#202B3A] p-4 flex-1 flex flex-col overflow-hidden rounded-lg">
+            <div>
+              <h2 className="text-lg font-bold mb-1 text-white">创作工坊</h2>
+              <p className="text-xs text-[#00F2FE]">输入内容，选择风格，生成知识卡片</p>
+            </div>
             <div className="mb-4">
               <label className="text-xs text-[#00F2FE] mb-1.5 block">生成模式</label>
               <div className="flex gap-2">
@@ -791,10 +790,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 中间：风格定义与生成按钮 */}
-        <div className="lg:col-span-4 flex flex-col justify-start gap-4 h-full overflow-y-auto pr-1">
-          <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-lg">
-            <h3 className="text-sm font-bold mb-4 text-white">🎨 风格定义</h3>
+        {/* 右侧：风格定义与生成预览容器 - MD及以上两栏并排 */}
+        <div className="hidden md:flex flex-col gap-4 h-[calc(100vh-64px)] overflow-hidden">
+          {/* 中间：风格定义与生成按钮 */}
+          <div className="flex-1 overflow-y-auto pr-1">
+            <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-lg h-full flex flex-col">
+              <h3 className="text-sm font-bold mb-4 text-white">🎨 风格定义</h3>
 
             <div className="mb-4">
               <label className="text-xs text-[#00F2FE] mb-1.5 block">系统风格</label>
@@ -925,7 +926,7 @@ export default function DashboardPage() {
         </div>
 
         {/* 右侧：生成预览区 */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-center h-full overflow-hidden bg-[#141923] border border-[#202B3A] p-4 rounded-lg">
+        <div className="flex-1 flex flex-col items-center justify-center overflow-hidden bg-[#141923] border border-[#202B3A] p-4 rounded-lg">
           <h3 className="text-sm font-bold mb-3 text-white">🖼 生成预览</h3>
           
           <div className="flex-1 w-full flex items-center justify-center overflow-hidden">
@@ -969,6 +970,7 @@ export default function DashboardPage() {
               </button>
             </div>
           )}
+        </div>
         </div>
       </main>
 
