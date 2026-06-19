@@ -917,11 +917,12 @@ export default function DashboardPage() {
                   )}
 
                   {generationStatus === 'loading' && (
-                    <div className="w-full h-full flex flex-col p-6 gap-4">
-                      <div className="flex-1 bg-[#091511]/30 border border-[#142D24] animate-pulse rounded-lg"></div>
-                      <div className="h-3 bg-[#091511]/30 animate-pulse rounded"></div>
-                      <div className="h-3 bg-[#091511]/30 animate-pulse rounded w-3/4"></div>
-                      <div className="h-3 bg-[#091511]/30 animate-pulse rounded w-1/2"></div>
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-5xl mb-4 animate-bounce">🎨</div>
+                        <p className="text-base text-[#10B981] mb-2">正在创作中...</p>
+                        <p className="text-sm text-[#64748B]">AI 正在绘制您的知识卡片<br />请稍候</p>
+                      </div>
                     </div>
                   )}
 

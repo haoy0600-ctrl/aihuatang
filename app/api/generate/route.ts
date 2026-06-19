@@ -64,12 +64,13 @@ async function submitWuyinTask(prompt: string, aspectRatio: string, modelType: s
   const body: Record<string, any> = {
     prompt: prompt,
     size: aspectRatio,
-    count: 1,
   }
 
   if (isImageMode && referenceImage) {
-    body.image = referenceImage
+    body.urls = [referenceImage]
   }
+
+  console.log('Wuyin API request:', { url, body: JSON.stringify(body) })
 
   const response = await fetch(url, {
     method: 'POST',
@@ -80,15 +81,22 @@ async function submitWuyinTask(prompt: string, aspectRatio: string, modelType: s
     body: JSON.stringify(body),
   })
 
+  const responseText = await response.text()
+  console.log('Wuyin API response:', response.status, responseText)
+
   if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`Wuyin API error: ${response.status} - ${errorText}`)
+    throw new Error(`Wuyin API HTTP error: ${response.status} - ${responseText}`)
   }
 
-  const data = await response.json()
+  let data
+  try {
+    data = JSON.parse(responseText)
+  } catch {
+    throw new Error(`Wuyin API invalid JSON: ${responseText}`)
+  }
 
   if (data.code !== 200 || !data.data?.id) {
-    throw new Error(`Wuyin API error: ${data.msg || 'Failed to submit task'}`)
+    throw new Error(`Wuyin API error: ${data.msg || data.message || JSON.stringify(data)}`)
   }
 
   return data.data.id
@@ -320,14 +328,15 @@ export async function POST(request: NextRequest) {
 
     const imageUrls: string[] = []
     const finalPrompts: string[] = []
+    let firstError: string | null = null
 
     if (isTextMode && sentences.length > 0) {
       const generationPromises = sentences.map((sentence, index) => 
         generateSingleImage(sentence, styleName, customStyle, aspectRatio, modelType, userId, index)
-          .then(url => ({ url, index }))
+          .then(url => ({ url, index, error: null as Error | null }))
           .catch(error => {
             console.error(`Failed to generate image for sentence ${index}:`, error)
-            return { url: null, index, error }
+            return { url: null, index, error: error as Error }
           })
       )
 
@@ -336,6 +345,8 @@ export async function POST(request: NextRequest) {
       for (const result of results) {
         if (result.url) {
           imageUrls.push(result.url)
+        } else if (result.error && !firstError) {
+          firstError = result.error instanceof Error ? result.error.message : String(result.error)
         }
       }
 
@@ -358,7 +369,7 @@ export async function POST(request: NextRequest) {
 
     if (imageUrls.length === 0) {
       return NextResponse.json(
-        { success: false, error: '所有图片生成均失败，请重试' },
+        { success: false, error: firstError || '所有图片生成均失败，请重试' },
         { status: 500 }
       )
     }
