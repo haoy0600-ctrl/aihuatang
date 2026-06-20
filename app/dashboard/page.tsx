@@ -758,18 +758,6 @@ export default function DashboardPage() {
                     </div>
                     <div className="p-2">
                       <button 
-                        onClick={() => { router.push('/records'); setShowUserMenu(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg hidden md:block"
-                      >
-                        生成记录
-                      </button>
-                      <button 
-                        onClick={() => { router.push('/recharge'); setShowUserMenu(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg hidden md:block"
-                      >
-                        积分充值
-                      </button>
-                      <button 
                         onClick={() => { router.push('/profile'); setShowUserMenu(false) }}
                         className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg"
                       >
@@ -949,12 +937,12 @@ export default function DashboardPage() {
                 {/* 模型选择 */}
                 <div>
                   <label className="text-xs text-[#10B981] mb-1 block">模型选择</label>
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <button
                       onClick={() => setSelectedModel('GPT-Image-2')}
-                      className={`w-full px-3 py-2.5 border border-[#142D24] text-left transition-all flex items-center justify-between rounded-lg ${
+                      className={`w-full px-4 py-3 border border-[#142D24] text-center transition-all rounded-lg ${
                         selectedModel === 'GPT-Image-2'
-                          ? 'bg-[#10B981] shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                          ? 'bg-[#10B981] shadow-[0_0_15px_rgba(16,185,129,0.4)] ring-2 ring-[#10B981]/50'
                           : 'bg-[#091511]/60 backdrop-blur-sm hover:bg-[#142D24]'
                       }`}
                     >
@@ -962,13 +950,12 @@ export default function DashboardPage() {
                         <div className={`text-sm font-bold ${selectedModel === 'GPT-Image-2' ? 'text-[#040D0A]' : 'text-white'}`}>GPT-Image-2</div>
                         <div className={`text-xs ${selectedModel === 'GPT-Image-2' ? 'text-[#040D0A]/70' : 'text-[#10B981]'}`}>更高质量更多分析</div>
                       </div>
-                      <div className={`text-sm font-bold ${selectedModel === 'GPT-Image-2' ? 'text-[#040D0A]' : 'text-[#10B981]'}`}>⚡ 3 积分</div>
                     </button>
                     <button
                       onClick={() => setSelectedModel('NanoBanana2')}
-                      className={`w-full px-3 py-2.5 border border-[#142D24] text-left transition-all flex items-center justify-between rounded-lg ${
+                      className={`w-full px-4 py-3 border border-[#142D24] text-center transition-all rounded-lg ${
                         selectedModel === 'NanoBanana2'
-                          ? 'bg-[#10B981] shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                          ? 'bg-[#10B981] shadow-[0_0_15px_rgba(16,185,129,0.4)] ring-2 ring-[#10B981]/50'
                           : 'bg-[#091511]/60 backdrop-blur-sm hover:bg-[#142D24]'
                       }`}
                     >
@@ -976,7 +963,6 @@ export default function DashboardPage() {
                         <div className={`text-sm font-bold ${selectedModel === 'NanoBanana2' ? 'text-[#040D0A]' : 'text-white'}`}>NanoBanana2</div>
                         <div className={`text-xs ${selectedModel === 'NanoBanana2' ? 'text-[#040D0A]/70' : 'text-[#10B981]'}`}>快速图像生成</div>
                       </div>
-                      <div className={`text-sm font-bold ${selectedModel === 'NanoBanana2' ? 'text-[#040D0A]' : 'text-[#10B981]'}`}>⚡ 3 积分</div>
                     </button>
                   </div>
                 </div>

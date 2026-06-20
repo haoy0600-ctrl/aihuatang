@@ -448,7 +448,7 @@ export default function RecordsPage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
               {records.map((record) => {
                 const imageUrls = typeof record.image_urls === 'string' ? JSON.parse(record.image_urls) : record.image_urls
                 const totalCost = getModelPrice(record.model) * (record.image_count || 1)
@@ -463,22 +463,22 @@ export default function RecordsPage() {
                     }`}
                   >
                     {batchMode && (
-                      <div className="absolute top-2 left-2 z-20">
+                      <div className="absolute top-1.5 left-1.5 z-20">
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleRecordSelection(record.id)}
-                          className="w-4 h-4 accent-[#00F2FE] cursor-pointer"
+                          className="w-3 h-3 accent-[#00F2FE] cursor-pointer"
                         />
                       </div>
                     )}
 
-                    <div className="relative group overflow-hidden">
+                    <div className="relative group overflow-hidden bg-[#161a2b]">
                       {imageUrls && imageUrls[0] ? (
                         <img 
                           src={imageUrls[0]} 
                           alt="生成图" 
-                          className="w-full h-auto object-contain bg-[#161a2b]"
+                          className="w-full max-h-36 sm:max-h-40 object-contain mx-auto"
                         />
                       ) : (
                         <div className="w-full aspect-square flex items-center justify-center text-[#94A3B8] bg-[#0B0D17]">
@@ -486,50 +486,50 @@ export default function RecordsPage() {
                         </div>
                       )}
 
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center gap-3">
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center gap-2 p-2">
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
                             setPreviewImageUrl(imageUrls?.[0] || '')
                             setShowImagePreview(true)
                           }}
-                          className="px-4 py-2 bg-[#00E676]/90 text-[#0A0F1D] text-xs font-bold hover:bg-[#00E676] transition-all backdrop-blur-sm border border-[#00E676]/50 whitespace-nowrap"
+                          className="px-2 py-1.5 bg-[#00E676]/90 text-[#0A0F1D] text-[10px] font-bold hover:bg-[#00E676] transition-all backdrop-blur-sm border border-[#00E676]/50"
                         >
-                          🔍 放大预览
+                          🔍
                         </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
                             handleDownload(imageUrls?.[0] || '', 0)
                           }}
-                          className="px-4 py-2 bg-[#00F2FE]/90 text-[#0A0F1D] text-xs font-bold hover:bg-[#00F2FE] transition-all backdrop-blur-sm border border-[#00F2FE]/50 whitespace-nowrap"
+                          className="px-2 py-1.5 bg-[#00F2FE]/90 text-[#0A0F1D] text-[10px] font-bold hover:bg-[#00F2FE] transition-all backdrop-blur-sm border border-[#00F2FE]/50"
                         >
-                          📥 下载
+                          📥
                         </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
                             handleCopyLink(imageUrls?.[0] || '')
                           }}
-                          className="px-4 py-2 bg-[#94A3B8]/90 text-[#0A0F1D] text-xs font-bold hover:bg-[#94A3B8] transition-all backdrop-blur-sm border border-[#94A3B8]/50 whitespace-nowrap"
+                          className="px-2 py-1.5 bg-[#94A3B8]/90 text-[#0A0F1D] text-[10px] font-bold hover:bg-[#94A3B8] transition-all backdrop-blur-sm border border-[#94A3B8]/50"
                         >
-                          📋 复制链接
+                          📋
                         </button>
                       </div>
 
                       {imageUrls && imageUrls.length > 1 && (
-                        <div className="absolute top-2 right-2">
-                          <div className="px-2 py-1 bg-black/60 text-[#00F2FE] text-[10px] backdrop-blur-sm">
+                        <div className="absolute top-1.5 right-1.5">
+                          <div className="px-1.5 py-0.5 bg-black/60 text-[#00F2FE] text-[9px] backdrop-blur-sm">
                             +{imageUrls.length - 1}
                           </div>
                         </div>
                       )}
 
                       {batchMode && (
-                        <div className="absolute top-2 right-2">
+                        <div className="absolute top-1.5 right-1.5">
                           <button
                             onClick={() => handleDeleteRecord(record.id)}
-                            className="w-6 h-6 bg-red-500/90 text-white text-xs flex items-center justify-center hover:bg-red-500 transition-all backdrop-blur-sm"
+                            className="w-5 h-5 bg-red-500/90 text-white text-[10px] flex items-center justify-center hover:bg-red-500 transition-all backdrop-blur-sm"
                             title="删除记录"
                           >
                             ✕
@@ -538,31 +538,28 @@ export default function RecordsPage() {
                       )}
                     </div>
 
-                    <div className="p-3">
-                      <div className="flex items-center gap-1.5 flex-wrap mb-2">
-                        <span className="px-2 py-0.5 bg-[#10B981]/20 text-[#10B981] text-[10px] font-bold border border-[#10B981]/50">
+                    <div className="p-2">
+                      <div className="flex items-center gap-1 flex-wrap mb-1.5">
+                        <span className="px-1.5 py-0.5 bg-[#10B981]/20 text-[#10B981] text-[9px] font-bold border border-[#10B981]/50">
                           {record.style_name}
                         </span>
-                        <span className="px-2 py-0.5 bg-[#00F2FE]/20 text-[#00F2FE] text-[10px] font-bold border border-[#00F2FE]/50">
+                        <span className="px-1.5 py-0.5 bg-[#00F2FE]/20 text-[#00F2FE] text-[9px] font-bold border border-[#00F2FE]/50">
                           {record.model}
                         </span>
-                        <span className="px-2 py-0.5 bg-[#F59E0B]/20 text-[#F59E0B] text-[10px] font-bold border border-[#F59E0B]/50">
-                          ⚡️ {totalCost}积分
-                        </span>
-                        <span className="px-2 py-0.5 bg-[#94A3B8]/20 text-[#94A3B8] text-[10px] border border-[#94A3B8]/50">
-                          📅 {formatDate(record.created_at)}
+                        <span className="px-1.5 py-0.5 bg-[#F59E0B]/20 text-[#F59E0B] text-[9px] font-bold border border-[#F59E0B]/50">
+                          ⚡️ {totalCost}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <p className="text-[10px] text-[#94A3B8] truncate flex-1 mr-2">
+                        <p className="text-[9px] text-[#94A3B8] truncate flex-1 mr-1.5">
                           {firstSentence}
                         </p>
                         <button
                           onClick={() => openDetailModal(record)}
-                          className="text-[10px] text-[#00F2FE] hover:text-[#00E676] transition-colors whitespace-nowrap"
+                          className="text-[9px] text-[#00F2FE] hover:text-[#00E676] transition-colors"
                         >
-                          ▼ 展开详情
+                          ▼
                         </button>
                       </div>
                     </div>
