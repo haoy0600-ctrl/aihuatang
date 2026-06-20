@@ -431,26 +431,13 @@ export default function LoginPage() {
         </div>
         
         <div className="relative z-10 text-center">
-          <div className="w-20 h-20 bg-[#00E676] rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_40px_rgba(0,230,118,0.6)]">
-            <svg className="w-10 h-10 text-[#0D111A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M12 8v4l3 3"/>
-            </svg>
+          <div className="w-32 h-32 sm:w-40 sm:h-40 mx-auto mb-8">
+            <img 
+              src="/logo.png?v=4" 
+              alt="AI画堂" 
+              className="w-full h-full object-contain"
+            />
           </div>
-          
-          <div className="flex items-center justify-center gap-1.5 h-10 select-none mb-3">
-            <div className="w-10 h-10 bg-[#03F09C] rounded-md flex items-center justify-center shadow-[0_0_15px_rgba(3,240,156,0.5)]">
-              <svg className="w-5 h-5 text-[#040D0A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 6v6l4 2"/>
-              </svg>
-            </div>
-            <span className="text-xl font-sans font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#03F09C] to-[#00F2FE]">AI</span>
-            <span className="text-xl font-normal text-transparent bg-clip-text bg-gradient-to-r from-[#00F2FE] to-[#03F09C] tracking-widest font-art ml-1">画堂</span>
-          </div>
-          <h2 className="text-xl lg:text-2xl font-bold text-[#00E676] mb-4 italic">
-            创坊 (SaaS)
-          </h2>
           
           <p className="text-lg text-[#64748B] mb-8 max-w-md">
             自媒体爆款图形设计与智能排版素材工具箱
@@ -487,15 +474,12 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* 移动端 Logo */}
           <div className="md:hidden text-center mb-8">
-            <div className="flex items-center justify-center gap-1.5 h-10 select-none mb-2">
-              <div className="w-10 h-10 bg-[#03F09C] rounded-md flex items-center justify-center shadow-[0_0_15px_rgba(3,240,156,0.5)]">
-                <svg className="w-5 h-5 text-[#040D0A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M12 6v6l4 2"/>
-                </svg>
-              </div>
-              <span className="text-xl font-sans font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#03F09C] to-[#00F2FE]">AI</span>
-              <span className="text-xl font-normal text-transparent bg-clip-text bg-gradient-to-r from-[#00F2FE] to-[#03F09C] tracking-widest font-art ml-1">画堂</span>
+            <div className="w-24 h-24 mx-auto mb-4">
+              <img 
+                src="/logo.png?v=4" 
+                alt="AI画堂" 
+                className="w-full h-full object-contain"
+              />
             </div>
             <p className="text-xs text-[#64748B] mt-2">自媒体爆款图形设计与智能排版素材工具箱</p>
           </div>
