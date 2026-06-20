@@ -488,6 +488,12 @@ export default function DashboardPage() {
     setGeneratedImages([])
 
     abortController.current = new AbortController()
+    // 设置60秒超时
+    const timeoutId = setTimeout(() => {
+      if (abortController.current) {
+        abortController.current.abort()
+      }
+    }, 60000)
 
     try {
       const response = await fetch('/api/generate', {
@@ -521,10 +527,19 @@ export default function DashboardPage() {
       if (profile && data.creditsRemaining !== undefined) {
         setProfile({ ...profile, credits: data.creditsRemaining })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Generation failed:', error)
-      alert('网络错误，请稍后重试')
+      // 区分超时和其他错误
+      if (error.name === 'AbortError') {
+        alert('请求超时，请稍后重试')
+      } else {
+        alert('网络错误，请稍后重试')
+      }
       setGenerationStatus('idle')
+    } finally {
+      // 异常安全释放：确保状态始终被释放
+      clearTimeout(timeoutId)
+      abortController.current = null
     }
   }
 
@@ -536,7 +551,9 @@ export default function DashboardPage() {
   }
 
   const modelPrice = 3
-  const outputCount = genMode === 'text' ? totalTabs : uploadedImages.length
+  // 修复：只计算有内容的段落框，过滤空白文本
+  const validSegments = textSegments.filter(segment => segment && segment.trim().length > 0)
+  const outputCount = genMode === 'text' ? validSegments.length : uploadedImages.length
   const totalCost = outputCount * modelPrice
   const currentWordCount = getEffectiveWordCount(textSegments[activeTab - 1] || '')
 
