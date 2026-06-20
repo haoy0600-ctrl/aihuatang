@@ -46,18 +46,100 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState('')
 
-  const [genMode, setGenMode] = useState<GenerationMode>('text')
-  const [activeTab, setActiveTab] = useState<number>(1)
-  const [totalTabs, setTotalTabs] = useState<number>(1)
-  const [textSegments, setTextSegments] = useState<string[]>(Array(10).fill(''))
-  const [uploadedImages, setUploadedImages] = useState<string[]>([])
-  const [selectedModel, setSelectedModel] = useState<'GPT-Image-2' | 'NanoBanana2'>('GPT-Image-2')
-  const [selectedRatio, setSelectedRatio] = useState('9:16')
-  const [selectedStyleId, setSelectedStyleId] = useState<number | null>(null)
-  const [customStyleName, setCustomStyleName] = useState('')
-  const [customStylePrompt, setCustomStylePrompt] = useState('')
-  const [generationStatus, setGenerationStatus] = useState<GenerationStatus>('idle')
-  const [generatedImages, setGeneratedImages] = useState<string[]>([])
+  const [genMode, setGenMode] = useState<GenerationMode>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('ai_huatang_draft_genMode') as GenerationMode) || 'text'
+    }
+    return 'text'
+  })
+  const [activeTab, setActiveTab] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      return parseInt(localStorage.getItem('ai_huatang_draft_activeTab') || '1')
+    }
+    return 1
+  })
+  const [totalTabs, setTotalTabs] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      return parseInt(localStorage.getItem('ai_huatang_draft_totalTabs') || '1')
+    }
+    return 1
+  })
+  const [textSegments, setTextSegments] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ai_huatang_draft_textSegments')
+      if (saved) {
+        try {
+          return JSON.parse(saved)
+        } catch {
+          return Array(10).fill('')
+        }
+      }
+    }
+    return Array(10).fill('')
+  })
+  const [uploadedImages, setUploadedImages] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ai_huatang_draft_uploadedImages')
+      if (saved) {
+        try {
+          return JSON.parse(saved)
+        } catch {
+          return []
+        }
+      }
+    }
+    return []
+  })
+  const [selectedModel, setSelectedModel] = useState<'GPT-Image-2' | 'NanoBanana2'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('ai_huatang_draft_model') as 'GPT-Image-2' | 'NanoBanana2') || 'GPT-Image-2'
+    }
+    return 'GPT-Image-2'
+  })
+  const [selectedRatio, setSelectedRatio] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('ai_huatang_draft_ratio') || '9:16'
+    }
+    return '9:16'
+  })
+  const [selectedStyleId, setSelectedStyleId] = useState<number | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ai_huatang_draft_styleId')
+      return saved ? parseInt(saved) : null
+    }
+    return null
+  })
+  const [customStyleName, setCustomStyleName] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('ai_huatang_draft_customStyleName') || ''
+    }
+    return ''
+  })
+  const [customStylePrompt, setCustomStylePrompt] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('ai_huatang_draft_customStylePrompt') || ''
+    }
+    return ''
+  })
+  const [generationStatus, setGenerationStatus] = useState<GenerationStatus>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('ai_huatang_draft_status') as GenerationStatus) || 'idle'
+    }
+    return 'idle'
+  })
+  const [generatedImages, setGeneratedImages] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ai_huatang_last_preview')
+      if (saved) {
+        try {
+          return JSON.parse(saved)
+        } catch {
+          return []
+        }
+      }
+    }
+    return []
+  })
   const [customStylesList, setCustomStylesList] = useState<CustomStyle[]>([])
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
@@ -75,6 +157,32 @@ export default function DashboardPage() {
     const interval = setInterval(updateTime, 1000)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    localStorage.setItem('ai_huatang_draft_genMode', genMode)
+    localStorage.setItem('ai_huatang_draft_activeTab', String(activeTab))
+    localStorage.setItem('ai_huatang_draft_totalTabs', String(totalTabs))
+    localStorage.setItem('ai_huatang_draft_textSegments', JSON.stringify(textSegments))
+    localStorage.setItem('ai_huatang_draft_uploadedImages', JSON.stringify(uploadedImages))
+    localStorage.setItem('ai_huatang_draft_model', selectedModel)
+    localStorage.setItem('ai_huatang_draft_ratio', selectedRatio)
+    if (selectedStyleId) {
+      localStorage.setItem('ai_huatang_draft_styleId', String(selectedStyleId))
+    } else {
+      localStorage.removeItem('ai_huatang_draft_styleId')
+    }
+    localStorage.setItem('ai_huatang_draft_customStyleName', customStyleName)
+    localStorage.setItem('ai_huatang_draft_customStylePrompt', customStylePrompt)
+    localStorage.setItem('ai_huatang_draft_status', generationStatus)
+  }, [genMode, activeTab, totalTabs, textSegments, uploadedImages, selectedModel, selectedRatio, selectedStyleId, customStyleName, customStylePrompt, generationStatus])
+
+  useEffect(() => {
+    if (generatedImages && generatedImages.length > 0) {
+      localStorage.setItem('ai_huatang_last_preview', JSON.stringify(generatedImages))
+    } else {
+      localStorage.removeItem('ai_huatang_last_preview')
+    }
+  }, [generatedImages])
 
   useEffect(() => {
     const STORAGE_KEY = 'ai_handdrawn_login_session'
@@ -329,6 +437,9 @@ export default function DashboardPage() {
       alert('请先选择一种风格')
       return
     }
+
+    localStorage.removeItem('ai_huatang_last_preview')
+    setGeneratedImages([])
 
     let style: HanddrawnStyle | CustomStyle | undefined
     
