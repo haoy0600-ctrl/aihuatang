@@ -95,8 +95,12 @@ async function submitWuyinTask(prompt: string, aspectRatio: string, modelType: s
     size: aspectRatio,
   }
 
+  // 图生图模式：添加多种图片字段确保兼容性
   if (isImageMode && referenceImage) {
     body.urls = [referenceImage]
+    body.image = referenceImage
+    body.init_image = referenceImage
+    body.strength = 0.75 // 画面变化强度系数，0-1，越低越接近原图
   }
 
   console.log('Wuyin API request:', { url, body: JSON.stringify(body) })
