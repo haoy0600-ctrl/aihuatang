@@ -43,40 +43,45 @@ function getStyleByName(styleName: string) {
 }
 
 function buildFinalPrompt(inputText: string, styleName: string, customStyle?: string): string {
+  // 获取前端传来的动态参数（已完美包容 50 种系统风格与自定义风格）
+  const userText = inputText.trim()
+  
+  let activeStyle = ''
   if (customStyle && customStyle.trim()) {
-    return customStyle.trim()
+    // 自定义风格
+    activeStyle = customStyle.trim()
+  } else {
+    // 系统内置 50 种风格
+    const style = getStyleByName(styleName)
+    activeStyle = style 
+      ? `${style.styleKeywords || ''}, ${style.layoutDirectives || ''}`
+      : 'cartoon hand-drawn style, cute illustration, vibrant pastel colors, clean thick line art, neat infographic layout'
   }
 
-  const style = getStyleByName(styleName)
-  const selectedStylePrompt = style 
-    ? `${style.styleKeywords || ''}, ${style.layoutDirectives || ''}`
-    : 'cartoon hand-drawn style, cute illustration, vibrant pastel colors, clean thick line art, neat infographic layout'
+  // 建立全局无差别死锁拦截模板
+  const UNIVERSAL_STYLE_LOCK_PROMPT = `
+[CORE COMMAND: ARTIFACT GENERATION]
+You are an expert educational materials designer. You MUST generate an image that presents text content with 100% accuracy.
 
-  const userText = inputText.trim()
-
-  // 1. 严格锁死用户核心文字内容
-  const TEXT_CONTENT_LOCK = `
-[STRICT TEXT CONTENT TO RENDER]
+[CRITICAL: MANDATORY TEXT TO RENDER ON IMAGE]
+Print the following text verbatim on the canvas. Every character, bracket, and symbol must be perfectly visible:
+"""
 ${userText}
-[END OF TEXT CONTENT]
+"""
+
+[VISUAL AESTHETICS & BACKGROUND ONLY]
+The following description dictates ONLY the artistic style, color palette, illustration background, and texture mood of the card. You are STRICTLY FORBIDDEN from printing any words or phrases found in this style section onto the image:
+"""
+${activeStyle}
+"""
+
+[SAFETY BOUNDARY RULES]
+- Overwrite and ignore any decorative or filler words embedded inside the style section (e.g., do NOT print 'Seek Serenity', 'Hello', 'Dashboard', 'Welcome').
+- The text from the [MANDATORY TEXT TO RENDER ON IMAGE] section is the absolute centerpiece.
+- NEVER generate a mobile app UI, dashboard interface, or any device mockup. Output must be a flat educational illustration card.
 `
 
-  // 2. 注入全局硬控版面指令与风格
-  const SYSTEM_LAYOUT_RULE = `
-[MANDATORY LAYOUT RULES]
-1. You MUST explicitly and accurately render the text provided inside the [STRICT TEXT CONTENT TO RENDER] tag word for word on the image canvas.
-2. DO NOT invent, hallucinate, or use filler text like 'Hello', 'Aurora', 'Dashboard', or generic UI text.
-3. The chosen artistic style below must ONLY apply to the background texture, visual mood, and color palette. The text inside the tag is the absolute centerpiece.
-4. NEVER generate a mobile app UI, dashboard interface, or any device mockup. The output must be a flat illustration or infographic card.
-[END OF RULES]
-
-[ARTISTIC STYLE TO APPLY]
-${selectedStylePrompt}, professional educational infographic, clean layout, high quality, masterpiece
-[END OF STYLE]
-`
-
-  // 3. 最终完美组装
-  return `${TEXT_CONTENT_LOCK}\n${SYSTEM_LAYOUT_RULE}`
+  return UNIVERSAL_STYLE_LOCK_PROMPT
 }
 
 async function submitWuyinTask(prompt: string, aspectRatio: string, modelType: string, referenceImage?: string): Promise<string> {
