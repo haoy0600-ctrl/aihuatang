@@ -101,9 +101,8 @@ export default function RechargePage() {
         setProfile({ credits: data.totalCredits })
         setCardCode('')
         
-        setTimeout(() => {
-          cardCodeInputRef.current?.focus()
-        }, 100)
+        // ✅ 立即聚焦输入框，支持连续无缝叠加激活
+        cardCodeInputRef.current?.focus()
       } else {
         showToast(data.error || '激活失败', 'error')
       }
