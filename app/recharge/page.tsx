@@ -167,7 +167,7 @@ export default function RechargePage() {
           <div className="flex justify-between items-center w-full py-2 sm:py-3">
             <Link href="/" className="flex items-center h-10 select-none hover:opacity-80 transition-opacity">
               <img 
-                src="/logo.png" 
+                src="/logo.png?v=2" 
                 alt="AI画堂" 
                 className="h-full w-auto object-contain"
               />

@@ -682,7 +682,7 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center w-full py-2 sm:py-3">
             <Link href="/" className="flex items-center h-10 select-none hover:opacity-80 transition-opacity">
               <img 
-                src="/logo.png" 
+                src="/logo.png?v=2" 
                 alt="AI画堂" 
                 className="h-full w-auto object-contain"
               />
@@ -705,6 +705,10 @@ export default function DashboardPage() {
             </nav>
 
             <div className="flex items-center gap-2 sm:gap-4">
+              {/* 手机端显示记录按钮 */}
+              <Link href="/records" className="md:hidden px-3 py-1.5 bg-[#091511]/60 backdrop-blur-sm text-white font-bold text-xs border border-[#142D24] hover:border-[#10B981] transition-all rounded-lg">
+                📁 记录
+              </Link>
               {/* 手机端隐藏时间 */}
               <div className="hidden sm:flex items-center gap-2 text-xs text-[#10B981]">
                 <span>{new Date().toLocaleDateString('zh-CN')}</span>
