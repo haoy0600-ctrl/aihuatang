@@ -104,7 +104,7 @@ export default function RecordsPage() {
   }, [])
 
   const getModelPrice = (model: string): number => {
-    return model.includes('NanoBanana') ? 5 : 3
+    return 3 // 所有模型统一3积分
   }
 
   const getTotalGenerated = (): number => {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { HANDDRAWN_STYLES } from '@/config/styles'
 
-export const maxDuration = 120
+export const maxDuration = 300
 
 const IMAGE_API_KEY = process.env.IMAGE_API_KEY || ''
 
@@ -387,14 +387,12 @@ export async function POST(request: NextRequest) {
         finalPrompts.push(buildFinalPrompt(sentence, styleName, customStyle))
       }
     } else if (isImageMode) {
-      const style = getStyleByName(styleName)
-      const styleKeywords = style?.styleKeywords || ''
-      const layoutDirectives = style?.layoutDirectives || ''
-      const prompt = `reference image style transfer, ${styleKeywords}, ${layoutDirectives}`
-      finalPrompts.push(prompt)
+      // 图生图模式：使用完整的prompt构建逻辑
+      const imgPrompt = buildFinalPrompt('参考图片风格转换与内容重构', styleName, customStyle)
+      finalPrompts.push(imgPrompt)
 
       const firstReferenceImage = referenceImages[0]
-      const taskId = await submitWuyinTask(prompt, aspectRatio, modelType, firstReferenceImage)
+      const taskId = await submitWuyinTask(imgPrompt, aspectRatio, modelType, firstReferenceImage)
       const originUrl = await pollWuyinResult(taskId)
       const permanentUrl = await downloadAndUploadToSupabase(originUrl, userId, 0)
       imageUrls.push(permanentUrl)

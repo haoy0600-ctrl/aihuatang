@@ -488,12 +488,12 @@ export default function DashboardPage() {
     setGeneratedImages([])
 
     abortController.current = new AbortController()
-    // 设置120秒超时（2分钟）
+    // 设置300秒超时（5分钟），匹配Vercel最大执行时间
     const timeoutId = setTimeout(() => {
       if (abortController.current) {
         abortController.current.abort()
       }
-    }, 120000)
+    }, 300000)
 
     try {
       const response = await fetch('/api/generate', {
@@ -1089,7 +1089,11 @@ export default function DashboardPage() {
                       <div className="text-center">
                         <div className="text-5xl mb-4 animate-bounce">🎨</div>
                         <p className="text-base text-[#10B981] mb-2">正在创作中...</p>
-                        <p className="text-sm text-[#64748B]">AI 正在绘制您的知识卡片<br />请稍候</p>
+                        <p className="text-sm text-[#64748B]">AI 正在绘制您的知识卡片</p>
+                        <p className="text-xs text-[#64748B]/70 mt-2">预计需要 2-5 分钟，请耐心等待</p>
+                        <div className="mt-4 w-32 h-1 bg-[#142D24] rounded-full overflow-hidden mx-auto">
+                          <div className="h-full bg-[#10B981] animate-pulse rounded-full" style={{width: '60%'}}></div>
+                        </div>
                       </div>
                     </div>
                   )}
