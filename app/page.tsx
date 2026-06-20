@@ -80,7 +80,7 @@ export default function HomePage() {
       <main className="flex-1 flex flex-col justify-center items-center">
         <div className="max-w-4xl mx-auto text-center space-y-4">
           <div className="w-full flex justify-center items-center px-4 py-6 bg-transparent overflow-visible">
-            <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black tracking-wider text-center bg-gradient-to-r from-[#03F09C] via-[#00F2FE] via-[#FF007A] to-[#03F09C] bg-[length:200%_auto] bg-clip-text text-transparent animate-[superShimmer_3s_linear_infinite] drop-shadow-[0_0_20px_rgba(3,240,156,0.35)] font-sans select-none" style={{ WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <h1 className="text-base sm:text-xl md:text-3xl lg:text-5xl font-black tracking-wider whitespace-nowrap text-center bg-gradient-to-r from-[#03F09C] via-[#00F2FE] via-[#FF007A] to-[#03F09C] bg-[length:200%_auto] bg-clip-text text-transparent animate-[superShimmer_3s_linear_infinite] drop-shadow-[0_0_20px_rgba(3,240,156,0.35)] font-sans select-none" style={{ WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               自媒体爆款图形设计与智能排版素材工具箱
             </h1>
             <style>{`
