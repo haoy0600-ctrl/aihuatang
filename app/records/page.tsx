@@ -283,9 +283,9 @@ export default function RecordsPage() {
       <header className="bg-[#0B0D17] border-b border-[#202B3A]">
         <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center w-full py-2 sm:py-3">
-            <Link href="/" className="flex items-center h-10 select-none hover:opacity-80 transition-opacity">
+            <Link href="/" className="flex items-center h-14 sm:h-16 select-none hover:opacity-80 transition-opacity">
               <img 
-                src="/logo.png?v=2" 
+                src="/logo.png?v=3" 
                 alt="AI画堂" 
                 className="h-full w-auto object-contain"
               />
