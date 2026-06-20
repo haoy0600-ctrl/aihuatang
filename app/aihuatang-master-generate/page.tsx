@@ -48,13 +48,26 @@ export default function AdminCardGeneratorPage() {
     return () => clearInterval(interval)
   }, [])
 
+  // 管理员白名单
+  const ADMIN_EMAIL = '50923561@qq.com'
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [showNoPermission, setShowNoPermission] = useState(false)
+
   useEffect(() => {
     const checkAuth = async () => {
       if (!supabase) return
       const { data } = await supabase.auth.getSession()
       if (data?.session) {
+        const userEmail = data.session.user?.email || ''
+        const adminCheck = userEmail === ADMIN_EMAIL
         setUser(data.session.user)
-        fetchUsers()
+        setIsAdmin(adminCheck)
+        
+        if (!adminCheck) {
+          setShowNoPermission(true)
+        } else {
+          fetchUsers()
+        }
       } else {
         window.location.href = '/login'
       }
@@ -183,6 +196,20 @@ export default function AdminCardGeneratorPage() {
     }, 1500)
   }
 
+  // 无权限访问提示
+  if (showNoPermission) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-black text-red-500 font-bold text-xl flex-col gap-4">
+        <div className="text-6xl">⚠️</div>
+        <div>越权访问！仅限官方主理人进驻。</div>
+        <div className="text-sm text-gray-400">你的邮箱：{user?.email || "未登录"}</div>
+        <Link href="/dashboard" className="mt-4 px-6 py-3 bg-[#10B981] text-black font-bold rounded-xl">
+          返回创作
+        </Link>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#040D0A]">
       <header className="bg-[#040D0A] border-b border-[#142D24]">
@@ -190,9 +217,9 @@ export default function AdminCardGeneratorPage() {
           <div className="flex justify-between items-center w-full py-2 sm:py-3">
             <Link href="/" className="flex items-center select-none hover:opacity-80 transition-opacity">
               <img 
-                src="/logo.png?v=7" 
+                src="/logo.png?v=8" 
                 alt="AI画堂" 
-                className="h-14 w-14 md:h-16 md:w-16 object-contain rounded-xl"
+                className="h-20 w-20 md:h-24 md:w-24 object-contain mx-2 my-1"
               />
             </Link>
 

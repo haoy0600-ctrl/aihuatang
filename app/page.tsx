@@ -43,7 +43,7 @@ export default function HomePage() {
     <div className="h-screen max-h-screen w-screen max-w-[100vw] overflow-hidden flex flex-col justify-between p-4 bg-[#040D0A] text-white">
       <header className="flex items-center justify-between flex-shrink-0">
         <Link href="/" className="flex items-center select-none hover:opacity-80 transition-opacity">
-          <img src="/logo.png?v=7" alt="AI画堂" className="h-14 w-14 md:h-16 md:w-16 object-contain rounded-xl" />
+          <img src="/logo.png?v=8" alt="AI画堂" className="h-20 w-20 md:h-24 md:w-24 object-contain mx-2 my-1" />
         </Link>
 
         <nav className="hidden md:flex items-center gap-3">
@@ -117,11 +117,10 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto w-full mb-3">
           <div className="text-center mb-2">
             <h2 className="text-lg font-bold text-white">为什么选择 AI画堂？</h2>
-            <p className="text-xs text-[#10B981]">传统工具 vs AI画堂</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-5 items-stretch gap-3">
             {/* 左栏：传统工具痛点 */}
-            <div className="bg-[#1a0a0a] border border-red-900/50 rounded-xl p-3">
+            <div className="md:col-span-2 bg-[#1a0a0a] border border-red-900/50 rounded-xl p-3">
               <h3 className="text-sm font-bold text-red-400 mb-2">❌ 传统工具的痛点</h3>
               <div className="space-y-2">
                 <div className="flex items-start gap-2">
@@ -148,8 +147,13 @@ export default function HomePage() {
               </div>
             </div>
 
+            {/* VS 大字 */}
+            <div className="md:col-span-1 flex items-center justify-center">
+              <div className="font-black text-3xl md:text-5xl text-zinc-600 px-4">VS</div>
+            </div>
+
             {/* 右栏：AI画堂优势 */}
-            <div className="bg-gradient-to-br from-[#0a1a0a] to-[#0a1a15] border border-[#10B981]/50 rounded-xl p-3">
+            <div className="md:col-span-2 bg-gradient-to-br from-[#0a1a0a] to-[#0a1a15] border border-[#10B981]/50 rounded-xl p-3">
               <h3 className="text-sm font-bold text-[#10B981] mb-2">✅ AI画堂的无敌优势</h3>
               <div className="space-y-2">
                 <div className="flex items-start gap-2">

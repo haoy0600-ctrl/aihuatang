@@ -291,7 +291,7 @@ export default function RecordsPage() {
               <img 
                 src="/logo.png?v=6" 
                 alt="AI画堂" 
-                className="h-14 w-14 md:h-16 md:w-16 object-contain rounded-xl"
+                className="h-20 w-20 md:h-24 md:w-24 object-contain mx-2 my-1"
               />
             </Link>
 
