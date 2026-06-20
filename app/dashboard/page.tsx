@@ -721,7 +721,7 @@ export default function DashboardPage() {
               <img 
                 src="/logo.png?v=6" 
                 alt="AI画堂" 
-                className="h-10 sm:h-12 w-10 sm:w-12 object-contain rounded-xl"
+                className="h-14 w-14 md:h-16 md:w-16 object-contain rounded-xl"
               />
             </Link>
 
@@ -1377,7 +1377,7 @@ export default function DashboardPage() {
               </div>
               <div className="bg-red-950/20 border border-red-500/20 p-3 rounded-lg text-gray-300 space-y-1">
                 <h2 className="font-bold text-red-400 text-sm">⚠️ 特别说明</h2>
-                <p>• 卡密兑换积分立马到账，支持多张卡密连续无缝叠加激活。作图平均低至<span className="text-[#03F09C] font-semibold">0.2-0.3毛/张</span>。<br />• 对接中转站最新模型，偶尔因敏感词或网络波动超时属正常，<span className="text-red-400 font-bold">生成失败绝不扣积分</span>，超时点击二次生成即可。<br />• 大量文字排版生图时，个别汉字若轻微变形属<span className="text-yellow-400">生图模型通病（正常情况）</span>，建议适当精简字数输入。</p>
+                <p>• 卡密兑换积分立马到账，支持多张卡密连续无缝叠加激活，单张作图成本低至<span className="text-[#03F09C] font-semibold">0.14 元</span>起。<br />• 对接中转站最新模型，偶尔因敏感词或网络波动超时属正常，<span className="text-red-400 font-bold">生成失败绝不扣积分</span>，超时点击二次生成即可。<br />• 大量文字排版生图时，个别汉字若轻微变形属<span className="text-yellow-400">生图模型通病（正常情况）</span>，建议适当精简字数输入。</p>
               </div>
               <button onClick={()=>setIsGuideOpen(false)} className="w-full py-2 rounded bg-gradient-to-r from-[#03F09C] to-[#00F2FE] text-[#040D0A] font-bold text-xs hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer shadow-[0_0_10px_rgba(3,240,156,0.2)]">进入创作工坊</button>
             </div>

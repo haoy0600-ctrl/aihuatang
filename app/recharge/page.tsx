@@ -123,7 +123,7 @@ export default function RechargePage() {
               <img 
                 src="/logo.png?v=6" 
                 alt="AI画堂" 
-                className="h-10 sm:h-12 w-10 sm:w-12 object-contain rounded-xl"
+                className="h-14 w-14 md:h-16 md:w-16 object-contain rounded-xl"
               />
             </Link>
 
@@ -237,7 +237,7 @@ export default function RechargePage() {
               <div className="mb-4">
                 <div className="w-48 h-48 mx-auto bg-white rounded-xl p-2 shadow-lg">
                   <img 
-                    src="/wechat-qrcode.png" 
+                    src="/wechat-qrcode.png?v=1" 
                     alt="微信二维码" 
                     className="w-full h-full object-contain"
                   />

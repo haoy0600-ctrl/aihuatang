@@ -107,14 +107,35 @@ export default function LoginPage() {
         .insert({
           id: userId,
           email: userEmail,
-          credits: 3,
+          credits: 6,
           created_at: new Date().toISOString(),
         })
 
       if (error) {
         console.error('Failed to create profile:', error)
       } else {
-        console.log('Profile created successfully with 3 free credits')
+        console.log('Profile created successfully with 6 free credits')
+        
+        // 钉钉机器人通知
+        const dingtalkWebhookUrl = process.env.NEXT_PUBLIC_DINGTALK_WEBHOOK_URL
+        if (dingtalkWebhookUrl) {
+          try {
+            await fetch(dingtalkWebhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                msgtype: 'markdown',
+                markdown: {
+                  title: 'AI画堂·新用户注册通知',
+                  text: `### 🤖 AI画堂·新用户注册通知\n\n> 👤 **注册邮箱**：${userEmail}\n\n> ⏰ **注册时间**：${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}\n\n> 💡 **初始积分**：6 积分\n\n*请主理人注意及时核对微信/QQ私域账号状态。*`
+                }
+              })
+            })
+            console.log('DingTalk notification sent successfully')
+          } catch (err) {
+            console.log('DingTalk notification failed:', err)
+          }
+        }
       }
     }
   }
