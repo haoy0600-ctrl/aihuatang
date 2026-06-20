@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { HANDDRAWN_STYLES } from '@/config/styles'
 
-export const maxDuration = 600
+export const maxDuration = 300
 
 const IMAGE_API_KEY = process.env.IMAGE_API_KEY || ''
 
