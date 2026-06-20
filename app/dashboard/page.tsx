@@ -103,6 +103,12 @@ export default function DashboardPage() {
     }
     return '9:16'
   })
+  const [selectedResolution, setSelectedResolution] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('ai_huatang_draft_resolution') || '2K'
+    }
+    return '2K'
+  })
   const [selectedStyleId, setSelectedStyleId] = useState<number | null>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('ai_huatang_draft_styleId')
@@ -172,6 +178,7 @@ export default function DashboardPage() {
     localStorage.setItem('ai_huatang_draft_uploadedImages', JSON.stringify(uploadedImages))
     localStorage.setItem('ai_huatang_draft_model', selectedModel)
     localStorage.setItem('ai_huatang_draft_ratio', selectedRatio)
+    localStorage.setItem('ai_huatang_draft_resolution', selectedResolution)
     if (selectedStyleId) {
       localStorage.setItem('ai_huatang_draft_styleId', String(selectedStyleId))
     } else {
@@ -180,7 +187,7 @@ export default function DashboardPage() {
     localStorage.setItem('ai_huatang_draft_customStyleName', customStyleName)
     localStorage.setItem('ai_huatang_draft_customStylePrompt', customStylePrompt)
     localStorage.setItem('ai_huatang_draft_status', generationStatus)
-  }, [genMode, activeTab, totalTabs, textSegments, uploadedImages, selectedModel, selectedRatio, selectedStyleId, customStyleName, customStylePrompt, generationStatus])
+  }, [genMode, activeTab, totalTabs, textSegments, uploadedImages, selectedModel, selectedRatio, selectedResolution, selectedStyleId, customStyleName, customStylePrompt, generationStatus])
 
   useEffect(() => {
     if (generatedImages && generatedImages.length > 0) {
@@ -496,6 +503,13 @@ export default function DashboardPage() {
     }, 300000)
 
     try {
+      const resolutionMap: Record<string, string> = {
+        '1K': '1024x1024',
+        '2K': '1440x2560',
+        '4K': '2160x3840',
+      }
+      const targetSize = resolutionMap[selectedResolution] || '1440x2560'
+
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -507,6 +521,9 @@ export default function DashboardPage() {
           customStyle: customStylePrompt,
           aspectRatio: selectedRatio,
           modelType: selectedModel,
+          resolution: selectedResolution,
+          imageSize: targetSize,
+          mode: genMode,
         }),
         signal: abortController.current.signal,
       })
@@ -891,6 +908,26 @@ export default function DashboardPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                {/* 分辨率选择 */}
+                <div>
+                  <label className="text-xs text-[#10B981] mb-1 block">分辨率</label>
+                  <div className="flex gap-2">
+                    {['1K', '2K', '4K'].map((res) => (
+                      <button
+                        key={res}
+                        onClick={() => setSelectedResolution(res)}
+                        className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${
+                          selectedResolution === res
+                            ? 'bg-[#10B981] text-[#040D0A] border border-[#142D24]'
+                            : 'bg-[#091511]/60 text-white border border-[#142D24] hover:bg-[#142D24]'
+                        }`}
+                      >
+                        {res}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

@@ -4,11 +4,8 @@ import { HANDDRAWN_STYLES } from '@/config/styles'
 
 export const maxDuration = 300
 
-const IMAGE_API_KEY = process.env.IMAGE_API_KEY || ''
-
-const WUYIN_TEXT_TO_IMAGE_URL = 'https://api.wuyinkeji.com/api/async/image_gpt'
-const WUYIN_IMAGE_TO_IMAGE_URL = 'https://api.wuyinkeji.com/api/async/image_nanoBanana2'
-const WUYIN_ASYNC_DETAIL_URL = 'https://api.wuyinkeji.com/api/async/detail'
+const GRS_API_KEY = process.env.GRSAI_API_KEY || ''
+const BASE_URL = 'https://grsaiapi.com'
 
 const MODEL_COST: Record<string, number> = {
   'GPT-Image-2': 3,
@@ -25,17 +22,9 @@ type GenerateRequest = {
   customStyle?: string
   aspectRatio: string
   modelType: string
-}
-
-function splitTextToSentences(text: string): string[] {
-  // 完全禁用自动切分逻辑
-  // 用户输入的所有文本（包括换行、空格等格式）100%保留在当前卡上
-  // 只有当用户主动点击 "+" 添加新的 Tab 时，才会在新卡片上渲染
-  const trimmedText = text.trim()
-  if (!trimmedText) {
-    return []
-  }
-  return [trimmedText]
+  resolution: string
+  imageSize: string
+  mode: string
 }
 
 function getStyleByName(styleName: string) {
@@ -43,136 +32,106 @@ function getStyleByName(styleName: string) {
 }
 
 function buildFinalPrompt(inputText: string, styleName: string, customStyle?: string): string {
-  // 获取前端传来的动态参数（已完美包容 50 种系统风格与自定义风格）
   const userText = inputText.trim()
   
   let activeStyle = ''
   if (customStyle && customStyle.trim()) {
-    // 自定义风格
     activeStyle = customStyle.trim()
   } else {
-    // 系统内置 50 种风格
     const style = getStyleByName(styleName)
     activeStyle = style 
       ? `${style.styleKeywords || ''}, ${style.layoutDirectives || ''}`
       : 'cartoon hand-drawn style, cute illustration, vibrant pastel colors, clean thick line art, neat infographic layout'
   }
 
-  // 建立全局无差别死锁拦截模板
-  const UNIVERSAL_STYLE_LOCK_PROMPT = `
-[CORE COMMAND: ARTIFACT GENERATION]
-You are an expert educational materials designer. You MUST generate an image that presents text content with 100% accuracy.
-
-[CRITICAL: MANDATORY TEXT TO RENDER ON IMAGE]
-Print the following text verbatim on the canvas. Every character, bracket, and symbol must be perfectly visible:
-"""
-${userText}
-"""
-
-[VISUAL AESTHETICS & BACKGROUND ONLY]
-The following description dictates ONLY the artistic style, color palette, illustration background, and texture mood of the card. You are STRICTLY FORBIDDEN from printing any words or phrases found in this style section onto the image:
-"""
-${activeStyle}
-"""
-
-[SAFETY BOUNDARY RULES]
-- Overwrite and ignore any decorative or filler words embedded inside the style section (e.g., do NOT print 'Seek Serenity', 'Hello', 'Dashboard', 'Welcome').
-- The text from the [MANDATORY TEXT TO RENDER ON IMAGE] section is the absolute centerpiece.
-- NEVER generate a mobile app UI, dashboard interface, or any device mockup. Output must be a flat educational illustration card.
-`
+  const UNIVERSAL_STYLE_LOCK_PROMPT = `MAIN CONTENT TO PRINT: "${userText}". VISUAL STYLE TO APPLY TO BACKGROUND ONLY: ${activeStyle}. DO NOT generate app dashboards or screen bars. Look like a printed textbook layout.`
 
   return UNIVERSAL_STYLE_LOCK_PROMPT
 }
 
-async function submitWuyinTask(prompt: string, aspectRatio: string, modelType: string, referenceImage?: string): Promise<string> {
+async function submitGrsTask(
+  prompt: string,
+  imageSize: string,
+  modelType: string,
+  referenceImage?: string
+): Promise<string> {
   const isImageMode = !!referenceImage
-  const url = isImageMode 
-    ? WUYIN_IMAGE_TO_IMAGE_URL 
-    : WUYIN_TEXT_TO_IMAGE_URL
+  const model = modelType === 'NanoBanana2' ? 'nano-banana-pro' : 'gpt-image-2'
+  const drawUrl = modelType === 'NanoBanana2' 
+    ? `${BASE_URL}/v1/draw/nano-banana` 
+    : `${BASE_URL}/v1/draw/completions`
 
-  const body: Record<string, any> = {
+  const payload: any = {
+    model: model,
     prompt: prompt,
-    size: aspectRatio,
+    imageSize: imageSize,
+    webHook: '-1',
   }
 
-  // 图生图模式：添加多种图片字段确保兼容性
   if (isImageMode && referenceImage) {
-    body.urls = [referenceImage]
-    body.image = referenceImage
-    body.init_image = referenceImage
-    body.strength = 0.75 // 画面变化强度系数，0-1，越低越接近原图
+    payload.images = [referenceImage]
   }
 
-  console.log('Wuyin API request:', { url, body: JSON.stringify(body) })
+  console.log('GrsAI API request:', { url: drawUrl, model, imageSize, isImageMode })
 
-  const response = await fetch(url, {
+  const response = await fetch(drawUrl, {
     method: 'POST',
     headers: {
-      'Authorization': IMAGE_API_KEY,
+      'Authorization': `Bearer ${GRS_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   })
 
   const responseText = await response.text()
-  console.log('Wuyin API response:', response.status, responseText)
+  console.log('GrsAI task response:', response.status, responseText)
 
-  if (!response.ok) {
-    throw new Error(`Wuyin API HTTP error: ${response.status} - ${responseText}`)
-  }
-
-  let data
+  let taskJson
   try {
-    data = JSON.parse(responseText)
+    taskJson = JSON.parse(responseText)
   } catch {
-    throw new Error(`Wuyin API invalid JSON: ${responseText}`)
+    throw new Error('GrsAI returned invalid JSON')
   }
 
-  if (data.code !== 200 || !data.data?.id) {
-    throw new Error(`Wuyin API error: ${data.msg || data.message || JSON.stringify(data)}`)
+  if (!taskJson.data || !taskJson.data.id) {
+    throw new Error(taskJson.message || 'GrsAI 任务创建失败')
   }
 
-  return data.data.id
+  return taskJson.data.id
 }
 
-async function pollWuyinResult(taskId: string): Promise<string> {
-  const maxRetries = 120
-  const retryDelay = 2000
+async function pollGrsResult(taskId: string): Promise<string> {
+  const maxRetries = 30
+  const retryDelay = 4000
 
   for (let i = 0; i < maxRetries; i++) {
-    const url = `${WUYIN_ASYNC_DETAIL_URL}?key=${IMAGE_API_KEY}&id=${taskId}`
-    
-    const response = await fetch(url, { method: 'GET' })
+    const checkRes = await fetch(`${BASE_URL}/v1/draw/result`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GRS_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id: taskId }),
+    })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Wuyin result API error: ${response.status} - ${errorText}`)
+    const checkJson = await checkRes.json()
+    console.log(`GrsAI poll ${i + 1}/${maxRetries}: status=${checkJson.status || checkJson.data?.status}`)
+
+    const results = checkJson.results || checkJson.data?.results
+    const status = checkJson.status || checkJson.data?.status
+
+    if (status === 'succeeded' && results && results[0]) {
+      return results[0].url
     }
 
-    const data = await response.json()
-
-    if (data.code !== 200) {
-      throw new Error(`Wuyin result API error: ${data.msg || 'Unknown error'}`)
-    }
-
-    const status = data.data?.status
-
-    if (status === 2) {
-      const result = data.data?.result
-      if (Array.isArray(result) && result.length > 0 && typeof result[0] === 'string') {
-        return result[0]
-      }
-      throw new Error('Wuyin API returned empty result')
-    }
-
-    if (status === 3) {
-      throw new Error(`Wuyin task failed: ${data.data?.message || 'Unknown error'}`)
+    if (status === 'failed') {
+      throw new Error('GrsAI 官方节点提示生成失败，已执行免扣费退款')
     }
 
     await new Promise(resolve => setTimeout(resolve, retryDelay))
   }
 
-  throw new Error('Wuyin API timeout: task took too long')
+  throw new Error('GrsAI 任务超时，请点击二次生成')
 }
 
 async function downloadAndUploadToSupabase(imageUrl: string, userId: string, index: number): Promise<string> {
@@ -222,10 +181,11 @@ async function generateSingleImage(
   sentence: string,
   styleName: string,
   customStyle: string | undefined,
-  aspectRatio: string,
+  imageSize: string,
   modelType: string,
   userId: string,
-  index: number
+  index: number,
+  referenceImage?: string
 ): Promise<string> {
   const translatedText = sentence
   console.log(`Sentence ${index}: ${translatedText}`)
@@ -233,10 +193,10 @@ async function generateSingleImage(
   const finalPrompt = buildFinalPrompt(translatedText, styleName, customStyle)
   console.log(`Sentence ${index} final prompt: ${finalPrompt}`)
 
-  const taskId = await submitWuyinTask(finalPrompt, aspectRatio, modelType)
+  const taskId = await submitGrsTask(finalPrompt, imageSize, modelType, referenceImage)
   console.log(`Sentence ${index} task submitted: ${taskId}`)
 
-  const originImageUrl = await pollWuyinResult(taskId)
+  const originImageUrl = await pollGrsResult(taskId)
   console.log(`Sentence ${index} image generated: ${originImageUrl}`)
 
   const permanentUrl = await downloadAndUploadToSupabase(originImageUrl, userId, index)
@@ -255,7 +215,10 @@ export async function POST(request: NextRequest) {
       styleName, 
       customStyle,
       aspectRatio, 
-      modelType 
+      modelType,
+      resolution,
+      imageSize,
+      mode,
     } = body
 
     if (!userId) {
@@ -283,78 +246,80 @@ export async function POST(request: NextRequest) {
     }
 
     const costPerImage = MODEL_COST[modelType] || 3
+    const targetImageSize = imageSize || '1440x2560'
 
     let sentences: string[] = []
 
     if (isTextMode) {
-      const allText = inputContents.join('\n')
-      sentences = splitTextToSentences(allText)
-      console.log('Text split into sentences:', sentences.length)
-      console.log('Sentences:', sentences)
+      sentences = inputContents.filter(s => s && s.trim().length > 0)
+      console.log('Valid text segments:', sentences.length)
     }
 
-    const totalImageCount = isTextMode ? sentences.length : (referenceImages.length > 0 ? 1 : 1)
+    const totalImageCount = isTextMode ? sentences.length : (isImageMode ? 1 : 1)
     const totalCost = totalImageCount * costPerImage
 
     console.log(`Total images to generate: ${totalImageCount}`)
     console.log(`Cost per image: ${costPerImage}`)
     console.log(`Total cost: ${totalCost}`)
+    console.log(`Resolution: ${resolution}, ImageSize: ${targetImageSize}`)
 
     let currentCredits = 0
     let profileId = userId
+    let profile: any = null
 
     if (!supabaseAdmin) {
       console.warn('Supabase admin not configured, skipping credit check in demo mode')
       currentCredits = 9999
     } else {
-      console.log('Checking profile for userId:', userId)
-      
-      let { data: profile, error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .select('id, credits')
-        .eq('id', userId)
-        .single()
-
-      console.log('Profile query result:', { profile, profileError })
-
-      if (profileError || !profile) {
-        console.log('Profile not found, attempting to create for userId:', userId)
-        
-        const { error: insertError } = await supabaseAdmin
+      try {
+        const { data: profileData, error: profileError } = await supabaseAdmin
           .from('profiles')
-          .upsert({
-            id: userId,
-            credits: 3,
-            email: '',
-            created_at: new Date().toISOString(),
-          })
-        
-        if (insertError) {
-          console.error('Failed to create profile:', insertError)
-          return NextResponse.json(
-            { success: false, error: `您的账户不存在，请先注册 (${insertError.message})` },
-            { status: 403 }
-          )
+          .select('id, credits')
+          .eq('id', userId)
+          .single()
+
+        if (profileError || !profileData) {
+          console.warn('Profile not found, creating new profile')
+          const { data: newProfileData, error: newProfileError } = await supabaseAdmin
+            .from('profiles')
+            .insert({
+              id: userId,
+              credits: 3,
+            })
+            .select()
+            .single()
+
+          if (newProfileError || !newProfileData) {
+            console.error('Failed to create profile:', newProfileError)
+            return NextResponse.json(
+              { success: false, error: 'Failed to initialize profile' },
+              { status: 500 }
+            )
+          }
+          profile = newProfileData
+          profileId = newProfileData.id
+        } else {
+          profile = profileData
         }
 
-        profile = { id: userId, credits: 3 }
-        console.log('Profile created successfully:', profile)
-      }
+        currentCredits = profile.credits
+        console.log(`User credits: ${currentCredits}, Required: ${totalCost}`)
 
-      profileId = profile.id
-      currentCredits = profile.credits
-
-      console.log(`User credits: ${currentCredits}, Required: ${totalCost}`)
-
-      if (profile.credits < totalCost) {
+        if (profile.credits < totalCost) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: `余额不足！需要 ${totalCost} 积分，当前 ${profile.credits} 积分，请充值后重试`,
+              creditsRemaining: profile.credits,
+            },
+            { status: 400 }
+          )
+        }
+      } catch (dbError) {
+        console.error('Database error:', dbError)
         return NextResponse.json(
-          { 
-            success: false, 
-            error: `余额不足！需要 ${totalCost} 积分，当前 ${profile.credits} 积分，请充值后重试`,
-            creditsRemaining: profile.credits,
-            requiredCredits: totalCost
-          },
-          { status: 403 }
+          { success: false, error: 'Database error' },
+          { status: 500 }
         )
       }
     }
@@ -365,7 +330,7 @@ export async function POST(request: NextRequest) {
 
     if (isTextMode && sentences.length > 0) {
       const generationPromises = sentences.map((sentence, index) => 
-        generateSingleImage(sentence, styleName, customStyle, aspectRatio, modelType, userId, index)
+        generateSingleImage(sentence, styleName, customStyle, targetImageSize, modelType, userId, index)
           .then(url => ({ url, index, error: null as Error | null }))
           .catch(error => {
             console.error(`Failed to generate image for sentence ${index}:`, error)
@@ -387,13 +352,12 @@ export async function POST(request: NextRequest) {
         finalPrompts.push(buildFinalPrompt(sentence, styleName, customStyle))
       }
     } else if (isImageMode) {
-      // 图生图模式：使用完整的prompt构建逻辑
       const imgPrompt = buildFinalPrompt('参考图片风格转换与内容重构', styleName, customStyle)
       finalPrompts.push(imgPrompt)
 
       const firstReferenceImage = referenceImages[0]
-      const taskId = await submitWuyinTask(imgPrompt, aspectRatio, modelType, firstReferenceImage)
-      const originUrl = await pollWuyinResult(taskId)
+      const taskId = await submitGrsTask(imgPrompt, targetImageSize, modelType, firstReferenceImage)
+      const originUrl = await pollGrsResult(taskId)
       const permanentUrl = await downloadAndUploadToSupabase(originUrl, userId, 0)
       imageUrls.push(permanentUrl)
     }
@@ -428,6 +392,7 @@ export async function POST(request: NextRequest) {
           image_count: imageUrls.length,
           image_urls: JSON.stringify(imageUrls),
           status: 'success',
+          resolution: resolution,
         })
 
       if (recordError) {
@@ -442,24 +407,13 @@ export async function POST(request: NextRequest) {
       imageUrls: imageUrls,
       imageUrl: imageUrls[0],
       creditsRemaining: newCredits,
-      totalGenerated: imageUrls.length,
-      sentencesCount: sentences.length,
     })
 
-  } catch (error) {
-    console.error('Generation error:', error)
-
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-
+  } catch (error: any) {
+    console.error('Generate API error:', error)
     return NextResponse.json(
-      {
-        success: false,
-        error: `生成失败: ${errorMessage}`,
-        message: '您的积分未被扣除，请重试',
-      },
-      {
-        status: 500,
-      }
+      { success: false, error: error.message },
+      { status: 500 }
     )
   }
 }
