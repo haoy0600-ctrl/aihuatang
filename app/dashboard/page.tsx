@@ -488,12 +488,12 @@ export default function DashboardPage() {
     setGeneratedImages([])
 
     abortController.current = new AbortController()
-    // 设置60秒超时
+    // 设置120秒超时（2分钟）
     const timeoutId = setTimeout(() => {
       if (abortController.current) {
         abortController.current.abort()
       }
-    }, 60000)
+    }, 120000)
 
     try {
       const response = await fetch('/api/generate', {
