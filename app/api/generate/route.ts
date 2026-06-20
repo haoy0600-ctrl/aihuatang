@@ -5,7 +5,7 @@ import { HANDDRAWN_STYLES } from '@/config/styles'
 export const maxDuration = 300
 
 const GRS_API_KEY = process.env.GRSAI_API_KEY || ''
-const BASE_URL = 'https://grsaiapi.com'
+const BASE_URL = 'https://grsapiapi.com'
 
 // 降价后计费规则：GPT-Image-2全线2积分，NanoBanana2按分辨率2/8积分
 function getResolutionPrice(modelType: string, resolution: string): number {
@@ -35,13 +35,13 @@ function getStyleByName(styleName: string) {
 
 function buildFinalPrompt(inputText: string, styleName: string, customStyle?: string): string {
   const userText = inputText.trim()
-  
+
   let activeStyle = ''
   if (customStyle && customStyle.trim()) {
     activeStyle = customStyle.trim()
   } else {
     const style = getStyleByName(styleName)
-    activeStyle = style 
+    activeStyle = style
       ? `${style.styleKeywords || ''}, ${style.layoutDirectives || ''}`
       : 'cartoon hand-drawn style, cute illustration, vibrant pastel colors, clean thick line art, neat infographic layout'
   }
@@ -70,8 +70,8 @@ async function submitGrsTask(
 ): Promise<string> {
   const isImageMode = !!referenceImage
   const model = modelType === 'NanoBanana2' ? 'nano-banana-pro' : 'gpt-image-2'
-  const drawUrl = modelType === 'NanoBanana2' 
-    ? `${BASE_URL}/v1/draw/nano-banana` 
+  const drawUrl = modelType === 'NanoBanana2'
+    ? `${BASE_URL}/v1/draw/nano-banana`
     : `${BASE_URL}/v1/draw/completions`
 
   const payload: any = {
@@ -220,15 +220,20 @@ async function generateSingleImage(
 
 export async function POST(request: NextRequest) {
   let currentCredits = 0
+  let profileId = ''
+  let profile: any = null
+  let totalCost = 0
+  let creditsDeducted = false
+
   try {
     const body: GenerateRequest = await request.json()
-    const { 
-      userId, 
-      inputContents = [], 
+    const {
+      userId,
+      inputContents = [],
       referenceImages = [],
-      styleName, 
+      styleName,
       customStyle,
-      aspectRatio, 
+      aspectRatio,
       modelType,
       resolution,
       imageSize,
@@ -270,21 +275,22 @@ export async function POST(request: NextRequest) {
     }
 
     const totalImageCount = isTextMode ? sentences.length : (isImageMode ? 1 : 1)
-    const totalCost = totalImageCount * costPerImage
+    totalCost = totalImageCount * costPerImage
 
     console.log(`Total images to generate: ${totalImageCount}`)
     console.log(`Cost per image: ${costPerImage}`)
     console.log(`Total cost: ${totalCost}`)
     console.log(`Resolution: ${resolution}, ImageSize: ${targetImageSize}`)
 
-    let profileId = userId
-    let profile: any = null
-
+    // ========================================
+    // 核心安全逻辑：先扣费，再生成
+    // ========================================
     if (!supabaseAdmin) {
       console.warn('Supabase admin not configured, skipping credit check in demo mode')
       currentCredits = 9999
     } else {
       try {
+        // 查询用户积分
         const { data: profileData, error: profileError } = await supabaseAdmin
           .from('profiles')
           .select('id, credits')
@@ -313,21 +319,45 @@ export async function POST(request: NextRequest) {
           profileId = newProfileData.id
         } else {
           profile = profileData
+          profileId = profileData.id
         }
 
         currentCredits = profile.credits
         console.log(`User credits: ${currentCredits}, Required: ${totalCost}`)
 
+        // 检查积分是否足够
         if (profile.credits < totalCost) {
           return NextResponse.json(
-            { 
-              success: false, 
+            {
+              success: false,
               error: `余额不足！需要 ${totalCost} 积分，当前 ${profile.credits} 积分，请充值后重试`,
               creditsRemaining: profile.credits,
             },
             { status: 400 }
           )
         }
+
+        // ========================================
+        // 【核心安全】：先扣费，再生成
+        // ========================================
+        const newCredits = currentCredits - totalCost
+        const { error: deductError } = await supabaseAdmin
+          .from('profiles')
+          .update({ credits: newCredits })
+          .eq('id', profileId)
+          .eq('credits', currentCredits) // 乐观锁，防止并发扣费
+
+        if (deductError) {
+          console.error('Failed to deduct credits (concurrent request or error):', deductError)
+          return NextResponse.json(
+            { success: false, error: '积分扣费失败，请稍后重试' },
+            { status: 500 }
+          )
+        }
+
+        creditsDeducted = true
+        console.log(`Credits deducted: ${totalCost}, remaining: ${newCredits}`)
+
       } catch (dbError) {
         console.error('Database error:', dbError)
         return NextResponse.json(
@@ -337,63 +367,92 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ========================================
+    // 扣费成功后，开始生成图片
+    // ========================================
     const imageUrls: string[] = []
     const finalPrompts: string[] = []
     let firstError: string | null = null
 
-    if (isTextMode && sentences.length > 0) {
-      const generationPromises = sentences.map((sentence, index) => 
-        generateSingleImage(sentence, styleName, customStyle, targetImageSize, modelType, userId, index)
-          .then(url => ({ url, index, error: null as Error | null }))
-          .catch(error => {
-            console.error(`Failed to generate image for sentence ${index}:`, error)
-            return { url: null, index, error: error as Error }
-          })
-      )
+    try {
+      if (isTextMode && sentences.length > 0) {
+        const generationPromises = sentences.map((sentence, index) =>
+          generateSingleImage(sentence, styleName, customStyle, targetImageSize, modelType, userId, index)
+            .then(url => ({ url, index, error: null as Error | null }))
+            .catch(error => {
+              console.error(`Failed to generate image for sentence ${index}:`, error)
+              return { url: null, index, error: error as Error }
+            })
+        )
 
-      const results = await Promise.all(generationPromises)
+        const results = await Promise.all(generationPromises)
 
-      for (const result of results) {
-        if (result.url) {
-          imageUrls.push(result.url)
-        } else if (result.error && !firstError) {
-          firstError = result.error instanceof Error ? result.error.message : String(result.error)
+        for (const result of results) {
+          if (result.url) {
+            imageUrls.push(result.url)
+          } else if (result.error && !firstError) {
+            firstError = result.error instanceof Error ? result.error.message : String(result.error)
+          }
+        }
+
+        for (const sentence of sentences) {
+          finalPrompts.push(buildFinalPrompt(sentence, styleName, customStyle))
+        }
+      } else if (isImageMode) {
+        const imgPrompt = buildFinalPrompt('参考图片风格转换与内容重构', styleName, customStyle)
+        finalPrompts.push(imgPrompt)
+
+        const firstReferenceImage = referenceImages[0]
+        const taskId = await submitGrsTask(imgPrompt, targetImageSize, modelType, firstReferenceImage)
+        const originUrl = await pollGrsResult(taskId)
+        const permanentUrl = await downloadAndUploadToSupabase(originUrl, userId, 0)
+        imageUrls.push(permanentUrl)
+      }
+
+      // 如果所有图片都生成失败，回退积分
+      if (imageUrls.length === 0) {
+        throw new Error(firstError || '所有图片生成均失败')
+      }
+
+    } catch (generationError: any) {
+      // ========================================
+      // 【核心安全】：生成失败，回退积分
+      // ========================================
+      console.error('Image generation failed, rolling back credits:', generationError.message)
+
+      if (creditsDeducted && supabaseAdmin) {
+        const { data: currentProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('credits')
+          .eq('id', profileId)
+          .single()
+
+        if (currentProfile) {
+          const rollbackCredits = (currentProfile.credits || 0) + totalCost
+          await supabaseAdmin
+            .from('profiles')
+            .update({ credits: rollbackCredits })
+            .eq('id', profileId)
+          console.log(`Credits rolled back: ${totalCost}, restored to: ${rollbackCredits}`)
         }
       }
 
-      for (const sentence of sentences) {
-        finalPrompts.push(buildFinalPrompt(sentence, styleName, customStyle))
-      }
-    } else if (isImageMode) {
-      const imgPrompt = buildFinalPrompt('参考图片风格转换与内容重构', styleName, customStyle)
-      finalPrompts.push(imgPrompt)
-
-      const firstReferenceImage = referenceImages[0]
-      const taskId = await submitGrsTask(imgPrompt, targetImageSize, modelType, firstReferenceImage)
-      const originUrl = await pollGrsResult(taskId)
-      const permanentUrl = await downloadAndUploadToSupabase(originUrl, userId, 0)
-      imageUrls.push(permanentUrl)
-    }
-
-    if (imageUrls.length === 0) {
       return NextResponse.json(
-        { success: false, error: firstError || '所有图片生成均失败，请重试' },
+        {
+          success: false,
+          error: generationError.message || '图片生成失败，积分已退回',
+          creditsRemaining: currentCredits, // 回退后的积分
+        },
         { status: 500 }
       )
     }
 
+    // ========================================
+    // 生成成功，创建生成记录
+    // ========================================
     const newCredits = currentCredits - totalCost
 
     if (supabaseAdmin) {
-      const { error: updateError } = await supabaseAdmin
-        .from('profiles')
-        .update({ credits: newCredits })
-        .eq('id', profileId)
-
-      if (updateError) {
-        console.error('Failed to update credits:', updateError)
-      }
-
       const { error: recordError } = await supabaseAdmin
         .from('generation_records')
         .insert({
@@ -424,9 +483,32 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Generate API error:', error)
+
+    // 如果扣费了但生成过程出错，尝试回退积分
+    if (creditsDeducted && supabaseAdmin && profileId) {
+      try {
+        const { data: currentProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('credits')
+          .eq('id', profileId)
+          .single()
+
+        if (currentProfile) {
+          const rollbackCredits = (currentProfile.credits || 0) + totalCost
+          await supabaseAdmin
+            .from('profiles')
+            .update({ credits: rollbackCredits })
+            .eq('id', profileId)
+          console.log(`Error handler: Credits rolled back: ${totalCost}`)
+        }
+      } catch (rollbackError) {
+        console.error('Failed to rollback credits:', rollbackError)
+      }
+    }
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: error.message,
         creditsRemaining: currentCredits,
       },

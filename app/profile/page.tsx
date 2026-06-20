@@ -106,26 +106,26 @@ export default function ProfilePage() {
       <header className="bg-[#040D0A] border-b border-[#142D24] flex-shrink-0">
         <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center w-full py-2 sm:py-3">
-            <Link href="/" className="flex items-center h-16 sm:h-20 select-none hover:opacity-80 transition-opacity">
+            <Link href="/" className="flex items-center select-none hover:opacity-80 transition-opacity">
               <img 
-                src="/logo.png?v=5" 
+                src="/logo.png?v=6" 
                 alt="AI画堂" 
-                className="h-full w-auto object-contain"
+                className="h-10 sm:h-12 w-10 sm:w-12 object-contain rounded-xl"
               />
             </Link>
 
             {/* 手机端隐藏导航 */}
-            <nav className="hidden md:flex items-center gap-2 sm:gap-3">
-              <Link href="/dashboard" className="px-3 sm:px-4 py-2 bg-[#091511]/60 backdrop-blur-sm text-white font-bold text-sm border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-lg">
+            <nav className="hidden md:flex items-center gap-4">
+              <Link href="/dashboard" className="px-5 py-2.5 bg-[#091511]/60 backdrop-blur-sm text-white font-semibold text-base tracking-wide md:text-lg border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-xl">
                 创作
               </Link>
-              <Link href="/records" className="px-3 sm:px-4 py-2 bg-[#091511]/60 backdrop-blur-sm text-white font-bold text-sm border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-lg">
+              <Link href="/records" className="px-5 py-2.5 bg-[#091511]/60 backdrop-blur-sm text-white font-semibold text-base tracking-wide md:text-lg border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-xl">
                 记录
               </Link>
-              <Link href="/recharge" className="px-3 sm:px-4 py-2 bg-[#091511]/60 backdrop-blur-sm text-white font-bold text-sm border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-lg">
-                充值
+              <Link href="/recharge" className="px-5 py-2.5 bg-[#091511]/60 backdrop-blur-sm text-white font-semibold text-base tracking-wide md:text-lg border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-xl">
+                卡密兑换
               </Link>
-              <Link href="/profile" className="px-3 sm:px-4 py-2 bg-[#10B981] text-[#040D0A] font-bold text-sm border border-[#142D24] shadow-[0_0_10px_rgba(16,185,129,0.3)] hover:shadow-[0_0_15px_rgba(16,185,129,0.5)] transition-all rounded-lg">
+              <Link href="/profile" className="px-5 py-2.5 bg-[#10B981] text-[#040D0A] font-semibold text-base tracking-wide md:text-lg border border-[#142D24] shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:shadow-[0_0_20px_rgba(16,185,129,0.6)] transition-all rounded-xl">
                 个人中心
               </Link>
             </nav>
@@ -177,7 +177,7 @@ export default function ProfilePage() {
                         onClick={() => { router.push('/recharge'); setShowUserMenu(false) }}
                         className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg"
                       >
-                        💰 积分充值
+                        � 卡密兑换
                       </button>
                     </div>
                     <div className="p-2">
@@ -197,7 +197,7 @@ export default function ProfilePage() {
                         onClick={() => { router.push('/recharge'); setShowUserMenu(false) }}
                         className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg hidden md:block"
                       >
-                        积分充值
+                        🔑 卡密兑换
                       </button>
                       <div className="border-t border-[#142D24] my-1 hidden md:block"></div>
                       <button 
@@ -291,7 +291,7 @@ export default function ProfilePage() {
                       href="/recharge"
                       className="flex-1 py-3 bg-[#10B981] text-[#040D0A] font-bold text-sm border border-[#142D24] text-center shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:shadow-[0_0_20px_rgba(16,185,129,0.6)] transition-all rounded-lg"
                     >
-                      💳 立即充值
+                      � 卡密兑换
                     </Link>
                     <Link
                       href="/records"

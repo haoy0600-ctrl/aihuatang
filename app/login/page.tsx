@@ -431,11 +431,11 @@ export default function LoginPage() {
         </div>
         
         <div className="relative z-10 text-center">
-          <div className="w-32 h-32 sm:w-40 sm:h-40 mx-auto mb-8">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6">
             <img 
-              src="/logo.png?v=5" 
+              src="/logo.png?v=6" 
               alt="AI画堂" 
-              className="w-full h-full object-contain drop-shadow-lg"
+              className="w-full h-full object-contain rounded-xl"
             />
           </div>
           
@@ -473,12 +473,12 @@ export default function LoginPage() {
       <div className="flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-[#1E293B]">
         <div className="w-full max-w-md">
           {/* 移动端 Logo */}
-          <div className="md:hidden text-center mb-8">
-            <div className="w-24 h-24 mx-auto mb-4">
+          <div className="md:hidden text-center mb-6">
+            <div className="w-16 h-16 mx-auto mb-3">
               <img 
-                src="/logo.png?v=5" 
+                src="/logo.png?v=6" 
                 alt="AI画堂" 
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain rounded-xl"
               />
             </div>
             <p className="text-xs text-[#64748B] mt-2">自媒体爆款图形设计与智能排版素材工具箱</p>

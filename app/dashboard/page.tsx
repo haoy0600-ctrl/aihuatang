@@ -717,27 +717,27 @@ export default function DashboardPage() {
       <header className="bg-[#040D0A] border-b border-[#142D24] flex-shrink-0">
         <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center w-full py-2 sm:py-3">
-            <Link href="/" className="flex items-center h-16 sm:h-20 select-none hover:opacity-80 transition-opacity">
+            <Link href="/" className="flex items-center select-none hover:opacity-80 transition-opacity">
               <img 
-                src="/logo.png?v=5" 
+                src="/logo.png?v=6" 
                 alt="AI画堂" 
-                className="h-full w-auto object-contain"
+                className="h-10 sm:h-12 w-10 sm:w-12 object-contain rounded-xl"
               />
             </Link>
 
             {/* 手机端隐藏导航 */}
-            <nav className="hidden md:flex items-center gap-2 sm:gap-3">
-              <button onClick={() => setIsGuideOpen(true)} className="px-3 sm:px-4 py-2 bg-[#091511]/60 backdrop-blur-sm text-[#00F2FE] font-bold text-sm border border-[#00F2FE]/30 hover:bg-[#00F2FE]/10 hover:border-[#00F2FE] transition-all rounded-lg">
+            <nav className="hidden md:flex items-center gap-4">
+              <button onClick={() => setIsGuideOpen(true)} className="px-5 py-2.5 bg-[#091511]/60 backdrop-blur-sm text-[#00F2FE] font-semibold text-base tracking-wide md:text-lg border border-[#00F2FE]/30 hover:bg-[#00F2FE]/10 hover:border-[#00F2FE] transition-all rounded-xl">
                 功能介绍
               </button>
-              <Link href="/dashboard" className="px-3 sm:px-4 py-2 bg-[#10B981] text-[#040D0A] font-bold text-sm border border-[#142D24] shadow-[0_0_10px_rgba(16,185,129,0.3)] hover:shadow-[0_0_15px_rgba(16,185,129,0.5)] transition-all rounded-lg">
+              <Link href="/dashboard" className="px-5 py-2.5 bg-[#10B981] text-[#040D0A] font-semibold text-base tracking-wide md:text-lg border border-[#142D24] shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:shadow-[0_0_20px_rgba(16,185,129,0.6)] transition-all rounded-xl">
                 创作
               </Link>
-              <Link href="/records" className="px-3 sm:px-4 py-2 bg-[#091511]/60 backdrop-blur-sm text-white font-bold text-sm border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-lg">
+              <Link href="/records" className="px-5 py-2.5 bg-[#091511]/60 backdrop-blur-sm text-white font-semibold text-base tracking-wide md:text-lg border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-xl">
                 记录
               </Link>
-              <Link href="/recharge" className="px-3 sm:px-4 py-2 bg-[#091511]/60 backdrop-blur-sm text-white font-bold text-sm border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-lg">
-                充值
+              <Link href="/recharge" className="px-5 py-2.5 bg-[#091511]/60 backdrop-blur-sm text-white font-semibold text-base tracking-wide md:text-lg border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-xl">
+                卡密兑换
               </Link>
             </nav>
 
@@ -792,7 +792,7 @@ export default function DashboardPage() {
                         onClick={() => { router.push('/recharge'); setShowUserMenu(false) }}
                         className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg"
                       >
-                        💰 积分充值
+                        🔑 卡密兑换
                       </button>
                     </div>
                     <div className="p-2">
@@ -920,13 +920,13 @@ export default function DashboardPage() {
                       value={textSegments[activeTab - 1] || ''}
                       onChange={(e) => handleTextChange(e.target.value)}
                       placeholder="请输入内容..."
-                      className="w-full px-3 py-2.5 bg-[#040D0A] border border-[#142D24] text-sm text-white focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] focus:outline-none resize-none h-20 placeholder-[#64748B] rounded-lg"
+                      className="w-full px-3 py-3 bg-[#040D0A] border border-[#142D24] text-sm text-white focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] focus:outline-none resize-none h-40 placeholder-[#64748B] rounded-lg"
                     />
 
                     <button
                       onClick={handleAIExpand}
                       disabled={isExpanding}
-                      className={`w-full mt-2 py-2 text-xs font-bold border transition-all duration-300 rounded-lg flex items-center justify-center gap-2 ${
+                      className={`w-full py-2.5 text-sm font-bold border transition-all duration-300 rounded-lg flex items-center justify-center gap-2 ${
                         isExpanding
                           ? 'bg-[#091511]/60 border-[#142D24] text-[#64748B] cursor-not-allowed'
                           : 'bg-gradient-to-r from-[#03F09C]/20 to-[#00F2FE]/20 border-[#03F09C]/50 text-[#03F09C] hover:bg-gradient-to-r from-[#03F09C]/30 to-[#00F2FE]/30 hover:border-[#03F09C] hover:shadow-[0_0_15px_rgba(3,240,156,0.3)]'
@@ -935,11 +935,11 @@ export default function DashboardPage() {
                       {isExpanding ? (
                         <>
                           <span className="animate-spin">⏳</span>
-                          AI正在疯狂检索教材...
+                          AI正在疯狂优化中...
                         </>
                       ) : (
                         <>
-                          ✨ AI一键智能补全
+                          ✨ AI一键优化
                         </>
                       )}
                     </button>
@@ -948,11 +948,6 @@ export default function DashboardPage() {
                       <span className="text-xs text-[#10B981]">第 {activeTab} / {totalTabs} 段</span>
                       <span className="text-xs text-[#10B981]">{currentWordCount} 字</span>
                     </div>
-                    {currentWordCount > 150 && (
-                      <div className="w-full text-center text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/20 py-1.5 px-3 rounded mt-2 whitespace-nowrap overflow-hidden animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.2)]">
-                        ⚠️ 当前有效字数已超过 150 字，建议精简内容以获得最佳生成效果
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -997,10 +992,10 @@ export default function DashboardPage() {
                 {/* 模型选择 */}
                 <div>
                   <label className="text-xs text-[#10B981] mb-2 block">模型选择</label>
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setSelectedModel('GPT-Image-2')}
-                      className={`relative w-full px-4 py-3 border text-center transition-all duration-300 rounded-xl overflow-hidden ${
+                      className={`relative px-4 py-3 border text-center transition-all duration-300 rounded-xl overflow-hidden ${
                         selectedModel === 'GPT-Image-2'
                           ? 'border-[#03F09C] bg-[#141d1a]/60 shadow-[0_0_25px_rgba(3,240,156,0.15)] scale-[1.02]'
                           : 'border-white/10 bg-[#0e0d15] hover:border-white/20 hover:bg-white/5'
@@ -1011,12 +1006,12 @@ export default function DashboardPage() {
                       )}
                       <div className="relative">
                         <div className={`text-sm font-bold ${selectedModel === 'GPT-Image-2' ? 'text-[#03F09C]' : 'text-white'}`}>GPT-Image-2</div>
-                        <div className={`text-xs mt-0.5 ${selectedModel === 'GPT-Image-2' ? 'text-[#03F09C]/70' : 'text-gray-500'}`}>更高质量更多分析</div>
+                        <div className={`text-xs mt-0.5 ${selectedModel === 'GPT-Image-2' ? 'text-[#03F09C]/70' : 'text-gray-500'}`}>更高质量</div>
                       </div>
                     </button>
                     <button
                       onClick={() => setSelectedModel('NanoBanana2')}
-                      className={`relative w-full px-4 py-3 border text-center transition-all duration-300 rounded-xl overflow-hidden ${
+                      className={`relative px-4 py-3 border text-center transition-all duration-300 rounded-xl overflow-hidden ${
                         selectedModel === 'NanoBanana2'
                           ? 'border-[#03F09C] bg-[#141d1a]/60 shadow-[0_0_25px_rgba(3,240,156,0.15)] scale-[1.02]'
                           : 'border-white/10 bg-[#0e0d15] hover:border-white/20 hover:bg-white/5'
@@ -1027,7 +1022,7 @@ export default function DashboardPage() {
                       )}
                       <div className="relative">
                         <div className={`text-sm font-bold ${selectedModel === 'NanoBanana2' ? 'text-[#03F09C]' : 'text-white'}`}>NanoBanana2</div>
-                        <div className={`text-xs mt-0.5 ${selectedModel === 'NanoBanana2' ? 'text-[#03F09C]/70' : 'text-gray-500'}`}>快速图像生成</div>
+                        <div className={`text-xs mt-0.5 ${selectedModel === 'NanoBanana2' ? 'text-[#03F09C]/70' : 'text-gray-500'}`}>快速生成</div>
                       </div>
                     </button>
                   </div>
@@ -1382,7 +1377,7 @@ export default function DashboardPage() {
               </div>
               <div className="bg-red-950/20 border border-red-500/20 p-3 rounded-lg text-gray-300 space-y-1">
                 <h2 className="font-bold text-red-400 text-sm">⚠️ 特别说明</h2>
-                <p>• 积分充值立马到账且充多有送，充值对接g-p-t平台。作图平均低至<span className="text-[#03F09C] font-semibold">0.2-0.3毛/张</span>。<br />• 对接中转站最新模型，偶尔因敏感词或网络波动超时属正常，<span className="text-red-400 font-bold">生成失败绝不扣积分</span>，超时点击二次生成即可。<br />• 大量文字排版生图时，个别汉字若轻微变形属<span className="text-yellow-400">生图模型通病（正常情况）</span>，建议适当精简字数输入。</p>
+                <p>• 卡密兑换积分立马到账，支持多张卡密连续无缝叠加激活。作图平均低至<span className="text-[#03F09C] font-semibold">0.2-0.3毛/张</span>。<br />• 对接中转站最新模型，偶尔因敏感词或网络波动超时属正常，<span className="text-red-400 font-bold">生成失败绝不扣积分</span>，超时点击二次生成即可。<br />• 大量文字排版生图时，个别汉字若轻微变形属<span className="text-yellow-400">生图模型通病（正常情况）</span>，建议适当精简字数输入。</p>
               </div>
               <button onClick={()=>setIsGuideOpen(false)} className="w-full py-2 rounded bg-gradient-to-r from-[#03F09C] to-[#00F2FE] text-[#040D0A] font-bold text-xs hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer shadow-[0_0_10px_rgba(3,240,156,0.2)]">进入创作工坊</button>
             </div>

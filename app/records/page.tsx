@@ -287,24 +287,24 @@ export default function RecordsPage() {
       <header className="bg-[#0B0D17] border-b border-[#202B3A]">
         <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center w-full py-2 sm:py-3">
-            <Link href="/" className="flex items-center h-16 sm:h-20 select-none hover:opacity-80 transition-opacity">
+            <Link href="/" className="flex items-center select-none hover:opacity-80 transition-opacity">
               <img 
-                src="/logo.png?v=5" 
+                src="/logo.png?v=6" 
                 alt="AI画堂" 
-                className="h-full w-auto object-contain"
+                className="h-10 sm:h-12 w-10 sm:w-12 object-contain rounded-xl"
               />
             </Link>
 
             {/* 手机端隐藏导航 */}
-            <nav className="hidden md:flex items-center gap-2 sm:gap-4">
-              <Link href="/dashboard" className="px-3 sm:px-4 py-2 bg-[#141923] text-white font-bold text-sm border border-[#202B3A] hover:bg-[#1a2230] hover:border-[#00F2FE] transition-all rounded-lg">
+            <nav className="hidden md:flex items-center gap-4">
+              <Link href="/dashboard" className="px-5 py-2.5 bg-[#141923] text-white font-semibold text-base tracking-wide md:text-lg border border-[#202B3A] hover:bg-[#1a2230] hover:border-[#00F2FE] transition-all rounded-xl">
                 创作
               </Link>
-              <Link href="/records" className="px-3 sm:px-4 py-2 bg-[#10B981] text-[#0B0D17] font-bold text-sm border border-[#202B3A] shadow-[0_0_10px_rgba(16,185,129,0.3)] rounded-lg">
+              <Link href="/records" className="px-5 py-2.5 bg-[#10B981] text-[#0B0D17] font-semibold text-base tracking-wide md:text-lg border border-[#202B3A] shadow-[0_0_15px_rgba(16,185,129,0.4)] rounded-xl">
                 记录
               </Link>
-              <Link href="/recharge" className="px-3 sm:px-4 py-2 bg-[#141923] text-white font-bold text-sm border border-[#202B3A] hover:bg-[#1a2230] hover:border-[#00F2FE] transition-all rounded-lg">
-                充值
+              <Link href="/recharge" className="px-5 py-2.5 bg-[#141923] text-white font-semibold text-base tracking-wide md:text-lg border border-[#202B3A] hover:bg-[#1a2230] hover:border-[#00F2FE] transition-all rounded-xl">
+                卡密兑换
               </Link>
             </nav>
 
@@ -346,7 +346,7 @@ export default function RecordsPage() {
                         📁 生成记录
                       </Link>
                       <Link href="/recharge" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors rounded-lg">
-                        💰 积分充值
+                        🔑 卡密兑换
                       </Link>
                     </div>
                     <div className="p-2">
@@ -354,7 +354,7 @@ export default function RecordsPage() {
                         创作工坊
                       </Link>
                       <Link href="/recharge" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors rounded-lg hidden md:block">
-                        积分充值
+                        🔑 卡密兑换
                       </Link>
                       <div className="border-t border-[#202B3A] my-1 hidden md:block"></div>
                       <button 
