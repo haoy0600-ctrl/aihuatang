@@ -48,18 +48,35 @@ function buildFinalPrompt(inputText: string, styleName: string, customStyle?: st
   }
 
   const style = getStyleByName(styleName)
-  const stylePrompt = style 
+  const selectedStylePrompt = style 
     ? `${style.styleKeywords || ''}, ${style.layoutDirectives || ''}`
     : 'cartoon hand-drawn style, cute illustration, vibrant pastel colors, clean thick line art, neat infographic layout'
 
-  const textToPrint = inputText.trim()
+  const userText = inputText.trim()
 
-  return `[SCENE DESCRIPTION]: ${stylePrompt}, professional educational infographic, clean layout, high quality, masterpiece
-[CORE TASK]: Render a high-quality educational card based on the scene description above.
-[CRITICAL TEXT REQUIREMENT]: Inside the illustration, you MUST accurately print the exact text specified inside the separators below without any spelling or character mistakes. The text contains English words, phonetic transcriptions, and Chinese translations. Use clear, legible fonts for both English and Chinese characters.
-=== EXACT TEXT TO PRINT START ===
-"${textToPrint}"
-=== EXACT TEXT TO PRINT END ===`
+  // 1. 严格锁死用户核心文字内容
+  const TEXT_CONTENT_LOCK = `
+[STRICT TEXT CONTENT TO RENDER]
+${userText}
+[END OF TEXT CONTENT]
+`
+
+  // 2. 注入全局硬控版面指令与风格
+  const SYSTEM_LAYOUT_RULE = `
+[MANDATORY LAYOUT RULES]
+1. You MUST explicitly and accurately render the text provided inside the [STRICT TEXT CONTENT TO RENDER] tag word for word on the image canvas.
+2. DO NOT invent, hallucinate, or use filler text like 'Hello', 'Aurora', 'Dashboard', or generic UI text.
+3. The chosen artistic style below must ONLY apply to the background texture, visual mood, and color palette. The text inside the tag is the absolute centerpiece.
+4. NEVER generate a mobile app UI, dashboard interface, or any device mockup. The output must be a flat illustration or infographic card.
+[END OF RULES]
+
+[ARTISTIC STYLE TO APPLY]
+${selectedStylePrompt}, professional educational infographic, clean layout, high quality, masterpiece
+[END OF STYLE]
+`
+
+  // 3. 最终完美组装
+  return `${TEXT_CONTENT_LOCK}\n${SYSTEM_LAYOUT_RULE}`
 }
 
 async function submitWuyinTask(prompt: string, aspectRatio: string, modelType: string, referenceImage?: string): Promise<string> {
