@@ -7,11 +7,13 @@ export const maxDuration = 300
 const GRS_API_KEY = process.env.GRSAI_API_KEY || ''
 const BASE_URL = 'https://grsaiapi.com'
 
-const MODEL_COST: Record<string, number> = {
-  'GPT-Image-2': 3,
-  'NanoBanana2': 3,
-  'image2': 3,
-  'nanobanana': 3,
+// 降价后计费规则：GPT-Image-2全线2积分，NanoBanana2按分辨率2/8积分
+function getResolutionPrice(modelType: string, resolution: string): number {
+  if (modelType === 'NanoBanana2') {
+    return resolution === '1K' ? 2 : 8
+  } else {
+    return 2
+  }
 }
 
 type GenerateRequest = {
@@ -206,6 +208,7 @@ async function generateSingleImage(
 }
 
 export async function POST(request: NextRequest) {
+  let currentCredits = 0
   try {
     const body: GenerateRequest = await request.json()
     const { 
@@ -245,7 +248,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const costPerImage = MODEL_COST[modelType] || 3
+    const costPerImage = getResolutionPrice(modelType, resolution)
     const targetImageSize = imageSize || '1440x2560'
 
     let sentences: string[] = []
@@ -263,7 +266,6 @@ export async function POST(request: NextRequest) {
     console.log(`Total cost: ${totalCost}`)
     console.log(`Resolution: ${resolution}, ImageSize: ${targetImageSize}`)
 
-    let currentCredits = 0
     let profileId = userId
     let profile: any = null
 
@@ -412,7 +414,11 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Generate API error:', error)
     return NextResponse.json(
-      { success: false, error: error.message },
+      { 
+        success: false, 
+        error: error.message,
+        creditsRemaining: currentCredits,
+      },
       { status: 500 }
     )
   }

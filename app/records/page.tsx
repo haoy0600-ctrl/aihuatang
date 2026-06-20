@@ -460,17 +460,18 @@ export default function RecordsPage() {
                         <img 
                           src={imageUrls[0]} 
                           alt="生成图" 
-                          className="w-full h-auto object-contain"
+                          className="w-full h-auto object-contain bg-[#161a2b]"
                         />
                       ) : (
-                        <div className="w-full h-64 flex items-center justify-center text-[#94A3B8] bg-[#0B0D17]">
+                        <div className="w-full aspect-square flex items-center justify-center text-[#94A3B8] bg-[#0B0D17]">
                           无图片
                         </div>
                       )}
 
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center gap-3">
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation()
                             setPreviewImageUrl(imageUrls?.[0] || '')
                             setShowImagePreview(true)
                           }}
@@ -479,13 +480,19 @@ export default function RecordsPage() {
                           🔍 放大预览
                         </button>
                         <button
-                          onClick={() => handleDownload(imageUrls?.[0] || '', 0)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDownload(imageUrls?.[0] || '', 0)
+                          }}
                           className="px-4 py-2 bg-[#00F2FE]/90 text-[#0A0F1D] text-xs font-bold hover:bg-[#00F2FE] transition-all backdrop-blur-sm border border-[#00F2FE]/50 whitespace-nowrap"
                         >
                           📥 下载
                         </button>
                         <button
-                          onClick={() => handleCopyLink(imageUrls?.[0] || '')}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleCopyLink(imageUrls?.[0] || '')
+                          }}
                           className="px-4 py-2 bg-[#94A3B8]/90 text-[#0A0F1D] text-xs font-bold hover:bg-[#94A3B8] transition-all backdrop-blur-sm border border-[#94A3B8]/50 whitespace-nowrap"
                         >
                           📋 复制链接

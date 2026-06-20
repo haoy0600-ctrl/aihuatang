@@ -157,6 +157,7 @@ export default function DashboardPage() {
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [isGuideOpen, setIsGuideOpen] = useState(false)
   const [isApiNoticeOpen, setIsApiNoticeOpen] = useState(false)
+  const [progress, setProgress] = useState(0)
 
   useEffect(() => {
     const updateTime = () => {
@@ -494,6 +495,14 @@ export default function DashboardPage() {
 
     setGenerationStatus('loading')
     setGeneratedImages([])
+    setProgress(0)
+
+    // 动态进度条：渐进式模拟，越往后越慢
+    let currentProgress = 0
+    const progressTimer = setInterval(() => {
+      currentProgress += (100 - currentProgress) * 0.05
+      setProgress(Math.min(Math.round(currentProgress), 98))
+    }, 1500)
 
     abortController.current = new AbortController()
     const timeoutId = setTimeout(() => {
@@ -531,6 +540,7 @@ export default function DashboardPage() {
       const data = await response.json()
 
       if (!response.ok || !data.success) {
+        clearInterval(progressTimer)
         const errorMsg = data.error || data.message || '生成失败，请重试'
         console.error('Generation API error:', errorMsg)
         alert(errorMsg)
@@ -538,6 +548,8 @@ export default function DashboardPage() {
         return
       }
 
+      setProgress(100) // 成功时进度条拉满
+      clearInterval(progressTimer)
       setGeneratedImages(data.imageUrls || [data.imageUrl])
       setGenerationStatus('success')
 
@@ -545,6 +557,7 @@ export default function DashboardPage() {
         setProfile({ ...profile, credits: data.creditsRemaining })
       }
     } catch (error: any) {
+      clearInterval(progressTimer)
       console.error('Generation failed:', error)
       if (error.name === 'AbortError') {
         alert('请求超时，请稍后重试')
@@ -587,18 +600,40 @@ export default function DashboardPage() {
     executeActualGeneration()
   }
 
-  const handleDownload = (url: string, index: number) => {
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `handdrawn-${Date.now()}-${index + 1}.png`
-    link.click()
+  const handleDownload = async (url: string, index: number) => {
+    try {
+      const response = await fetch(url)
+      const blob = await response.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = `handdrawn-${Date.now()}-${index + 1}.png`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(blobUrl)
+    } catch (error) {
+      console.error('Download failed:', error)
+      // Fallback: 直接下载
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `handdrawn-${Date.now()}-${index + 1}.png`
+      link.click()
+    }
   }
 
-  const modelPrice = 3
-  // 修复：只计算有内容的段落框，过滤空白文本
-  const validSegments = textSegments.filter(segment => segment && segment.trim().length > 0)
+  // 降价后计费规则：GPT-Image-2全线2积分，NanoBanana2按分辨率2/8积分
+  const getResolutionPrice = (model: string, res: string) => {
+    if (model === 'NanoBanana2') {
+      return res === '1K' ? 2 : 8
+    } else {
+      return 2
+    }
+  }
+  const validSegments = textSegments.filter(s => s && s.trim().length > 0)
+  const currentSinglePrice = getResolutionPrice(selectedModel, selectedResolution)
   const outputCount = genMode === 'text' ? validSegments.length : uploadedImages.length
-  const totalCost = outputCount * modelPrice
+  const totalCost = currentSinglePrice * outputCount
   const currentWordCount = getEffectiveWordCount(textSegments[activeTab - 1] || '')
 
   const getAspectClass = () => {
@@ -951,7 +986,7 @@ export default function DashboardPage() {
                             : 'bg-[#091511]/60 text-white border border-[#142D24] hover:bg-[#142D24]'
                         }`}
                       >
-                        {res}
+                        {res} ({getResolutionPrice(selectedModel, res)}积分)
                       </button>
                     ))}
                   </div>
@@ -1094,7 +1129,7 @@ export default function DashboardPage() {
                   <div className="mt-3 p-3 bg-[#091511]/30 border border-[#142D24] rounded-lg text-center">
                     <div className="flex justify-center gap-4 text-xs">
                       <span className="text-[#10B981]">
-                        模型单价: <span className="font-bold text-white">{modelPrice}</span> 积分
+                        模型单价: <span className="font-bold text-white">{currentSinglePrice}</span> 积分
                       </span>
                       <span className="text-[#10B981]">
                         生成数量: <span className="font-bold text-white">{outputCount}</span> 张
@@ -1154,10 +1189,14 @@ export default function DashboardPage() {
                         <div className="text-5xl mb-4 animate-bounce">🎨</div>
                         <p className="text-base text-[#10B981] mb-2">正在创作中...</p>
                         <p className="text-sm text-[#64748B]">AI 正在绘制您的知识卡片</p>
-                        <p className="text-xs text-[#64748B]/70 mt-2">预计需要 2-5 分钟，请耐心等待</p>
-                        <div className="mt-4 w-32 h-1 bg-[#142D24] rounded-full overflow-hidden mx-auto">
-                          <div className="h-full bg-[#10B981] animate-pulse rounded-full" style={{width: '60%'}}></div>
+                        <p className="text-xs text-[#64748B]/70 mt-2">预计需要 1-3 分钟，请耐心等待</p>
+                        <div className="mt-4 w-48 h-2 bg-[#142D24] rounded-full overflow-hidden mx-auto">
+                          <div 
+                            className="h-full bg-gradient-to-r from-[#10B981] to-[#34D399] rounded-full transition-all duration-500"
+                            style={{width: `${progress}%`}}
+                          ></div>
                         </div>
+                        <p className="text-xs text-[#10B981] mt-2 font-mono">{progress}%</p>
                       </div>
                     </div>
                   )}
