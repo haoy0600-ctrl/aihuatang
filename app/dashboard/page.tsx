@@ -678,47 +678,51 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen w-full flex flex-col bg-[#040D0A]">
       <header className="bg-[#040D0A] border-b border-[#142D24] flex-shrink-0">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center w-full py-3">
+        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center w-full py-2 sm:py-3">
             <Link href="/" className="flex items-center gap-1.5 h-10 select-none hover:opacity-80 transition-opacity">
               <img 
                 src="/logo.svg" 
                 alt="AI画堂" 
-                className="w-9 h-9 object-contain"
+                className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
               />
-              <span className="text-xl font-sans font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#03F09C] to-[#00F2FE]">AI</span>
-              <span className="text-xl font-normal text-transparent bg-clip-text bg-gradient-to-r from-[#00F2FE] to-[#03F09C] tracking-widest font-art ml-1">画堂</span>
+              <span className="text-lg sm:text-xl font-sans font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#03F09C] to-[#00F2FE]">AI</span>
+              <span className="text-lg sm:text-xl font-normal text-transparent bg-clip-text bg-gradient-to-r from-[#00F2FE] to-[#03F09C] tracking-widest font-art ml-1">画堂</span>
             </Link>
 
-            <nav className="flex items-center gap-3">
-              <button onClick={() => setIsGuideOpen(true)} className="px-4 py-2 bg-[#091511]/60 backdrop-blur-sm text-[#00F2FE] font-bold text-sm border border-[#00F2FE]/30 hover:bg-[#00F2FE]/10 hover:border-[#00F2FE] transition-all rounded-lg">
+            {/* 手机端隐藏导航 */}
+            <nav className="hidden md:flex items-center gap-2 sm:gap-3">
+              <button onClick={() => setIsGuideOpen(true)} className="px-3 sm:px-4 py-2 bg-[#091511]/60 backdrop-blur-sm text-[#00F2FE] font-bold text-sm border border-[#00F2FE]/30 hover:bg-[#00F2FE]/10 hover:border-[#00F2FE] transition-all rounded-lg">
                 功能介绍
               </button>
-              <Link href="/dashboard" className="px-4 py-2 bg-[#10B981] text-[#040D0A] font-bold text-sm border border-[#142D24] shadow-[0_0_10px_rgba(16,185,129,0.3)] hover:shadow-[0_0_15px_rgba(16,185,129,0.5)] transition-all rounded-lg">
+              <Link href="/dashboard" className="px-3 sm:px-4 py-2 bg-[#10B981] text-[#040D0A] font-bold text-sm border border-[#142D24] shadow-[0_0_10px_rgba(16,185,129,0.3)] hover:shadow-[0_0_15px_rgba(16,185,129,0.5)] transition-all rounded-lg">
                 创作
               </Link>
-              <Link href="/records" className="px-4 py-2 bg-[#091511]/60 backdrop-blur-sm text-white font-bold text-sm border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-lg">
+              <Link href="/records" className="px-3 sm:px-4 py-2 bg-[#091511]/60 backdrop-blur-sm text-white font-bold text-sm border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-lg">
                 记录
               </Link>
-              <Link href="/recharge" className="px-4 py-2 bg-[#091511]/60 backdrop-blur-sm text-white font-bold text-sm border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-lg">
+              <Link href="/recharge" className="px-3 sm:px-4 py-2 bg-[#091511]/60 backdrop-blur-sm text-white font-bold text-sm border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-lg">
                 充值
               </Link>
             </nav>
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-xs text-[#10B981]">
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* 手机端隐藏时间 */}
+              <div className="hidden sm:flex items-center gap-2 text-xs text-[#10B981]">
                 <span>{new Date().toLocaleDateString('zh-CN')}</span>
                 <span className="text-white font-mono font-bold text-sm">{currentTime}</span>
               </div>
-              <div className="px-3 py-1.5 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] flex items-center gap-1.5 rounded-lg">
+              {/* 积分显示 */}
+              <div className="px-2 sm:px-3 py-1 sm:py-1.5 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] flex items-center gap-1 sm:gap-1.5 rounded-lg">
                 <span className="w-2 h-2 bg-[#10B981] rounded-full"></span>
-                <span className="text-xs text-[#10B981]">积分</span>
+                <span className="text-xs text-[#10B981] hidden sm:inline">积分</span>
                 <span className="font-bold text-white text-sm">{profile?.credits || 0}</span>
               </div>
+              {/* 用户头像 */}
               <div className="relative">
                 <button 
                   onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="w-9 h-9 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] flex items-center justify-center hover:border-[#10B981] transition-colors rounded-lg"
+                  className="w-8 h-8 sm:w-9 sm:h-9 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] flex items-center justify-center hover:border-[#10B981] transition-colors rounded-lg"
                 >
                   <span className="text-white font-bold text-sm">
                     {user?.email ? user.email.substring(0, 2).toUpperCase() : 'HA'}
@@ -726,21 +730,42 @@ export default function DashboardPage() {
                 </button>
                 
                 {showUserMenu && (
-                  <div className="absolute right-0 top-10 w-56 bg-[#091511]/95 backdrop-blur-md border border-[#142D24] shadow-2xl z-50 rounded-xl overflow-hidden">
-                    <div className="p-4 border-b border-[#142D24]">
+                  <div className="absolute right-0 top-10 w-48 sm:w-56 bg-[#091511]/95 backdrop-blur-md border border-[#142D24] shadow-2xl z-50 rounded-xl overflow-hidden">
+                    <div className="p-3 sm:p-4 border-b border-[#142D24]">
                       <p className="text-xs text-[#10B981] mb-1">当前账号</p>
                       <p className="text-sm text-white font-medium truncate">{user?.email || '未登录'}</p>
+                    </div>
+                    {/* 手机端显示导航链接 */}
+                    <div className="p-2 border-b border-[#142D24] md:hidden">
+                      <button 
+                        onClick={() => { router.push('/dashboard'); setShowUserMenu(false) }}
+                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg"
+                      >
+                        🎨 创作工坊
+                      </button>
+                      <button 
+                        onClick={() => { router.push('/records'); setShowUserMenu(false) }}
+                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg"
+                      >
+                        📁 生成记录
+                      </button>
+                      <button 
+                        onClick={() => { router.push('/recharge'); setShowUserMenu(false) }}
+                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg"
+                      >
+                        💰 积分充值
+                      </button>
                     </div>
                     <div className="p-2">
                       <button 
                         onClick={() => { router.push('/records'); setShowUserMenu(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg"
+                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg hidden md:block"
                       >
                         生成记录
                       </button>
                       <button 
                         onClick={() => { router.push('/recharge'); setShowUserMenu(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg"
+                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg hidden md:block"
                       >
                         积分充值
                       </button>

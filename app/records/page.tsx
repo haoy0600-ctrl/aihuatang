@@ -281,78 +281,96 @@ export default function RecordsPage() {
   return (
     <div className="min-h-screen bg-[#0B0D17]">
       <header className="bg-[#0B0D17] border-b border-[#202B3A]">
-        <div className="flex justify-between items-center w-full px-6 py-3">
-          <Link href="/" className="flex items-center gap-1.5 h-10 select-none hover:opacity-80 transition-opacity">
-            <img 
-              src="/logo.svg" 
-              alt="AI画堂" 
-              className="w-9 h-9 object-contain"
-            />
-            <span className="text-xl font-sans font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#03F09C] to-[#00F2FE]">AI</span>
-            <span className="text-xl font-normal text-transparent bg-clip-text bg-gradient-to-r from-[#00F2FE] to-[#03F09C] tracking-widest font-art ml-1">画堂</span>
-          </Link>
+        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center w-full py-2 sm:py-3">
+            <Link href="/" className="flex items-center gap-1.5 h-10 select-none hover:opacity-80 transition-opacity">
+              <img 
+                src="/logo.svg" 
+                alt="AI画堂" 
+                className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
+              />
+              <span className="text-lg sm:text-xl font-sans font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#03F09C] to-[#00F2FE]">AI</span>
+              <span className="text-lg sm:text-xl font-normal text-transparent bg-clip-text bg-gradient-to-r from-[#00F2FE] to-[#03F09C] tracking-widest font-art ml-1">画堂</span>
+            </Link>
 
-          <nav className="flex items-center gap-4">
-            <Link href="/dashboard" className="px-4 py-2 bg-[#141923] text-white font-bold text-sm border border-[#202B3A] hover:bg-[#1a2230] hover:border-[#00F2FE] transition-all">
-              创作
-            </Link>
-            <Link href="/records" className="px-4 py-2 bg-[#10B981] text-[#0B0D17] font-bold text-sm border border-[#202B3A] shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-              记录
-            </Link>
-            <Link href="/recharge" className="px-4 py-2 bg-[#141923] text-white font-bold text-sm border border-[#202B3A] hover:bg-[#1a2230] hover:border-[#00F2FE] transition-all">
-              充值
-            </Link>
-          </nav>
+            {/* 手机端隐藏导航 */}
+            <nav className="hidden md:flex items-center gap-2 sm:gap-4">
+              <Link href="/dashboard" className="px-3 sm:px-4 py-2 bg-[#141923] text-white font-bold text-sm border border-[#202B3A] hover:bg-[#1a2230] hover:border-[#00F2FE] transition-all rounded-lg">
+                创作
+              </Link>
+              <Link href="/records" className="px-3 sm:px-4 py-2 bg-[#10B981] text-[#0B0D17] font-bold text-sm border border-[#202B3A] shadow-[0_0_10px_rgba(16,185,129,0.3)] rounded-lg">
+                记录
+              </Link>
+              <Link href="/recharge" className="px-3 sm:px-4 py-2 bg-[#141923] text-white font-bold text-sm border border-[#202B3A] hover:bg-[#1a2230] hover:border-[#00F2FE] transition-all rounded-lg">
+                充值
+              </Link>
+            </nav>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-xs text-[#00F2FE]">
-              <span>{new Date().toLocaleDateString('zh-CN')}</span>
-              <span className="text-white font-mono font-bold text-sm">{currentTime}</span>
-            </div>
-            <div className="px-3 py-1.5 bg-[#141923] border border-[#202B3A] flex items-center gap-1.5">
-              <span className="w-2 h-2 bg-[#10B981] border border-[#202B3A]"></span>
-              <span className="text-xs text-[#00F2FE]">积分</span>
-              <span className="font-bold text-white text-sm">{profile?.credits || 0}</span>
-            </div>
-            <div className="relative">
-              <button 
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-9 h-9 bg-[#141923] border border-[#202B3A] flex items-center justify-center hover:border-[#00F2FE] transition-colors"
-              >
-                <span className="text-white font-bold text-sm">
-                  {user?.email ? user.email.substring(0, 2).toUpperCase() : 'HA'}
-                </span>
-              </button>
-              
-              {showUserMenu && (
-                <div className="absolute right-0 top-10 w-56 bg-[#141923] border border-[#202B3A] shadow-lg z-50">
-                  <div className="p-4 border-b border-[#202B3A]">
-                    <p className="text-xs text-[#00F2FE] mb-1">当前账号</p>
-                    <p className="text-sm text-white font-medium truncate">{user?.email || '未登录'}</p>
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* 手机端隐藏时间 */}
+              <div className="hidden sm:flex items-center gap-2 text-xs text-[#00F2FE]">
+                <span>{new Date().toLocaleDateString('zh-CN')}</span>
+                <span className="text-white font-mono font-bold text-sm">{currentTime}</span>
+              </div>
+              {/* 积分显示 */}
+              <div className="px-2 sm:px-3 py-1 sm:py-1.5 bg-[#141923] border border-[#202B3A] flex items-center gap-1 sm:gap-1.5 rounded-lg">
+                <span className="w-2 h-2 bg-[#10B981] border border-[#202B3A]"></span>
+                <span className="text-xs text-[#00F2FE] hidden sm:inline">积分</span>
+                <span className="font-bold text-white text-sm">{profile?.credits || 0}</span>
+              </div>
+              {/* 用户头像 */}
+              <div className="relative">
+                <button 
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="w-8 h-8 sm:w-9 sm:h-9 bg-[#141923] border border-[#202B3A] flex items-center justify-center hover:border-[#00F2FE] transition-colors rounded-lg"
+                >
+                  <span className="text-white font-bold text-sm">
+                    {user?.email ? user.email.substring(0, 2).toUpperCase() : 'HA'}
+                  </span>
+                </button>
+                
+                {showUserMenu && (
+                  <div className="absolute right-0 top-10 w-48 sm:w-56 bg-[#141923] border border-[#202B3A] shadow-lg z-50 rounded-xl overflow-hidden">
+                    <div className="p-3 sm:p-4 border-b border-[#202B3A]">
+                      <p className="text-xs text-[#00F2FE] mb-1">当前账号</p>
+                      <p className="text-sm text-white font-medium truncate">{user?.email || '未登录'}</p>
+                    </div>
+                    {/* 手机端显示导航链接 */}
+                    <div className="p-2 border-b border-[#202B3A] md:hidden">
+                      <Link href="/dashboard" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors rounded-lg">
+                        🎨 创作工坊
+                      </Link>
+                      <Link href="/records" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors rounded-lg">
+                        📁 生成记录
+                      </Link>
+                      <Link href="/recharge" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors rounded-lg">
+                        💰 积分充值
+                      </Link>
+                    </div>
+                    <div className="p-2">
+                      <Link href="/dashboard" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors rounded-lg hidden md:block">
+                        创作工坊
+                      </Link>
+                      <Link href="/recharge" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors rounded-lg hidden md:block">
+                        积分充值
+                      </Link>
+                      <div className="border-t border-[#202B3A] my-1 hidden md:block"></div>
+                      <button 
+                        onClick={() => { router.push('/profile'); setShowUserMenu(false) }}
+                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors rounded-lg"
+                      >
+                        个人中心
+                      </button>
+                      <button 
+                        onClick={() => { if (supabase) supabase.auth.signOut(); window.location.href = '/login'; }}
+                        className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#1a2230] transition-colors rounded-lg"
+                      >
+                        退出登录
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-2">
-                    <Link href="/dashboard" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors">
-                      创作工坊
-                    </Link>
-                    <Link href="/recharge" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors">
-                      积分充值
-                    </Link>
-                    <div className="border-t border-[#202B3A] my-1"></div>
-                    <button 
-                      onClick={() => { router.push('/profile'); setShowUserMenu(false) }}
-                      className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors"
-                    >
-                      个人中心
-                    </button>
-                    <button 
-                      onClick={() => { if (supabase) supabase.auth.signOut(); window.location.href = '/login'; }}
-                      className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#1a2230] transition-colors"
-                    >
-                      退出登录
-                    </button>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
