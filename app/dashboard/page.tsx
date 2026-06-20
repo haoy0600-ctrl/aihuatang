@@ -156,6 +156,7 @@ export default function DashboardPage() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [isGuideOpen, setIsGuideOpen] = useState(false)
+  const [isApiNoticeOpen, setIsApiNoticeOpen] = useState(false)
 
   useEffect(() => {
     const updateTime = () => {
@@ -445,7 +446,7 @@ export default function DashboardPage() {
     setCustomStylePrompt(style.styleKeywords)
   }
 
-  const handleGenerate = async () => {
+  const executeActualGeneration = async () => {
     if (!selectedStyleId) {
       alert('请先选择一种风格')
       return
@@ -495,7 +496,6 @@ export default function DashboardPage() {
     setGeneratedImages([])
 
     abortController.current = new AbortController()
-    // 设置300秒超时（5分钟），匹配Vercel最大执行时间
     const timeoutId = setTimeout(() => {
       if (abortController.current) {
         abortController.current.abort()
@@ -546,7 +546,6 @@ export default function DashboardPage() {
       }
     } catch (error: any) {
       console.error('Generation failed:', error)
-      // 区分超时和其他错误
       if (error.name === 'AbortError') {
         alert('请求超时，请稍后重试')
       } else {
@@ -554,10 +553,38 @@ export default function DashboardPage() {
       }
       setGenerationStatus('idle')
     } finally {
-      // 异常安全释放：确保状态始终被释放
       clearTimeout(timeoutId)
       abortController.current = null
     }
+  }
+
+  const handleGenerate = () => {
+    const validSegments = textSegments.filter(s => s && s.trim().length > 0)
+    if (validSegments.length === 0 && genMode === 'text') {
+      alert('请至少输入一段内容')
+      return
+    }
+    if (genMode === 'image' && uploadedImages.length === 0) {
+      alert('请至少上传一张参考图片')
+      return
+    }
+    if (!selectedStyleId) {
+      alert('请先选择一种风格')
+      return
+    }
+
+    const hasSeenNotice = localStorage.getItem('has_seen_api_notice')
+    if (!hasSeenNotice) {
+      setIsApiNoticeOpen(true)
+    } else {
+      executeActualGeneration()
+    }
+  }
+
+  const handleConfirmNotice = () => {
+    localStorage.setItem('has_seen_api_notice', 'true')
+    setIsApiNoticeOpen(false)
+    executeActualGeneration()
   }
 
   const handleDownload = (url: string, index: number) => {
@@ -1242,6 +1269,87 @@ export default function DashboardPage() {
                 <p>• 积分充值立马到账且充多有送，充值对接g-p-t平台。作图平均低至<span className="text-[#03F09C] font-semibold">0.2-0.3毛/张</span>。<br />• 对接中转站最新模型，偶尔因敏感词或网络波动超时属正常，<span className="text-red-400 font-bold">生成失败绝不扣积分</span>，超时点击二次生成即可。<br />• 大量文字排版生图时，个别汉字若轻微变形属<span className="text-yellow-400">生图模型通病（正常情况）</span>，建议适当精简字数输入。</p>
               </div>
               <button onClick={()=>setIsGuideOpen(false)} className="w-full py-2 rounded bg-gradient-to-r from-[#03F09C] to-[#00F2FE] text-[#040D0A] font-bold text-xs hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer shadow-[0_0_10px_rgba(3,240,156,0.2)]">进入创作工坊</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isApiNoticeOpen && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-[99] p-4">
+          <div className="bg-[#12111a] border border-white/10 rounded-2xl p-5 max-w-md w-full text-gray-200 shadow-2xl relative">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 text-amber-500 font-bold text-base">
+                <span>⚠️</span>
+                <span>API 调用须知</span>
+              </div>
+              <button onClick={() => setIsApiNoticeOpen(false)} className="text-gray-500 hover:text-gray-300 transition-colors text-lg">×</button>
+            </div>
+            <p className="text-xs text-gray-400 mb-4">以下两种情况会导致调用成功但无图片返回，且会正常扣费：</p>
+
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+              <div className="border border-white/5 bg-[#1a1824] rounded-xl p-3.5 space-y-2">
+                <div className="flex items-start gap-2 text-sm font-bold text-gray-100">
+                  <span className="text-amber-500 mt-0.5">📐</span>
+                  <span>Prompt 未明确要求「返回图片」</span>
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed pl-6">
+                  如果文案只描述需求，没写清「请返回图片」，模型可能只进行内部推理，最终无图片返回。
+                </p>
+                <div className="flex items-center gap-1.5 text-[11px] pl-6">
+                  <span className="bg-[#2a1b40] text-[#a885f4] px-1.5 py-0.5 rounded">Prompt</span>
+                  <span className="text-gray-600">➔</span>
+                  <span className="bg-[#24212d] text-gray-400 px-1.5 py-0.5 rounded">内部推理</span>
+                  <span className="text-gray-600">➔</span>
+                  <span className="bg-[#36271c] text-amber-500 px-1.5 py-0.5 rounded">无图片</span>
+                  <span className="text-gray-600">➔</span>
+                  <span className="bg-[#3a1c22] text-red-400 px-1.5 py-0.5 rounded">扣费</span>
+                </div>
+                <div className="bg-[#13251e] border border-[#1b3a2b] p-2 rounded text-[11px] text-[#4ade80] pl-3 leading-relaxed">
+                  建议：在 Prompt 中明确写清「请返回一张图片 / 返回 image 数据」并提供详细描述。
+                </div>
+              </div>
+
+              <div className="border border-white/5 bg-[#1a1824] rounded-xl p-3.5 space-y-2">
+                <div className="flex items-start gap-2 text-sm font-bold text-gray-100">
+                  <span className="text-amber-500 mt-0.5">🛡️</span>
+                  <span>内容触发 Google 官方风控</span>
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed pl-6">
+                  若文案或图涉及版权 IP、敏感人物/内容，官方直接拒绝，不出图，不报错。
+                </p>
+                <div className="flex items-center gap-1.5 text-[11px] pl-6">
+                  <span className="bg-[#36271c] text-amber-500 px-1.5 py-0.5 rounded">敏感内容</span>
+                  <span className="text-gray-600">➔</span>
+                  <span className="bg-[#201f35] text-[#7976e6] px-1.5 py-0.5 rounded">被拦截</span>
+                  <span className="text-gray-600">➔</span>
+                  <span className="bg-[#36271c] text-amber-500 px-1.5 py-0.5 rounded">无图片</span>
+                  <span className="text-gray-600">➔</span>
+                  <span className="bg-[#3a1c22] text-red-400 px-1.5 py-0.5 rounded">扣费</span>
+                </div>
+                <div className="bg-[#142327] border border-[#18353d] p-2 rounded text-[11px] text-[#38bdf8] pl-3 leading-relaxed">
+                  建议：调整 Prompt，规避版权与敏感描述后重试。
+                </div>
+              </div>
+
+              <div className="bg-[#161a2b] border border-[#222a45] rounded-xl p-3 text-[11px] text-[#5bf] leading-relaxed flex items-start gap-1.5">
+                <span className="mt-0.5">⚠️</span>
+                <span>429/5xx 等官方异常不计费，但上述「调用成功无图」Google 官方规则即扣费。</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5 mt-4">
+              <button
+                onClick={() => setIsApiNoticeOpen(false)}
+                className="px-4 py-2 rounded-xl border border-white/10 text-xs font-bold hover:bg-white/5 text-gray-300 transition-all"
+              >
+                返回修改
+              </button>
+              <button
+                onClick={handleConfirmNotice}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#7c3aed] to-[#6366f1] text-xs font-bold text-white shadow-[0_0_15px_rgba(124,58,237,0.3)] hover:scale-[1.01] active:scale-[0.99] transition-all"
+              >
+                ✨ 我已了解，开始调用
+              </button>
             </div>
           </div>
         </div>
