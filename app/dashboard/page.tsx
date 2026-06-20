@@ -1031,7 +1031,7 @@ export default function DashboardPage() {
                 <div className="bg-black/30 p-2 rounded border border-white/5 space-y-1">
                   <h3 className="font-bold text-[#00F2FE]">▶ 图生图模式</h3>
                   <p className="text-gray-300">📸 上传知识图片并选择风格，也能做出与原图一样的风格！</p>
-                  <p className="text-gray-400"><span className="text-white font-bold">1. 比例与质量：</span>小红书笔记选<span className="text-yellow-400">3比4</span>；短视频封面选<span className="text-yellow-400">9比16</span>；商品图选<span className="text-yellow-400">1比1</span>。质量可选标准、高清、超清。<br /><span className="text-white font-bold">2. 风格选择：</span>支持多选，推荐：学霸风、黑板粉笔、儿童手绘、卡通手绘、数字极简等。</p>
+                  <p className="text-gray-400"><span className="text-white font-bold">1. 比例与质量：</span>小红书笔记选<span className="text-yellow-400">3比4</span>；短视频封面选<span className="text-yellow-400">9比16</span>；商品图选<span className="text-yellow-400">1比1</span>。<span className="text-[#03F09C]">质量默认超清</span>。<br /><span className="text-white font-bold">2. 风格选择：</span>支持多选，推荐：学霸风、黑板粉笔、儿童手绘、卡通手绘、数字极简等。</p>
                 </div>
                 <div className="bg-black/30 p-2 rounded border border-white/5 text-gray-300">
                   <h3 className="font-bold text-white">▶ 自定义风格区</h3>
