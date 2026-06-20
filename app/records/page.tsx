@@ -283,14 +283,12 @@ export default function RecordsPage() {
       <header className="bg-[#0B0D17] border-b border-[#202B3A]">
         <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center w-full py-2 sm:py-3">
-            <Link href="/" className="flex items-center gap-1.5 h-10 select-none hover:opacity-80 transition-opacity">
+            <Link href="/" className="flex items-center h-10 select-none hover:opacity-80 transition-opacity">
               <img 
-                src="/logo.svg" 
+                src="/logo.png" 
                 alt="AI画堂" 
-                className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
+                className="h-full w-auto object-contain"
               />
-              <span className="text-lg sm:text-xl font-sans font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#03F09C] to-[#00F2FE]">AI</span>
-              <span className="text-lg sm:text-xl font-normal text-transparent bg-clip-text bg-gradient-to-r from-[#00F2FE] to-[#03F09C] tracking-widest font-art ml-1">画堂</span>
             </Link>
 
             {/* 手机端隐藏导航 */}

@@ -42,10 +42,8 @@ export default function HomePage() {
   return (
     <div className="h-screen max-h-screen w-screen max-w-[100vw] overflow-hidden flex flex-col justify-between p-6 bg-[#040D0A] text-white">
       <header className="flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-1.5 h-10 select-none hover:opacity-80 transition-opacity">
-          <img src="/logo.svg" alt="AI画堂" className="w-9 h-9 object-contain" />
-          <span className="text-xl font-sans font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#03F09C] to-[#00F2FE]">AI</span>
-          <span className="text-xl font-normal text-transparent bg-clip-text bg-gradient-to-r from-[#00F2FE] to-[#03F09C] tracking-widest font-art ml-1">画堂</span>
+        <Link href="/" className="flex items-center h-10 select-none hover:opacity-80 transition-opacity">
+          <img src="/logo.png" alt="AI画堂" className="h-full w-auto object-contain" />
         </Link>
 
         <nav className="flex items-center gap-4">

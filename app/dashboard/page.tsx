@@ -680,14 +680,12 @@ export default function DashboardPage() {
       <header className="bg-[#040D0A] border-b border-[#142D24] flex-shrink-0">
         <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center w-full py-2 sm:py-3">
-            <Link href="/" className="flex items-center gap-1.5 h-10 select-none hover:opacity-80 transition-opacity">
+            <Link href="/" className="flex items-center h-10 select-none hover:opacity-80 transition-opacity">
               <img 
-                src="/logo.svg" 
+                src="/logo.png" 
                 alt="AI画堂" 
-                className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
+                className="h-full w-auto object-contain"
               />
-              <span className="text-lg sm:text-xl font-sans font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#03F09C] to-[#00F2FE]">AI</span>
-              <span className="text-lg sm:text-xl font-normal text-transparent bg-clip-text bg-gradient-to-r from-[#00F2FE] to-[#03F09C] tracking-widest font-art ml-1">画堂</span>
             </Link>
 
             {/* 手机端隐藏导航 */}
@@ -936,32 +934,38 @@ export default function DashboardPage() {
 
                 {/* 模型选择 */}
                 <div>
-                  <label className="text-xs text-[#10B981] mb-1 block">模型选择</label>
+                  <label className="text-xs text-[#10B981] mb-2 block">模型选择</label>
                   <div className="space-y-2">
                     <button
                       onClick={() => setSelectedModel('GPT-Image-2')}
-                      className={`w-full px-4 py-3 border border-[#142D24] text-center transition-all rounded-lg ${
+                      className={`relative w-full px-4 py-3 border text-center transition-all duration-300 rounded-xl overflow-hidden ${
                         selectedModel === 'GPT-Image-2'
-                          ? 'bg-[#10B981] shadow-[0_0_15px_rgba(16,185,129,0.4)] ring-2 ring-[#10B981]/50'
-                          : 'bg-[#091511]/60 backdrop-blur-sm hover:bg-[#142D24]'
+                          ? 'border-[#03F09C] bg-[#141d1a]/60 shadow-[0_0_25px_rgba(3,240,156,0.15)] scale-[1.02]'
+                          : 'border-white/10 bg-[#0e0d15] hover:border-white/20 hover:bg-white/5'
                       }`}
                     >
-                      <div>
-                        <div className={`text-sm font-bold ${selectedModel === 'GPT-Image-2' ? 'text-[#040D0A]' : 'text-white'}`}>GPT-Image-2</div>
-                        <div className={`text-xs ${selectedModel === 'GPT-Image-2' ? 'text-[#040D0A]/70' : 'text-[#10B981]'}`}>更高质量更多分析</div>
+                      {selectedModel === 'GPT-Image-2' && (
+                        <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-[#03F09C] to-[#00F2FE] opacity-10 blur-sm pointer-events-none"></div>
+                      )}
+                      <div className="relative">
+                        <div className={`text-sm font-bold ${selectedModel === 'GPT-Image-2' ? 'text-[#03F09C]' : 'text-white'}`}>GPT-Image-2</div>
+                        <div className={`text-xs mt-0.5 ${selectedModel === 'GPT-Image-2' ? 'text-[#03F09C]/70' : 'text-gray-500'}`}>更高质量更多分析</div>
                       </div>
                     </button>
                     <button
                       onClick={() => setSelectedModel('NanoBanana2')}
-                      className={`w-full px-4 py-3 border border-[#142D24] text-center transition-all rounded-lg ${
+                      className={`relative w-full px-4 py-3 border text-center transition-all duration-300 rounded-xl overflow-hidden ${
                         selectedModel === 'NanoBanana2'
-                          ? 'bg-[#10B981] shadow-[0_0_15px_rgba(16,185,129,0.4)] ring-2 ring-[#10B981]/50'
-                          : 'bg-[#091511]/60 backdrop-blur-sm hover:bg-[#142D24]'
+                          ? 'border-[#03F09C] bg-[#141d1a]/60 shadow-[0_0_25px_rgba(3,240,156,0.15)] scale-[1.02]'
+                          : 'border-white/10 bg-[#0e0d15] hover:border-white/20 hover:bg-white/5'
                       }`}
                     >
-                      <div>
-                        <div className={`text-sm font-bold ${selectedModel === 'NanoBanana2' ? 'text-[#040D0A]' : 'text-white'}`}>NanoBanana2</div>
-                        <div className={`text-xs ${selectedModel === 'NanoBanana2' ? 'text-[#040D0A]/70' : 'text-[#10B981]'}`}>快速图像生成</div>
+                      {selectedModel === 'NanoBanana2' && (
+                        <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-[#03F09C] to-[#00F2FE] opacity-10 blur-sm pointer-events-none"></div>
+                      )}
+                      <div className="relative">
+                        <div className={`text-sm font-bold ${selectedModel === 'NanoBanana2' ? 'text-[#03F09C]' : 'text-white'}`}>NanoBanana2</div>
+                        <div className={`text-xs mt-0.5 ${selectedModel === 'NanoBanana2' ? 'text-[#03F09C]/70' : 'text-gray-500'}`}>快速图像生成</div>
                       </div>
                     </button>
                   </div>

@@ -46,9 +46,20 @@ function buildFinalPrompt(inputText: string, styleName: string, customStyle?: st
       : 'cartoon hand-drawn style, cute illustration, vibrant pastel colors, clean thick line art, neat infographic layout'
   }
 
-  const UNIVERSAL_STYLE_LOCK_PROMPT = `MAIN CONTENT TO PRINT: "${userText}". VISUAL STYLE TO APPLY TO BACKGROUND ONLY: ${activeStyle}. DO NOT generate app dashboards or screen bars. Look like a printed textbook layout.`
+  const finalPromptForAI = `
+[CORE SUBJECT & TEXT COMPLIANCE]
+You must strictly render and layout the following explicit text content. The text clarity is the highest priority of this image. Do not distort, do not omit, do not hallucinate any characters:
+"${userText}"
 
-  return UNIVERSAL_STYLE_LOCK_PROMPT
+[VISUAL BACKGROUND & STYLE ENVIRONMENT]
+Render the ambient background, textures, color palette, and artistic medium strictly according to the style guidelines below. However, this style MUST NOT interfere with the legibility of the core text above. Keep the text area clean, high-contrast, and solid baseline:
+${activeStyle}
+
+[NEGATIVE REINFORCEMENT]
+low resolution, blurry text, chaotic layout, compressed artifact, deformed characters, text bleeding into background color.
+`;
+
+  return finalPromptForAI
 }
 
 async function submitGrsTask(
