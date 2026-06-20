@@ -101,6 +101,10 @@ export default function RecordsPage() {
     }
 
     fetchRecords()
+    
+    const interval = setInterval(fetchRecords, 10000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   const getModelPrice = (model: string): number => {

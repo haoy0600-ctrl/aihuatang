@@ -157,6 +157,7 @@ export default function DashboardPage() {
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [isGuideOpen, setIsGuideOpen] = useState(false)
   const [isApiNoticeOpen, setIsApiNoticeOpen] = useState(false)
+  const [isExpanding, setIsExpanding] = useState(false)
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
@@ -354,6 +355,42 @@ export default function DashboardPage() {
     const newSegments = [...textSegments]
     newSegments[activeTab - 1] = value
     setTextSegments(newSegments)
+  }
+
+  const handleAIExpand = async () => {
+    const currentText = textSegments[activeTab - 1]?.trim() || ''
+    
+    if (!currentText) {
+      alert('请先输入课程线索（如：新概念1第一课）')
+      return
+    }
+
+    setIsExpanding(true)
+    
+    try {
+      const response = await fetch('/api/expand-text', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text: currentText })
+      })
+
+      const data = await response.json()
+
+      if (data.success && data.expandedText) {
+        const newSegments = [...textSegments]
+        newSegments[activeTab - 1] = data.expandedText
+        setTextSegments(newSegments)
+      } else {
+        alert(data.error || 'AI 扩写失败，请重试')
+      }
+    } catch (error) {
+      console.error('AI Expand Error:', error)
+      alert('AI 扩写请求失败，请检查网络连接')
+    } finally {
+      setIsExpanding(false)
+    }
   }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -885,6 +922,27 @@ export default function DashboardPage() {
                       placeholder="请输入内容..."
                       className="w-full px-3 py-2.5 bg-[#040D0A] border border-[#142D24] text-sm text-white focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] focus:outline-none resize-none h-20 placeholder-[#64748B] rounded-lg"
                     />
+
+                    <button
+                      onClick={handleAIExpand}
+                      disabled={isExpanding}
+                      className={`w-full mt-2 py-2 text-xs font-bold border transition-all duration-300 rounded-lg flex items-center justify-center gap-2 ${
+                        isExpanding
+                          ? 'bg-[#091511]/60 border-[#142D24] text-[#64748B] cursor-not-allowed'
+                          : 'bg-gradient-to-r from-[#03F09C]/20 to-[#00F2FE]/20 border-[#03F09C]/50 text-[#03F09C] hover:bg-gradient-to-r from-[#03F09C]/30 to-[#00F2FE]/30 hover:border-[#03F09C] hover:shadow-[0_0_15px_rgba(3,240,156,0.3)]'
+                      }`}
+                    >
+                      {isExpanding ? (
+                        <>
+                          <span className="animate-spin">⏳</span>
+                          AI正在疯狂检索教材...
+                        </>
+                      ) : (
+                        <>
+                          ✨ AI一键智能补全
+                        </>
+                      )}
+                    </button>
 
                     <div className="flex justify-between items-center mt-2">
                       <span className="text-xs text-[#10B981]">第 {activeTab} / {totalTabs} 段</span>
