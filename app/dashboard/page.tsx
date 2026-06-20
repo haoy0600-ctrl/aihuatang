@@ -61,6 +61,7 @@ export default function DashboardPage() {
   const [customStylesList, setCustomStylesList] = useState<CustomStyle[]>([])
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
+  const [isGuideOpen, setIsGuideOpen] = useState(false)
 
   useEffect(() => {
     const updateTime = () => {
@@ -253,6 +254,22 @@ export default function DashboardPage() {
     setUploadedImages(newImages)
   }
 
+  const getEffectiveWordCount = (str: string): number => {
+    if (!str) return 0
+
+    const noPhonetics = str.replace(/\[.*?\]/g, '')
+
+    const chineseChars = (noPhonetics.match(/[\u4e00-\u9fa5]/g) || []).length
+
+    const englishWords = noPhonetics
+      .replace(/[\u4e00-\u9fa5]/g, ' ')
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()①②③④⑤⑥⑦⑧⑨⑩\n\r]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 0)
+
+    return chineseChars + englishWords.length
+  }
+
   const handleStyleChange = (styleId: number) => {
     setSelectedStyleId(styleId)
     
@@ -402,7 +419,7 @@ export default function DashboardPage() {
   const modelPrice = 3
   const outputCount = genMode === 'text' ? totalTabs : uploadedImages.length
   const totalCost = outputCount * modelPrice
-  const currentWordCount = textSegments[activeTab - 1]?.length || 0
+  const currentWordCount = getEffectiveWordCount(textSegments[activeTab - 1] || '')
 
   const getAspectClass = () => {
     const ratioMap: Record<string, string> = {
@@ -459,6 +476,9 @@ export default function DashboardPage() {
             </Link>
 
             <nav className="flex items-center gap-3">
+              <button onClick={() => setIsGuideOpen(true)} className="px-4 py-2 bg-[#091511]/60 backdrop-blur-sm text-[#00F2FE] font-bold text-sm border border-[#00F2FE]/30 hover:bg-[#00F2FE]/10 hover:border-[#00F2FE] transition-all rounded-lg">
+                功能介绍
+              </button>
               <Link href="/dashboard" className="px-4 py-2 bg-[#10B981] text-[#040D0A] font-bold text-sm border border-[#142D24] shadow-[0_0_10px_rgba(16,185,129,0.3)] hover:shadow-[0_0_15px_rgba(16,185,129,0.5)] transition-all rounded-lg">
                 创作
               </Link>
@@ -582,7 +602,7 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-1.5 mb-1">
                       {Array.from({ length: totalTabs }).map((_, index) => {
                         const textContent = textSegments[index] || ''
-                        const textLength = textContent.length
+                        const textLength = getEffectiveWordCount(textContent)
                         const isActive = activeTab === index + 1
                         const isEmpty = textLength === 0
                         const hasContent = textLength > 0 && textLength <= 150
@@ -981,6 +1001,63 @@ export default function DashboardPage() {
         show={showChangePassword}
         onClose={() => setShowChangePassword(false)}
       />
+
+      {isGuideOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#0B0D17] border border-[#202B3A] rounded-xl max-w-2xl w-full shadow-2xl">
+            <div className="text-gray-200 space-y-4 max-w-xl mx-auto p-1 max-h-[80vh] overflow-y-auto text-xs leading-relaxed scrollbar-thin">
+              <div className="border-b border-white/10 pb-2">
+                <h2 className="text-base font-bold bg-gradient-to-r from-[#03F09C] to-[#00F2FE] bg-clip-text text-transparent font-art">一：🤖 前言介绍</h2>
+                <p className="text-gray-300 mt-1">平台自带50多种风格可选，作为参考就好。支持自定义编辑专属提示词并保存，下次直接调用。任何知识都可以秒变知识图【巨大用推荐】，支持 GPT-Image-2 和 NanoBanana2 模型。</p>
+              </div>
+              <div className="space-y-3">
+                <h2 className="text-sm font-bold text-[#00F2FE] border-b border-white/5 pb-0.5">二：💁 使用教学</h2>
+                <div>
+                  <h3 className="font-bold text-white">步骤一：打开网址工具</h3>
+                  <p className="text-gray-400">复制链接在手机/电脑/iPad全设备通用打开。首次使用先注册登录，<span className="text-yellow-400">建议登录后收藏页面</span>以便下次使用。</p>
+                </div>
+                <div className="bg-black/30 p-2 rounded border border-white/5 space-y-1">
+                  <h3 className="font-bold text-[#03F09C]">▶ 文生图模式</h3>
+                  <p className="text-yellow-400 font-bold">💡 重点须知：选择对应模型</p>
+                  <p className="text-gray-300">• 制作<span className="text-white font-bold">英语相关图</span>：选 <span className="text-[#03F09C]">NanoBanana2</span> 模型（英文内容➔选Nano Banana 2）。<br />• 做<span className="text-white font-bold">中文内容图</span>：选 <span className="text-[#00F2FE]">GPT-Image-2</span> 模型（中文内容➔选image-2）。</p>
+                  <p className="text-gray-300 pt-1"><span className="text-white font-bold">方式一（复制知识）：</span>将语文、数学、英语、历史、生物、考研等知识文本复制进去。【知识点内容不易太多】。具体步骤：1.复制粘贴知识 ➔ 2.选择模型、尺寸和风格 ➔ 3.点击生成。</p>
+                  <div className="pt-1 border-t border-white/5 text-gray-400">
+                    <p className="text-white font-bold">方式二（直接输入指令参考，用大白话即可）：</p>
+                    <p className="italic text-[11px]">示例："三年级英语上册单元知识点汇总、产品宣传文案，需要全英文图，要求：全程只用英文，不要出现中文"</p>
+                    <p className="text-[#03F09C]">• 比如：帮我生成一个短视频的封面图，主标题是<span className="underline text-white">教辅卖家偷偷在用的出图工具</span>，标题加粗显眼，位置居中。</p>
+                    <p className="text-[#00F2FE]">• 比如：帮我生成哪个版本，哪个年级、上册或下册，什么学科的知识汇总、练习题、习题、教案等。</p>
+                  </div>
+                </div>
+                <div className="bg-black/30 p-2 rounded border border-white/5 space-y-1">
+                  <h3 className="font-bold text-[#00F2FE]">▶ 图生图模式</h3>
+                  <p className="text-gray-300">📸 上传知识图片并选择风格，也能做出与原图一样的风格！</p>
+                  <p className="text-gray-400"><span className="text-white font-bold">1. 比例与质量：</span>小红书笔记选<span className="text-yellow-400">3比4</span>；短视频封面选<span className="text-yellow-400">9比16</span>；商品图选<span className="text-yellow-400">1比1</span>。质量可选标准、高清、超清。<br /><span className="text-white font-bold">2. 风格选择：</span>支持多选，推荐：学霸风、黑板粉笔、儿童手绘、卡通手绘、数字极简等。</p>
+                </div>
+                <div className="bg-black/30 p-2 rounded border border-white/5 text-gray-300">
+                  <h3 className="font-bold text-white">▶ 自定义风格区</h3>
+                  <p className="text-red-400 font-bold">只需自定义风格名称与描述词，用很简单的大白话书写即可！</p>
+                  <p className="text-gray-400">描绘出你心中想要的感觉并保存，即可在风格选项中勾选并生成对应效果。</p>
+                </div>
+              </div>
+              <div className="bg-white/5 p-2 rounded border border-white/5 space-y-1.5">
+                <h2 className="text-sm font-bold text-white border-b border-white/5 pb-0.5">🎁 三：🎀 文字生成详细参考</h2>
+                <p className="text-gray-400">💡 因想法各异，固定提示词无法满足所有人，以下分享通用复刻落地方式：</p>
+                <p className="text-gray-300"><strong className="text-[#03F09C]">3.1 英语场景</strong>：切换成 <span className="text-[#03F09C]">NanoBanana2</span> 模型生成，效果极佳。</p>
+                <div className="pt-1 border-t border-white/5 text-gray-300">
+                  <p><strong className="text-[#00F2FE]">3.2 反推复刻</strong>：想要其他图卡视觉，可将原图发给豆包/ChatGPT，发送指令让AI帮你总结风格排版样式的提示词，抓住想要的提取出来即可。</p>
+                  <div className="bg-black/50 p-1.5 rounded font-mono text-[11px] text-gray-400 my-1">指令1：我非常喜欢这个风格，我希望你用大白话的方式把图片上的这种风格给我描述</div>
+                  <div className="bg-black/50 p-1.5 rounded font-mono text-[11px] text-gray-400">指令2：请你使用图片识别模式，帮我总结这张图片上面的风格，排版，样式，把总结好的提示词名称以及内容反馈给我，我需要用这个提示词语去做图</div>
+                </div>
+              </div>
+              <div className="bg-red-950/20 border border-red-500/20 p-3 rounded-lg text-gray-300 space-y-1">
+                <h2 className="font-bold text-red-400 text-sm">⚠️ 特别说明</h2>
+                <p>• 积分充值立马到账且充多有送，充值对接g-p-t平台。作图平均低至<span className="text-[#03F09C] font-semibold">0.2-0.3毛/张</span>。<br />• 对接中转站最新模型，偶尔因敏感词或网络波动超时属正常，<span className="text-red-400 font-bold">生成失败绝不扣积分</span>，超时点击二次生成即可。<br />• 大量文字排版生图时，个别汉字若轻微变形属<span className="text-yellow-400">生图模型通病（正常情况）</span>，建议适当精简字数输入。</p>
+              </div>
+              <button onClick={()=>setIsGuideOpen(false)} className="w-full py-2 rounded bg-gradient-to-r from-[#03F09C] to-[#00F2FE] text-[#040D0A] font-bold text-xs hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer shadow-[0_0_10px_rgba(3,240,156,0.2)]">进入创作工坊</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
