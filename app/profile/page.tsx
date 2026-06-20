@@ -108,7 +108,7 @@ export default function ProfilePage() {
           <div className="flex justify-between items-center w-full py-2 sm:py-3">
             <Link href="/" className="flex items-center h-16 sm:h-20 select-none hover:opacity-80 transition-opacity">
               <img 
-                src="/logo.png?v=4" 
+                src="/logo.png?v=5" 
                 alt="AI画堂" 
                 className="h-full w-auto object-contain"
               />

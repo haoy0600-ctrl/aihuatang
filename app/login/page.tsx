@@ -433,7 +433,7 @@ export default function LoginPage() {
         <div className="relative z-10 text-center">
           <div className="w-32 h-32 sm:w-40 sm:h-40 mx-auto mb-8">
             <img 
-              src="/logo.png?v=4" 
+              src="/logo.png?v=5" 
               alt="AI画堂" 
               className="w-full h-full object-contain"
             />
@@ -476,7 +476,7 @@ export default function LoginPage() {
           <div className="md:hidden text-center mb-8">
             <div className="w-24 h-24 mx-auto mb-4">
               <img 
-                src="/logo.png?v=4" 
+                src="/logo.png?v=5" 
                 alt="AI画堂" 
                 className="w-full h-full object-contain"
               />
