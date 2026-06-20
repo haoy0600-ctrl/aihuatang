@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -45,6 +45,7 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState('')
+  const abortController = useRef<AbortController | null>(null)
 
   const [genMode, setGenMode] = useState<GenerationMode>(() => {
     if (typeof window !== 'undefined') {
@@ -486,6 +487,8 @@ export default function DashboardPage() {
     setGenerationStatus('loading')
     setGeneratedImages([])
 
+    abortController.current = new AbortController()
+
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
@@ -499,7 +502,7 @@ export default function DashboardPage() {
           aspectRatio: selectedRatio,
           modelType: selectedModel,
         }),
-        signal: AbortSignal.timeout(600000),
+        signal: abortController.current.signal,
       })
 
       const data = await response.json()
@@ -986,6 +989,10 @@ export default function DashboardPage() {
                   {generationStatus === 'loading' ? (
                     <button
                       onClick={() => {
+                        if (abortController.current) {
+                          abortController.current.abort()
+                          abortController.current = null
+                        }
                         setGenerationStatus('idle')
                         localStorage.setItem('ai_huatang_draft_status', 'idle')
                       }}
