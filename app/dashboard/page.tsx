@@ -123,7 +123,12 @@ export default function DashboardPage() {
   })
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem('ai_huatang_draft_status') as GenerationStatus) || 'idle'
+      const saved = localStorage.getItem('ai_huatang_draft_status') as GenerationStatus
+      // 关键修复：loading 状态不恢复，避免刷新后卡死在生成中
+      if (saved === 'loading') {
+        return 'idle'
+      }
+      return saved || 'idle'
     }
     return 'idle'
   })
@@ -978,22 +983,24 @@ export default function DashboardPage() {
                 {/* 分隔线 */}
                 <div className="border-t border-[#142D24] pt-4">
                   {/* 开始生成按钮 */}
-                  <button
-                    onClick={handleGenerate}
-                    disabled={generationStatus === 'loading'}
-                    className={`w-full py-3 bg-[#10B981] text-[#040D0A] font-bold text-sm border border-[#142D24] transition-all flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(16,185,129,0.4)] rounded-lg ${
-                      generationStatus === 'loading' ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-[0_0_30px_rgba(16,185,129,0.6)]'
-                    }`}
-                  >
-                    {generationStatus === 'loading' ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-[#040D0A] border-t-transparent animate-spin"></div>
-                        生成中...
-                      </>
-                    ) : (
-                      <>🚀 开始生成</>
-                    )}
-                  </button>
+                  {generationStatus === 'loading' ? (
+                    <button
+                      onClick={() => {
+                        setGenerationStatus('idle')
+                        localStorage.setItem('ai_huatang_draft_status', 'idle')
+                      }}
+                      className="w-full py-3 bg-[#EF4444] text-white font-bold text-sm border border-red-900/50 transition-all flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(239,68,68,0.4)] rounded-lg hover:shadow-[0_0_30px_rgba(239,68,68,0.6)]"
+                    >
+                      ⛔ 取消生成
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleGenerate}
+                      className="w-full py-3 bg-[#10B981] text-[#040D0A] font-bold text-sm border border-[#142D24] transition-all flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(16,185,129,0.4)] rounded-lg hover:shadow-[0_0_30px_rgba(16,185,129,0.6)]"
+                    >
+                      🚀 开始生成
+                    </button>
+                  )}
 
                   {/* 成本信息 */}
                   <div className="mt-3 p-3 bg-[#091511]/30 border border-[#142D24] rounded-lg text-center">
