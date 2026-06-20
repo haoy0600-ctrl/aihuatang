@@ -435,7 +435,7 @@ export default function LoginPage() {
             <img 
               src="/logo.png?v=5" 
               alt="AI画堂" 
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain drop-shadow-lg"
             />
           </div>
           
