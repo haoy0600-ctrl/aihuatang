@@ -6,8 +6,8 @@ export default function HomePage() {
   const features = [
     {
       icon: '📝',
-      title: '文生图',
-      description: '支持多段文字无缝切段，DeepSeek中控翻译，打造规整知识图谱。',
+      title: 'AI图片生成',
+      description: '支持 image-2 和 NanoBanana2 两大模型，输入文本自动生成精美竖版知识卡片，多种比例与画质可选。',
     },
     {
       icon: '🖼',
