@@ -771,6 +771,11 @@ export default function DashboardPage() {
                       <span className="text-xs text-[#10B981]">第 {activeTab} / {totalTabs} 段</span>
                       <span className="text-xs text-[#10B981]">{currentWordCount} 字</span>
                     </div>
+                    {currentWordCount > 150 && (
+                      <div className="w-full text-center text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/20 py-1.5 px-3 rounded mt-2 whitespace-nowrap overflow-hidden animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.2)]">
+                        ⚠️ 当前有效字数已超过 150 字，建议精简内容以获得最佳生成效果
+                      </div>
+                    )}
                   </div>
                 )}
 
