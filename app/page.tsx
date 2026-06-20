@@ -17,7 +17,7 @@ export default function HomePage() {
     {
       icon: '💰',
       title: '安全积分到账',
-      description: '对接安全聚合支付，新用户注册即送 3 积分福利。',
+      description: '对接安全聚合支付，QQ邮箱注册即送6积分，免费测试3张图。',
     },
   ]
 

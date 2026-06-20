@@ -266,7 +266,7 @@ export default function RechargePage() {
               <p className="text-xs text-[#10B981] mt-0.5">当前余额：<span className="text-[#00E676] font-bold">{profile?.credits || 0}</span> 积分</p>
             </div>
             <div className="bg-[#091511] border border-[#142D24] px-3 py-1.5 rounded-lg">
-              <p className="text-[#10B981] text-xs">🎁 新用户福利：注册即送3积分，免费体验AI生图！</p>
+              <p className="text-[#10B981] text-xs">🎁 新用户福利：QQ邮箱注册即送6积分，免费测试3张图！</p>
             </div>
           </div>
 

@@ -486,34 +486,37 @@ export default function RecordsPage() {
                         </div>
                       )}
 
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center gap-2 p-2">
+                      <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center gap-2 p-2">
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
                             setPreviewImageUrl(imageUrls?.[0] || '')
                             setShowImagePreview(true)
                           }}
-                          className="px-2 py-1.5 bg-[#00E676]/90 text-[#0A0F1D] text-[10px] font-bold hover:bg-[#00E676] transition-all backdrop-blur-sm border border-[#00E676]/50"
+                          className="w-full max-w-[100px] px-3 py-2 bg-[#00E676] text-[#0A0F1D] text-xs font-bold hover:bg-[#00ff80] transition-all backdrop-blur-sm border border-[#00E676] flex items-center justify-center gap-1.5"
                         >
-                          🔍
+                          <span className="text-sm">🔍</span>
+                          <span>预览</span>
                         </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
                             handleDownload(imageUrls?.[0] || '', 0)
                           }}
-                          className="px-2 py-1.5 bg-[#00F2FE]/90 text-[#0A0F1D] text-[10px] font-bold hover:bg-[#00F2FE] transition-all backdrop-blur-sm border border-[#00F2FE]/50"
+                          className="w-full max-w-[100px] px-3 py-2 bg-[#00F2FE] text-[#0A0F1D] text-xs font-bold hover:bg-[#33f5ff] transition-all backdrop-blur-sm border border-[#00F2FE] flex items-center justify-center gap-1.5"
                         >
-                          📥
+                          <span className="text-sm">⬇️</span>
+                          <span>下载</span>
                         </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
                             handleCopyLink(imageUrls?.[0] || '')
                           }}
-                          className="px-2 py-1.5 bg-[#94A3B8]/90 text-[#0A0F1D] text-[10px] font-bold hover:bg-[#94A3B8] transition-all backdrop-blur-sm border border-[#94A3B8]/50"
+                          className="w-full max-w-[100px] px-3 py-2 bg-white/90 text-[#0A0F1D] text-xs font-bold hover:bg-white transition-all backdrop-blur-sm border border-white/50 flex items-center justify-center gap-1.5"
                         >
-                          📋
+                          <span className="text-sm">🔗</span>
+                          <span>复制</span>
                         </button>
                       </div>
 
