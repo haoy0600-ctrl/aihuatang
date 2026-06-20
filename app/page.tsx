@@ -79,10 +79,24 @@ export default function HomePage() {
 
       <main className="flex-1 flex flex-col justify-center items-center">
         <div className="max-w-4xl mx-auto text-center space-y-4">
-          <div className="space-y-2">
-            <h1 className="text-4xl lg:text-6xl font-bold text-white tracking-wide">
+          <div className="w-full flex justify-center items-center overflow-hidden py-6 bg-transparent">
+            <h1 className="text-3xl md:text-5xl font-black tracking-wider whitespace-nowrap font-sans select-none" style={{
+              background: 'linear-gradient(to right, #03F09C, #00F2FE, #FF007A, #03F09C)',
+              backgroundSize: '200% auto',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              animation: 'superShimmer 3s linear infinite',
+              filter: 'drop-shadow(0 0 25px rgba(3,240,156,0.4))'
+            }}>
               自媒体爆款图形设计与智能排版素材工具箱
             </h1>
+            <style>{`
+              @keyframes superShimmer {
+                0% { background-position: 0% center; }
+                100% { background-position: 200% center; }
+              }
+            `}</style>
           </div>
           <p className="text-sm lg:text-base text-[#94A3B8] max-w-xl mx-auto leading-relaxed">
             输入文本或参考图，一键批量生成专属高画质知识卡片与手绘板书
