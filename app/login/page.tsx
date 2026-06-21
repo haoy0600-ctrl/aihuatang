@@ -190,16 +190,23 @@ export default function LoginPage() {
 
     setIsSending(true)
     
-    const { error: sendError } = await supabase.auth.signInWithOtp({
-      email,
-      options: { 
-        shouldCreateUser: true
+    try {
+      const response = await fetch('/api/auth/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      
+      const data = await response.json()
+      
+      if (!data.success) {
+        setError(`发送失败: ${data.error}`)
+        setIsSending(false)
+        return
       }
-    })
-
-    if (sendError) {
+    } catch (sendError) {
       console.error('Send code error:', sendError)
-      setError(`发送失败: ${sendError.message}`)
+      setError('发送失败，请稍后重试')
       setIsSending(false)
       return
     }
@@ -211,11 +218,6 @@ export default function LoginPage() {
 
   const handlePasswordLogin = async () => {
     setError('')
-
-    if (!supabase) {
-      setError('系统配置未完成，请稍后重试')
-      return
-    }
 
     if (!email) {
       setError('请输入邮箱地址')
@@ -229,36 +231,39 @@ export default function LoginPage() {
 
     setIsSubmitting(true)
 
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      })
+      
+      const data = await response.json()
+      
+      if (!data.success) {
+        setError(`登录失败: ${data.error}`)
+        setIsSubmitting(false)
+        return
+      }
 
-    if (loginError) {
-      setError(`登录失败: ${loginError.message}`)
+      saveSession(email)
+
+      if (data.user) {
+        await ensureProfileExists(data.user.id, data.user.email || email)
+      }
+
+      setTimeout(() => {
+        router.push('/dashboard')
+      }, 500)
+    } catch (loginError) {
+      console.error('Login error:', loginError)
+      setError('登录失败，请稍后重试')
       setIsSubmitting(false)
-      return
     }
-
-    saveSession(email)
-
-    const { data: userData } = await supabase.auth.getUser()
-    if (userData?.user) {
-      await ensureProfileExists(userData.user.id, userData.user.email || email)
-    }
-
-    setTimeout(() => {
-      router.push('/dashboard')
-    }, 500)
   }
 
   const handleCodeLogin = async () => {
     setError('')
-
-    if (!supabase) {
-      setError('系统配置未完成，请稍后重试')
-      return
-    }
 
     if (!email) {
       setError('请输入邮箱地址')
@@ -272,34 +277,38 @@ export default function LoginPage() {
 
     setIsSubmitting(true)
 
-    const { data, error: verifyError } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'email'
-    })
-
-    if (verifyError) {
-      setError('验证码错误或已过期，请重新获取')
-      setIsSubmitting(false)
-      return
-    }
-
-    if (data?.session) {
-      saveSession(email)
+    try {
+      const response = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token })
+      })
       
-      const { data: userData } = await supabase.auth.getUser()
-      if (userData?.user) {
-        await ensureProfileExists(userData.user.id, userData.user.email || email)
+      const data = await response.json()
+      
+      if (!data.success) {
+        setError('验证码错误或已过期，请重新获取')
+        setIsSubmitting(false)
+        return
       }
 
-      if (!userData?.user?.email_confirmed_at) {
-        setShowSetPassword(true)
-      }
+      if (data.user) {
+        saveSession(email)
+        await ensureProfileExists(data.user.id, data.user.email || email)
 
-      setTimeout(() => {
-        router.push('/dashboard')
-      }, 500)
-    } else {
+        if (!data.user.email_confirmed_at) {
+          setShowSetPassword(true)
+        }
+
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 500)
+      } else {
+        setError('登录失败，请稍后重试')
+        setIsSubmitting(false)
+      }
+    } catch (verifyError) {
+      console.error('Verify OTP error:', verifyError)
       setError('登录失败，请稍后重试')
       setIsSubmitting(false)
     }
@@ -307,11 +316,6 @@ export default function LoginPage() {
 
   const handleRegister = async () => {
     setError('')
-
-    if (!supabase) {
-      setError('系统配置未完成，请稍后重试')
-      return
-    }
 
     if (!username) {
       setError('请输入用户名')
@@ -351,54 +355,59 @@ export default function LoginPage() {
 
     setIsSubmitting(true)
 
-    const { data, error: verifyError } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'email'
-    })
-
-    if (verifyError) {
-      setError('验证码错误或已过期，请重新获取')
-      setIsSubmitting(false)
-      return
-    }
-
-    if (data?.session) {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password
+    try {
+      const verifyResponse = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token })
       })
-
-      if (updateError) {
-        setError(`注册失败: ${updateError.message}`)
+      
+      const verifyData = await verifyResponse.json()
+      
+      if (!verifyData.success) {
+        setError('验证码错误或已过期，请重新获取')
         setIsSubmitting(false)
         return
       }
 
-      saveSession(email)
-      
-      // =========================================
-      // 🔒 安全大闸三：记录注册IP
-      // =========================================
-      try {
-        await fetch('/api/auth/register-check', {
-          method: 'PUT',
+      if (verifyData.user) {
+        const updateResponse = await fetch('/api/auth/update-password', {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({ email, password })
         })
-        console.log('注册IP已记录')
-      } catch (recordError) {
-        console.error('记录注册IP失败:', recordError)
-      }
-      
-      const { data: userData } = await supabase.auth.getUser()
-      if (userData?.user) {
-        await ensureProfileExists(userData.user.id, userData.user.email || email)
-      }
+        
+        const updateData = await updateResponse.json()
+        
+        if (!updateData.success) {
+          setError(`注册失败: ${updateData.error}`)
+          setIsSubmitting(false)
+          return
+        }
 
-      setTimeout(() => {
-        router.push('/dashboard')
-      }, 500)
-    } else {
+        saveSession(email)
+        
+        try {
+          await fetch('/api/auth/register-check', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+          })
+          console.log('注册IP已记录')
+        } catch (recordError) {
+          console.error('记录注册IP失败:', recordError)
+        }
+        
+        await ensureProfileExists(verifyData.user.id, verifyData.user.email || email)
+
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 500)
+      } else {
+        setError('注册失败，请稍后重试')
+      }
+    } catch (registerError) {
+      console.error('Register error:', registerError)
       setError('注册失败，请稍后重试')
       setIsSubmitting(false)
     }
