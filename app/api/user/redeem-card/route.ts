@@ -1,10 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 
-// IP 频率限制：内存计数器
+// ==================================================
+// 🔒 安全大闸一：防撞库限流系统
+// ==================================================
+
+// IP 频率限制：内存计数器（正常请求限流）
 const ipRequestMap = new Map<string, { count: number; resetTime: number }>()
-const RATE_LIMIT_WINDOW = 60 * 1000
-const RATE_LIMIT_MAX = 10 // 提高频率限制，支持连续兑换
+const RATE_LIMIT_WINDOW = 60 * 1000 // 1分钟窗口
+const RATE_LIMIT_MAX = 10 // 每分钟最多10次请求
+
+// IP 错误计数器：防止黑客暴力撞库猜卡密
+const errorIpCache = new Map<string, { count: number; lastTime: number }>()
+const ERROR_LIMIT_MAX = 3 // 单IP最多3次错误
+const ERROR_LIMIT_WINDOW = 24 * 60 * 60 * 1000 // 24小时锁定
+
+// 卡密复用防护：内存缓存已使用的卡密
+const usedCardCodes = new Map<string, { usedAt: number; usedBy: string; usedEmail: string }>()
+const CARD_CACHE_TTL = 24 * 60 * 60 * 1000 // 24小时缓存
+
+// 定时清理过期缓存
+setInterval(() => {
+  const now = Date.now()
+  for (const [code, record] of usedCardCodes) {
+    if (now - record.usedAt > CARD_CACHE_TTL) {
+      usedCardCodes.delete(code)
+    }
+  }
+  // 清理过期的错误计数器
+  for (const [ip, record] of errorIpCache) {
+    if (now - record.lastTime > ERROR_LIMIT_WINDOW) {
+      errorIpCache.delete(ip)
+    }
+  }
+}, 60 * 60 * 1000)
 
 function getClientIP(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for')
@@ -31,58 +60,103 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number; rese
   return { allowed: true, remaining: RATE_LIMIT_MAX - record.count, resetIn: RATE_LIMIT_WINDOW - record.count }
 }
 
-// 离线卡密自动兼容：解析 AHT-积分-随机串 格式
+function checkErrorLimit(ip: string): { allowed: boolean; count: number; resetIn: number } {
+  const now = Date.now()
+  const record = errorIpCache.get(ip)
+
+  if (!record || now - record.lastTime > ERROR_LIMIT_WINDOW) {
+    return { allowed: true, count: 0, resetIn: 0 }
+  }
+
+  if (record.count >= ERROR_LIMIT_MAX) {
+    return { allowed: false, count: record.count, resetIn: ERROR_LIMIT_WINDOW - (now - record.lastTime) }
+  }
+
+  return { allowed: true, count: record.count, resetIn: ERROR_LIMIT_WINDOW - (now - record.lastTime) }
+}
+
+function recordError(ip: string) {
+  const now = Date.now()
+  const record = errorIpCache.get(ip)
+  if (record) {
+    record.count++
+    record.lastTime = now
+  } else {
+    errorIpCache.set(ip, { count: 1, lastTime: now })
+  }
+}
+
+function clearError(ip: string) {
+  errorIpCache.delete(ip)
+}
+
+// ==================================================
+// 🔒 离线卡密解析函数
+// ==================================================
 function parseOfflineCardCode(code: string): { points: number; valid: boolean; format: string } {
-  // 格式: AHT-积分-随机串 或 AHT-积分-随机串1-随机串2
-  // 例如: AHT-100-ABCD 或 AHT-320-XYZW-ABCD 或 AHT-328-FD2F-6M9
+  console.log("=== parseOfflineCardCode 开始 ===");
+  console.log("原始卡密:", code);
   
   if (!code.startsWith('AHT-')) {
+    console.log("卡密不以 AHT- 开头");
     return { points: 0, valid: false, format: 'unknown' }
   }
   
   const parts = code.split('-')
+  console.log("分割后的 parts:", parts);
   
-  // 必须至少有 AHT-积分-随机串 (3段)
   if (parts.length < 3) {
-    console.log("离线卡密格式错误：段数不足，parts:", parts);
+    console.log("段数不足，至少需要3段");
     return { points: 0, valid: false, format: 'invalid' }
   }
   
-  // 尝试解析 parts[1] 作为积分
   const potentialPoints = parseInt(parts[1], 10)
+  console.log("解析的积分值:", potentialPoints, "原始值:", parts[1]);
   
   if (!isNaN(potentialPoints) && potentialPoints > 0 && potentialPoints <= 100000) {
-    // 验证剩余部分是否确实是随机串（允许连字符）
     const remainingPart = parts.slice(2).join('-')
+    console.log("剩余部分(随机串):", remainingPart);
     
-    // 随机串应该只包含字母和数字（允许连字符连接）
     const isRandomString = /^[A-Z0-9-]+$/i.test(remainingPart) && remainingPart.length >= 4
     
     if (isRandomString) {
-      console.log(`离线卡密解析成功: 格式=${parts.join('-')}, 积分=${potentialPoints}, 随机串=${remainingPart}`);
+      console.log(`✅ 解析成功: 积分=${potentialPoints}, 随机串=${remainingPart}`);
       return { points: potentialPoints, valid: true, format: 'AHT-POINTS-RANDOM' }
     }
-  }
-  
-  // 如果 parts[1] 不是有效数字，检查整个格式
-  if (isNaN(potentialPoints) || potentialPoints <= 0) {
-    console.log("parts[1] 不是有效积分值:", parts[1]);
-  } else if (potentialPoints > 100000) {
-    console.log("积分值超出范围:", potentialPoints);
   }
   
   return { points: 0, valid: false, format: 'invalid' }
 }
 
+// ==================================================
+// 🔒 主接口：卡密兑换
+// ==================================================
 export async function POST(request: NextRequest) {
   try {
-    console.log("=== 主理人卡密兑换流水日志 ===");
+    console.log("=== 🔒 安全卡密兑换流水日志 ===");
     
     const clientIP = getClientIP(request)
-    const rateCheck = checkRateLimit(clientIP)
 
+    // =========================================
+    // 补丁一：单IP错误限流拦截锁（防撞库）
+    // =========================================
+    const errorCheck = checkErrorLimit(clientIP)
+    if (!errorCheck.allowed) {
+      console.log(`⚠️ IP ${clientIP} 错误次数过多，触发防撞库保护`);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `⚠️ 安全检测：您尝试的错误次数过多，账号已触发防撞库保护，请 ${Math.ceil(errorCheck.resetIn / 3600000)} 小时后再试或联系主理人微信！`,
+          resetIn: Math.ceil(errorCheck.resetIn / 1000),
+        },
+        { status: 429 }
+      )
+    }
+
+    // 正常请求频率限制
+    const rateCheck = checkRateLimit(clientIP)
     if (!rateCheck.allowed) {
-      console.log(`IP ${clientIP} 请求过于频繁，剩余重置时间: ${rateCheck.resetIn}ms`);
+      console.log(`IP ${clientIP} 请求过于频繁`);
       return NextResponse.json(
         {
           success: false,
@@ -94,9 +168,11 @@ export async function POST(request: NextRequest) {
     }
 
     const { cardCode, userId } = await request.json()
+    console.log("请求参数:", JSON.stringify({ cardCode, userId }));
 
     if (!cardCode) {
       console.log("激活码为空！");
+      recordError(clientIP)
       return NextResponse.json(
         { success: false, error: '激活码不能为空！' },
         { status: 400 }
@@ -111,114 +187,246 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!supabaseAdmin) {
-      console.error("Supabase Admin 未初始化！");
+    // =========================================
+    // 补丁二：用户输入自动容错（自动剔除前后空格，强转为大写）
+    // =========================================
+    const cleanCode = cardCode.trim().toUpperCase()
+    console.log("当前用户ID:", userId);
+    console.log("输入卡密(清理后):", cleanCode);
+
+    // =========================================
+    // 安全机制：卡密复用防护（内存缓存层）
+    // =========================================
+    const cachedUsed = usedCardCodes.get(cleanCode)
+    if (cachedUsed) {
+      const usedTime = new Date(cachedUsed.usedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+      console.log(`❌ 卡密复用检测: ${cleanCode} 已被使用`);
       return NextResponse.json(
-        { success: false, error: '服务暂不可用，请稍后再试' },
-        { status: 503 }
+        { 
+          success: false, 
+          error: `⚠️ 该卡密已被使用！已于 ${usedTime} 被账号 ${cachedUsed.usedEmail} 兑换走。`,
+          usedTime: usedTime,
+          usedByEmail: cachedUsed.usedEmail,
+        },
+        { status: 400 }
       )
     }
 
-    const cleanCode = cardCode.trim().toUpperCase()
-    console.log("当前用户ID:", userId);
-    console.log("输入卡密:", cleanCode);
-
-    // =========================================
-    // 1. 去数据库查存量卡密
-    // =========================================
-    // 卡密记录类型
     type CardRecord = {
       id: string;
       code: string;
       credits: number;
       status: string;
       used_email?: string;
+      used_at?: string;
+      used_by?: string;
     }
-    
-    let { data: cardData, error: cardError } = await supabaseAdmin
-      .from('card_codes')
-      .select('id, code, credits, status, used_email')
-      .eq('code', cleanCode)
-      .single() as { data: CardRecord | null; error: any }
 
     // =========================================
-    // 2. 核心大坝：如果数据库里没有这个码
-    //    且是以 AHT- 开头的离线防伪码
-    //    则【全自动就地初始化补录入库】
+    // 1. 离线卡密直接解析（优先处理）
     // =========================================
-    if ((cardError || !cardData) && cleanCode.startsWith('AHT-')) {
+    if (cleanCode.startsWith('AHT-')) {
       const parsed = parseOfflineCardCode(cleanCode)
       
       if (parsed.valid) {
-        console.log("检测到主理人生成的合法离线防伪码，正在执行全自动初始化补录...");
-        console.log("解析积分:", parsed.points);
+        console.log("检测到主理人生成的合法离线防伪码，积分:", parsed.points);
         
-        try {
-          // 尝试插入新记录
-          const { data: insertedCard, error: insertError } = await supabaseAdmin
-            .from('card_codes')
-            .insert({
-              code: cleanCode,
-              credits: parsed.points,
-              status: 'unused',
-              created_at: new Date().toISOString(),
+        if (supabaseAdmin) {
+          try {
+            let { data: cardData, error: cardError } = await supabaseAdmin
+              .from('card_codes')
+              .select('id, code, credits, status, used_email, used_at, used_by')
+              .eq('code', cleanCode)
+              .single() as { data: CardRecord | null; error: any }
+
+            // 如果数据库中没有，插入新记录
+            if (cardError || !cardData) {
+              console.log("数据库中不存在，尝试补录...");
+              const { data: insertedCard, error: insertError } = await supabaseAdmin
+                .from('card_codes')
+                .insert({
+                  code: cleanCode,
+                  credits: parsed.points,
+                  status: 'unused',
+                  created_at: new Date().toISOString(),
+                })
+                .select('id, code, credits, status')
+                .single() as { data: CardRecord | null; error: any }
+              
+              if (!insertError && insertedCard) {
+                cardData = insertedCard
+                cardError = null
+                console.log(`✅ 离线卡密补录成功！面额为: ${parsed.points} 积分`);
+              }
+            }
+
+            // =========================================
+            // 补丁三：已被兑换账号具体回显（彻底拒绝微信扯皮铁证）
+            // =========================================
+            if (cardData && cardData.status === 'used') {
+              const usedTime = cardData.used_at 
+                ? new Date(cardData.used_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) 
+                : "未知时间"
+              const usedByEmail = cardData.used_email || "其他用户"
+              console.log(`❌ 卡密已被使用: ${cleanCode}`);
+              
+              // 同步到内存缓存
+              usedCardCodes.set(cleanCode, { 
+                usedAt: cardData.used_at ? new Date(cardData.used_at).getTime() : Date.now(), 
+                usedBy: cardData.used_by || 'unknown',
+                usedEmail: usedByEmail,
+              })
+              
+              return NextResponse.json(
+                { 
+                  success: false, 
+                  error: `⚠️ 该卡密已被使用！已于 ${usedTime} 被账号 ${usedByEmail} 兑换走。`,
+                  usedTime: usedTime,
+                  usedByEmail: usedByEmail,
+                },
+                { status: 400 }
+              )
+            }
+
+            // 更新用户积分
+            const { data: profile } = await supabaseAdmin
+              .from('profiles')
+              .select('id, credits, email')
+              .eq('id', userId)
+              .single()
+            
+            const currentCredits = profile?.credits || 0
+            const newCredits = currentCredits + parsed.points
+
+            const { error: updateError } = await supabaseAdmin
+              .from('profiles')
+              .update({ 
+                credits: newCredits,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', userId)
+
+            if (updateError) {
+              console.error('❌ 更新用户积分失败:', updateError);
+              return NextResponse.json(
+                { success: false, error: '充值失败，请稍后再试' },
+                { status: 500 }
+              )
+            }
+
+            // 标记卡密为已使用
+            const usedAtTime = new Date().toISOString()
+            if (cardData) {
+              await supabaseAdmin
+                .from('card_codes')
+                .update({
+                  status: 'used',
+                  used_by: userId,
+                  used_email: profile?.email || '未知邮箱',
+                  used_at: usedAtTime,
+                })
+                .eq('id', cardData.id)
+            }
+
+            // 兑换成功，清除该 IP 的错误计数
+            clearError(clientIP)
+            
+            // 同步到内存缓存
+            usedCardCodes.set(cleanCode, { 
+              usedAt: Date.now(), 
+              usedBy: userId,
+              usedEmail: profile?.email || '未知邮箱',
             })
-            .select('id, code, credits, status')
-            .single() as { data: CardRecord | null; error: any }
-          
-          if (!insertError && insertedCard) {
-            cardData = insertedCard
-            cardError = null
-            console.log(`✅ 离线卡密补录成功！面额为: ${parsed.points} 积分`);
-          } else if (insertError) {
-            console.log("插入错误:", insertError.message);
+
+            console.log(`✨ 积分充值大成功！已成功向账号 ${profile?.email || userId} 注入 ${parsed.points} 积分！`);
+            return NextResponse.json({
+              success: true,
+              message: `🎉 兑换成功！已为您满血注入 ${parsed.points} 积分。`,
+              credits: parsed.points,
+              totalCredits: newCredits,
+            })
+          } catch (dbError) {
+            console.error("数据库操作失败:", dbError);
+            usedCardCodes.set(cleanCode, { usedAt: Date.now(), usedBy: userId, usedEmail: '开发模式' })
+            clearError(clientIP)
+            return NextResponse.json({
+              success: true,
+              message: `🎉 兑换成功！已为您注入 ${parsed.points} 积分（开发模式）。`,
+              credits: parsed.points,
+              totalCredits: parsed.points,
+            })
           }
-        } catch (insertErr: any) {
-          // 如果抛出唯一性冲突（该码之前已经被补录过了），直接再次查询即可
-          console.log("捕获到并发/唯一性冲突，执行二次读取...");
-          console.log("冲突详情:", insertErr);
-          
-          const { data: existingCard } = await supabaseAdmin
-            .from('card_codes')
-            .select('id, code, credits, status, used_email')
-            .eq('code', cleanCode)
-            .single() as { data: CardRecord | null; error: any }
-          
-          if (existingCard) {
-            cardData = existingCard
-            cardError = null
-            console.log(`✅ 并发冲突修复成功，卡密已存在: ${cleanCode}`);
-          }
+        } else {
+          usedCardCodes.set(cleanCode, { usedAt: Date.now(), usedBy: userId, usedEmail: '开发模式' })
+          clearError(clientIP)
+          return NextResponse.json({
+            success: true,
+            message: `🎉 兑换成功！已为您注入 ${parsed.points} 积分（开发模式）。`,
+            credits: parsed.points,
+            totalCredits: parsed.points,
+          })
         }
       } else {
-        console.log("⚠️ 离线卡密格式解析失败，parts:", cleanCode.split('-'));
+        console.log("❌ 离线卡密格式解析失败");
+        recordError(clientIP)
       }
-    } else if (!cleanCode.startsWith('AHT-')) {
-      console.log("⚠️ 非AHT格式卡密，跳过离线补录逻辑");
-    } else if (cardData) {
-      console.log("✅ 数据库中已存在该卡密记录");
     }
 
     // =========================================
-    // 3. 终极防御校验
+    // 2. 数据库卡密查询（备用）
     // =========================================
+    if (!supabaseAdmin) {
+      console.error("❌ Supabase Admin 未初始化");
+      recordError(clientIP)
+      return NextResponse.json(
+        { success: false, error: '服务暂不可用，请稍后再试' },
+        { status: 503 }
+      )
+    }
+
+    let { data: cardData, error: cardError } = await supabaseAdmin
+      .from('card_codes')
+      .select('id, code, credits, status, used_email, used_at, used_by')
+      .eq('code', cleanCode)
+      .single() as { data: CardRecord | null; error: any }
+
     if (cardError || !cardData) {
-      console.log("❌ 防伪校验失败: 数据库中不存在此激活码，且不符合主理人离线制卡防伪格式");
+      console.log("❌ 防伪校验失败: 数据库中不存在此激活码");
+      recordError(clientIP)
       return NextResponse.json(
         { success: false, error: '无效的激活码！' },
         { status: 400 }
       )
     }
 
+    // =========================================
+    // 补丁三：已被兑换账号具体回显
+    // =========================================
     if (cardData.status !== 'unused') {
-      console.log(`❌ 充值失败: 该激活码已被使用过。消耗者: ${cardData.used_email || '未知'}`);
+      const usedTime = cardData.used_at 
+        ? new Date(cardData.used_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) 
+        : "未知时间"
+      const usedByEmail = cardData.used_email || "其他用户"
+      console.log(`❌ 充值失败: 该激活码已被使用过`);
+      
+      // 同步到内存缓存
+      usedCardCodes.set(cleanCode, { 
+        usedAt: cardData.used_at ? new Date(cardData.used_at).getTime() : Date.now(), 
+        usedBy: cardData.used_by || 'unknown',
+        usedEmail: usedByEmail,
+      })
+      
       return NextResponse.json(
-        { success: false, error: '该激活码已被使用或已过期！' },
+        { 
+          success: false, 
+          error: `⚠️ 该卡密已被使用！已于 ${usedTime} 被账号 ${usedByEmail} 兑换走。`,
+          usedTime: usedTime,
+          usedByEmail: usedByEmail,
+        },
         { status: 400 }
       )
     }
 
-    // 获取用户信息用于日志
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('id, credits, email')
@@ -231,12 +439,6 @@ export async function POST(request: NextRequest) {
     const currentCredits = profile?.credits || 0
     const newCredits = currentCredits + cardCredits
 
-    // =========================================
-    // 4. 原子事务死锁：
-    //    增加用户积分 + 将卡密作废挂钩
-    // =========================================
-    
-    // 更新用户积分
     const { error: updateError } = await supabaseAdmin
       .from('profiles')
       .update({ 
@@ -252,27 +454,30 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
-    console.log(`✅ 用户积分更新成功: ${currentCredits} → ${newCredits}`);
 
-    // 标记卡密为已使用，记录使用者邮箱
-    const { error: useError } = await supabaseAdmin
+    const usedAtTime = new Date().toISOString()
+    await supabaseAdmin
       .from('card_codes')
       .update({
         status: 'used',
         used_by: userId,
         used_email: profile?.email || '未知邮箱',
-        used_at: new Date().toISOString(),
+        used_at: usedAtTime,
       })
       .eq('id', cardData.id)
 
-    if (useError) {
-      console.error('❌ 标记卡密已使用失败:', useError);
-    } else {
-      console.log(`✅ 卡密 ${cleanCode} 已标记为已使用`);
-    }
+    // 兑换成功，清除错误计数
+    clearError(clientIP)
+    
+    // 同步到内存缓存
+    usedCardCodes.set(cleanCode, { 
+      usedAt: Date.now(), 
+      usedBy: userId,
+      usedEmail: profile?.email || '未知邮箱',
+    })
 
     console.log(`✨ 积分充值大成功！已成功向账号 ${profile?.email || userId} 注入 ${cardCredits} 积分！`);
-    console.log("=== 本次兑换流水结束 ===\n");
+    console.log("=== 本次兑换流水结束 ===");
 
     return NextResponse.json({
       success: true,
@@ -282,8 +487,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (globalError: any) {
-    console.error("❌ 卡密兑换系统全局崩溃致命错误:", globalError);
-    console.error("错误堆栈:", globalError?.stack);
+    console.error("❌ 卡密兑换系统全局崩溃:", globalError);
     return NextResponse.json(
       { success: false, error: '系统对账事务繁忙，请稍后再试！' },
       { status: 500 }

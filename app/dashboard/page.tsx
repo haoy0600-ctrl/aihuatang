@@ -713,15 +713,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-[#040D0A]">
+    <div className="h-screen w-full flex flex-col bg-[#040D0A] overflow-hidden">
       <header className="bg-[#040D0A] border-b border-[#142D24] flex-shrink-0">
         <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center w-full py-2 sm:py-3">
+          <div className="flex justify-between items-center w-full py-1 sm:py-2">
             <Link href="/" className="flex items-center select-none hover:opacity-80 transition-opacity">
               <img 
                 src="/logo.png?v=6" 
                 alt="AI画堂" 
-                className="h-16 w-16 object-contain"
+                className="h-20 w-20 object-contain"
               />
             </Link>
 
@@ -818,11 +818,11 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="flex-1 w-full">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 min-h-[calc(100vh-80px)]">
-          <div className="mb-3">
-            <h2 className="text-xl font-bold mb-1 text-white">创作工坊</h2>
-            <p className="text-sm text-[#10B981]">输入内容，选择风格，生成知识卡片</p>
+      <main className="flex-1 w-full overflow-auto">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-2">
+          <div className="mb-2">
+            <h2 className="text-lg font-bold mb-1 text-white">创作工坊</h2>
+            <p className="text-xs text-[#10B981]">输入内容，选择风格，生成知识卡片</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr,1fr,1.2fr] gap-4 items-stretch">

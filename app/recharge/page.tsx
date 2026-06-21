@@ -70,7 +70,12 @@ export default function RechargePage() {
   }
 
   const handleRedeemCard = async () => {
-    if (!cardCode.trim()) {
+    // =========================================
+    // 🔒 前端安全清洗：空格裁剪 + 强转大写
+    // =========================================
+    const cleanCode = cardCode.trim().toUpperCase()
+    
+    if (!cleanCode) {
       showToast('请输入卡密', 'error')
       return
     }
@@ -91,7 +96,7 @@ export default function RechargePage() {
       const response = await fetch('/api/user/redeem-card', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardCode: cardCode.trim(), userId }),
+        body: JSON.stringify({ cardCode: cleanCode, userId }),
       })
 
       const data = await response.json()
@@ -99,9 +104,9 @@ export default function RechargePage() {
       if (data.success) {
         showToast('🎉 激活成功！对应积分已注入您的账户！', 'success')
         setProfile({ credits: data.totalCredits })
-        setCardCode('')
         
-        // ✅ 立即聚焦输入框，支持连续无缝叠加激活
+        // ✅ 清空输入框并立即聚焦，支持连续无缝叠加激活
+        setCardCode('')
         cardCodeInputRef.current?.focus()
       } else {
         showToast(data.error || '激活失败', 'error')
@@ -122,7 +127,7 @@ export default function RechargePage() {
               <img 
                 src="/logo.png?v=6" 
                 alt="AI画堂" 
-                className="h-16 w-16 object-contain"
+                className="h-20 w-20 object-contain"
               />
             </Link>
 

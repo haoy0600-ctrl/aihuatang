@@ -163,6 +163,31 @@ export default function LoginPage() {
       return
     }
 
+    // =========================================
+    // 🔒 安全大闸三：注册前IP检查
+    // =========================================
+    if (isRegister) {
+      setIsSending(true)
+      try {
+        const checkResponse = await fetch('/api/auth/register-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        })
+        
+        const checkData = await checkResponse.json()
+        
+        if (!checkData.success) {
+          setError(checkData.error)
+          setIsSending(false)
+          return
+        }
+      } catch (checkError) {
+        console.error('IP check error:', checkError)
+        // IP检查失败不阻止注册，继续流程
+      }
+    }
+
     setIsSending(true)
     
     const { error: sendError } = await supabase.auth.signInWithOtp({
@@ -351,6 +376,20 @@ export default function LoginPage() {
 
       saveSession(email)
       
+      // =========================================
+      // 🔒 安全大闸三：记录注册IP
+      // =========================================
+      try {
+        await fetch('/api/auth/register-check', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        })
+        console.log('注册IP已记录')
+      } catch (recordError) {
+        console.error('记录注册IP失败:', recordError)
+      }
+      
       const { data: userData } = await supabase.auth.getUser()
       if (userData?.user) {
         await ensureProfileExists(userData.user.id, userData.user.email || email)
@@ -456,7 +495,7 @@ export default function LoginPage() {
         </div>
         
         <div className="relative z-10 text-center">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6">
+          <div className="w-24 h-24 sm:w-28 sm:h-28 mx-auto mb-6">
             <img 
               src="/logo.png?v=6" 
               alt="AI画堂" 
@@ -499,7 +538,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* 移动端 Logo */}
           <div className="md:hidden text-center mb-6">
-            <div className="w-16 h-16 mx-auto mb-3">
+            <div className="w-48 h-48 mx-auto mb-3">
               <img 
                 src="/logo.png?v=6" 
                 alt="AI画堂" 
