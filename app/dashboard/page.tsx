@@ -289,18 +289,6 @@ export default function DashboardPage() {
     }
 
     checkAuthAndGetProfile()
-
-    if (supabase) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_OUT' || !session) {
-          redirectToLogin()
-        }
-      })
-
-      return () => {
-        subscription?.unsubscribe?.()
-      }
-    }
   }, [])
 
   useEffect(() => {

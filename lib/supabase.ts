@@ -16,8 +16,9 @@ const isValidUrl = (url: string): boolean => {
 export const supabase = isValidUrl(supabaseUrl) && supabaseAnonKey && !supabaseAnonKey.startsWith('your_')
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        persistSession: true,
-        detectSessionInUrl: true,
+        persistSession: false,
+        detectSessionInUrl: false,
+        autoRefreshToken: false,
       },
       global: {
         headers: {
