@@ -721,7 +721,7 @@ export default function DashboardPage() {
               <img 
                 src="/logo.png?v=6" 
                 alt="AI画堂" 
-                className="h-20 w-20 md:h-24 md:w-24 object-contain mx-2 my-1"
+                className="h-16 w-16 object-contain"
               />
             </Link>
 

@@ -34,7 +34,7 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number; rese
 // 离线卡密自动兼容：解析 AHT-积分-随机串 格式
 function parseOfflineCardCode(code: string): { points: number; valid: boolean; format: string } {
   // 格式: AHT-积分-随机串 或 AHT-积分-随机串1-随机串2
-  // 例如: AHT-100-ABCD 或 AHT-320-XYZW-ABCD 或 AHT-320-AHT-ABCD 或 AHT-1000-1234-5678
+  // 例如: AHT-100-ABCD 或 AHT-320-XYZW-ABCD 或 AHT-328-FD2F-6M9
   
   if (!code.startsWith('AHT-')) {
     return { points: 0, valid: false, format: 'unknown' }
@@ -52,11 +52,11 @@ function parseOfflineCardCode(code: string): { points: number; valid: boolean; f
   const potentialPoints = parseInt(parts[1], 10)
   
   if (!isNaN(potentialPoints) && potentialPoints > 0 && potentialPoints <= 100000) {
-    // 验证剩余部分是否确实是随机串（不是纯数字）
+    // 验证剩余部分是否确实是随机串（允许连字符）
     const remainingPart = parts.slice(2).join('-')
     
-    // 随机串应该包含字母，或者数字但长度符合随机特征
-    const isRandomString = /^[A-Z0-9]+$/i.test(remainingPart) && remainingPart.length >= 4
+    // 随机串应该只包含字母和数字（允许连字符连接）
+    const isRandomString = /^[A-Z0-9-]+$/i.test(remainingPart) && remainingPart.length >= 4
     
     if (isRandomString) {
       console.log(`离线卡密解析成功: 格式=${parts.join('-')}, 积分=${potentialPoints}, 随机串=${remainingPart}`);

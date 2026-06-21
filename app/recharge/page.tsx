@@ -122,7 +122,7 @@ export default function RechargePage() {
               <img 
                 src="/logo.png?v=6" 
                 alt="AI画堂" 
-                className="h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 object-contain mx-1 sm:mx-2 my-1"
+                className="h-16 w-16 object-contain"
               />
             </Link>
 
