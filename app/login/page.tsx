@@ -246,10 +246,6 @@ export default function LoginPage() {
         return
       }
 
-      if (data.session && supabase) {
-        await supabase.auth.setSession(data.session)
-      }
-
       saveSession(email)
 
       if (data.user) {
@@ -294,10 +290,6 @@ export default function LoginPage() {
         setError('验证码错误或已过期，请重新获取')
         setIsSubmitting(false)
         return
-      }
-
-      if (data.session && supabase) {
-        await supabase.auth.setSession(data.session)
       }
 
       if (data.user) {
@@ -376,10 +368,6 @@ export default function LoginPage() {
         setError('验证码错误或已过期，请重新获取')
         setIsSubmitting(false)
         return
-      }
-
-      if (verifyData.session && supabase) {
-        await supabase.auth.setSession(verifyData.session)
       }
 
       if (verifyData.user) {

@@ -32,29 +32,48 @@ export default function RechargePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!supabase) {
+      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
+      if (!storedSession) {
         setProfile({ credits: 3 })
         return
       }
 
-      const { data: sessionData } = await supabase.auth.getSession()
-      
-      if (!sessionData?.session) {
+      let session: any
+      try {
+        session = JSON.parse(storedSession)
+      } catch {
         setProfile({ credits: 3 })
         return
       }
 
-      setUser(sessionData.session.user)
-      const userId = sessionData.session.user.id
+      const now = Date.now()
+      if (!session.email || session.expiresAt < now) {
+        setProfile({ credits: 3 })
+        return
+      }
 
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('credits')
-        .eq('id', userId)
-        .single()
-      
-      if (profileData) {
-        setProfile({ credits: profileData.credits })
+      try {
+        const response = await fetch('/api/auth/me', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: session.email })
+        })
+
+        const data = await response.json()
+
+        if (!data.success) {
+          setProfile({ credits: 3 })
+          return
+        }
+
+        setUser(data.user)
+
+        if (data.profile) {
+          setProfile({ credits: data.profile.credits })
+        }
+      } catch (error) {
+        console.error('Profile fetch error:', error)
+        setProfile({ credits: 3 })
       }
     }
 
@@ -83,15 +102,44 @@ export default function RechargePage() {
     setIsRedeeming(true)
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession()
-      
-      if (!sessionData?.session) {
+      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
+      if (!storedSession) {
         showToast('请先登录', 'error')
         setIsRedeeming(false)
         return
       }
 
-      const userId = sessionData.session.user.id
+      let session: any
+      try {
+        session = JSON.parse(storedSession)
+      } catch {
+        showToast('请先登录', 'error')
+        setIsRedeeming(false)
+        return
+      }
+
+      const now = Date.now()
+      if (!session.email || session.expiresAt < now) {
+        showToast('请先登录', 'error')
+        setIsRedeeming(false)
+        return
+      }
+
+      const meResponse = await fetch('/api/auth/me', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: session.email })
+      })
+
+      const meData = await meResponse.json()
+
+      if (!meData.success || !meData.user) {
+        showToast('请先登录', 'error')
+        setIsRedeeming(false)
+        return
+      }
+
+      const userId = meData.user.id
 
       const response = await fetch('/api/user/redeem-card', {
         method: 'POST',

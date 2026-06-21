@@ -60,43 +60,73 @@ export default function RecordsPage() {
 
   useEffect(() => {
     const fetchRecords = async () => {
-      if (!supabase) {
+      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
+      if (!storedSession) {
         setRecords([])
         setProfile({ credits: 3 })
         setLoading(false)
         return
       }
 
-      const { data: sessionData } = await supabase.auth.getSession()
-      
-      if (!sessionData?.session) {
+      let session: any
+      try {
+        session = JSON.parse(storedSession)
+      } catch {
         setRecords([])
         setProfile({ credits: 3 })
         setLoading(false)
         return
       }
 
-      setUser(sessionData.session.user)
-      const userId = sessionData.session.user.id
-
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('credits')
-        .eq('id', userId)
-        .single()
-      
-      if (profileData) {
-        setProfile({ credits: profileData.credits })
+      const now = Date.now()
+      if (!session.email || session.expiresAt < now) {
+        setRecords([])
+        setProfile({ credits: 3 })
+        setLoading(false)
+        return
       }
 
-      const { data: recordsData } = await supabase
-        .from('generation_records')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(50)
+      try {
+        const meResponse = await fetch('/api/auth/me', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: session.email })
+        })
 
-      setRecords(recordsData || [])
+        const meData = await meResponse.json()
+
+        if (!meData.success || !meData.user) {
+          setRecords([])
+          setProfile({ credits: 3 })
+          setLoading(false)
+          return
+        }
+
+        setUser(meData.user)
+
+        if (meData.profile) {
+          setProfile({ credits: meData.profile.credits })
+        }
+
+        const recordsResponse = await fetch('/api/user/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: meData.user.id })
+        })
+
+        const recordsData = await recordsResponse.json()
+
+        if (recordsData.success) {
+          setRecords(recordsData.records || [])
+        } else {
+          setRecords([])
+        }
+      } catch (error) {
+        console.error('Fetch records error:', error)
+        setRecords([])
+        setProfile({ credits: 3 })
+      }
+
       setLoading(false)
     }
 

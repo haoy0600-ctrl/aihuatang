@@ -232,62 +232,50 @@ export default function DashboardPage() {
           return
         }
 
-        const sessionResult = await Promise.race([
-          supabase.auth.getSession(),
-          timeoutPromise
-        ])
-        
-        const sessionData = (sessionResult as any)?.data
-        
-        if (!sessionData?.session) {
-          console.log('No valid session, redirecting to login')
+        const storedSession = localStorage.getItem('ai_handdrawn_login_session')
+        if (!storedSession) {
           redirectToLogin()
           return
         }
 
-        const userId = sessionData.session.user?.id
-        if (!userId) {
-          console.error('Invalid user ID in session')
-          redirectToLogin()
-          return
-        }
-
-        setUser(sessionData.session.user)
-
-        let profileData: any
+        let session: any
         try {
-          const profileResult = await Promise.race([
-            supabase.from('profiles').select('*').eq('id', userId).single(),
-            timeoutPromise
-          ])
-          
-          profileData = (profileResult as any)?.data
-        } catch (e: any) {
-          console.warn('Profile fetch failed, attempting to create:', e?.message)
-          
-          try {
-            await supabase.from('profiles').insert({
-              id: userId,
-              email: sessionData.session.user?.email || '',
-              credits: 3,
-              created_at: new Date().toISOString(),
-            })
+          session = JSON.parse(storedSession)
+        } catch {
+          redirectToLogin()
+          return
+        }
 
-            profileData = {
-              id: userId,
-              email: sessionData.session.user?.email || '',
-              credits: 3,
-            }
-          } catch (insertErr: any) {
-            console.error('Profile creation failed:', insertErr)
+        const now = Date.now()
+        if (!session.email || session.expiresAt < now) {
+          redirectToLogin()
+          return
+        }
+
+        try {
+          const response = await fetch('/api/auth/me', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: session.email })
+          })
+
+          const data = await response.json()
+
+          if (!data.success) {
             redirectToLogin()
             return
           }
-        }
 
-        if (profileData) {
-          setProfile(profileData)
-        } else {
+          setUser(data.user)
+
+          if (data.profile) {
+            setProfile(data.profile)
+          } else {
+            redirectToLogin()
+            return
+          }
+        } catch (error) {
+          console.error('Auth check error:', error)
           redirectToLogin()
           return
         }
@@ -327,9 +315,7 @@ export default function DashboardPage() {
   }, [customStylesList])
 
   const handleLogout = async () => {
-    if (supabase) {
-      await supabase.auth.signOut()
-    }
+    localStorage.removeItem('ai_handdrawn_login_session')
     router.push('/login')
   }
 
