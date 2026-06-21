@@ -116,25 +116,29 @@ export default function LoginPage() {
       } else {
         console.log('Profile created successfully with 6 free credits')
         
-        // 钉钉机器人通知
-        const dingtalkWebhookUrl = process.env.NEXT_PUBLIC_DINGTALK_WEBHOOK_URL
-        if (dingtalkWebhookUrl) {
-          try {
-            await fetch(dingtalkWebhookUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                msgtype: 'markdown',
-                markdown: {
-                  title: 'AI画堂·新用户注册通知',
-                  text: `### 🤖 AI画堂·新用户注册通知\n\n> 👤 **注册邮箱**：${userEmail}\n\n> ⏰ **注册时间**：${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}\n\n> 💡 **初始积分**：6 积分\n\n*请主理人注意及时核对微信/QQ私域账号状态。*`
-                }
-              })
+        // 钉钉机器人通知 - 添加硬编码兜底
+        const dingtalkWebhookUrl = process.env.NEXT_PUBLIC_DINGTALK_WEBHOOK_URL || 'https://oapi.dingtalk.com/robot/send?access_token=bd98916c7436bbbf24f547cf095e5cba28a10b7ca1837e3eb35b9e76e10cc98f'
+        
+        try {
+          const response = await fetch(dingtalkWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              msgtype: 'markdown',
+              markdown: {
+                title: 'AI画堂·新用户注册通知',
+                text: `### 🤖 AI画堂·新用户注册通知\n\n> 👤 **新用户邮箱**：${userEmail}\n\n> ⏰ **注册时间**：${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}\n\n> 💡 **初始积分**：6 积分\n\n*请主理人注意及时核对微信/QQ私域账号状态。*\n\n---\n\n*安全关键字：AI画堂*`
+              }
             })
+          })
+          
+          if (response.ok) {
             console.log('DingTalk notification sent successfully')
-          } catch (err) {
-            console.log('DingTalk notification failed:', err)
+          } else {
+            console.log('DingTalk notification failed with status:', response.status)
           }
+        } catch (err) {
+          console.log('DingTalk notification failed:', err)
         }
       }
     }

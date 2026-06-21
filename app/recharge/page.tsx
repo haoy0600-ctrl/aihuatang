@@ -122,7 +122,7 @@ export default function RechargePage() {
               <img 
                 src="/logo.png?v=6" 
                 alt="AI画堂" 
-                className="h-20 w-20 md:h-24 md:w-24 object-contain mx-2 my-1"
+                className="h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 object-contain mx-1 sm:mx-2 my-1"
               />
             </Link>
 
@@ -138,7 +138,17 @@ export default function RechargePage() {
               </Link>
             </nav>
 
-            <div className="flex items-center gap-2 sm:gap-4">
+            {/* 移动端菜单按钮 */}
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="md:hidden w-10 h-10 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] flex items-center justify-center hover:border-[#10B981] transition-colors rounded-lg"
+            >
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            <div className="hidden md:flex items-center gap-4">
               <div className="hidden sm:flex items-center gap-2 text-xs text-[#10B981]">
                 <span>{new Date().toLocaleDateString('zh-CN')}</span>
                 <span className="text-white font-mono font-bold text-sm">{currentTime}</span>

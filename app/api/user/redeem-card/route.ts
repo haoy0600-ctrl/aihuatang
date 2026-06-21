@@ -32,25 +32,46 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number; rese
 }
 
 // 离线卡密自动兼容：解析 AHT-积分-随机串 格式
-function parseOfflineCardCode(code: string): { points: number; valid: boolean } {
-  // 格式: AHT-[面额]-[随机串] 或 AHT-[积分]-[随机串1]-[随机串2]
-  // 例如: AHT-100-ABCD1234 或 AHT-320-XYZW-ABCD 或 AHT-320-AHT-ABCD
+function parseOfflineCardCode(code: string): { points: number; valid: boolean; format: string } {
+  // 格式: AHT-积分-随机串 或 AHT-积分-随机串1-随机串2
+  // 例如: AHT-100-ABCD 或 AHT-320-XYZW-ABCD 或 AHT-320-AHT-ABCD 或 AHT-1000-1234-5678
   
   if (!code.startsWith('AHT-')) {
-    return { points: 0, valid: false }
+    return { points: 0, valid: false, format: 'unknown' }
   }
   
   const parts = code.split('-')
   
-  // AHT-XXX-XXXX 或 AHT-XXX-XXXX-XXXX 格式
-  if (parts.length >= 3) {
-    const points = parseInt(parts[1], 10)
-    if (!isNaN(points) && points > 0 && points <= 100000) {
-      return { points, valid: true }
+  // 必须至少有 AHT-积分-随机串 (3段)
+  if (parts.length < 3) {
+    console.log("离线卡密格式错误：段数不足，parts:", parts);
+    return { points: 0, valid: false, format: 'invalid' }
+  }
+  
+  // 尝试解析 parts[1] 作为积分
+  const potentialPoints = parseInt(parts[1], 10)
+  
+  if (!isNaN(potentialPoints) && potentialPoints > 0 && potentialPoints <= 100000) {
+    // 验证剩余部分是否确实是随机串（不是纯数字）
+    const remainingPart = parts.slice(2).join('-')
+    
+    // 随机串应该包含字母，或者数字但长度符合随机特征
+    const isRandomString = /^[A-Z0-9]+$/i.test(remainingPart) && remainingPart.length >= 4
+    
+    if (isRandomString) {
+      console.log(`离线卡密解析成功: 格式=${parts.join('-')}, 积分=${potentialPoints}, 随机串=${remainingPart}`);
+      return { points: potentialPoints, valid: true, format: 'AHT-POINTS-RANDOM' }
     }
   }
   
-  return { points: 0, valid: false }
+  // 如果 parts[1] 不是有效数字，检查整个格式
+  if (isNaN(potentialPoints) || potentialPoints <= 0) {
+    console.log("parts[1] 不是有效积分值:", parts[1]);
+  } else if (potentialPoints > 100000) {
+    console.log("积分值超出范围:", potentialPoints);
+  }
+  
+  return { points: 0, valid: false, format: 'invalid' }
 }
 
 export async function POST(request: NextRequest) {
