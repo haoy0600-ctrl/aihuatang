@@ -43,9 +43,9 @@ export default function HomePage() {
   ]
 
   return (
-    <div className="h-screen w-full max-w-[100vw] overflow-hidden bg-[#040D0A] text-white flex flex-col">
+    <div className="min-h-screen w-full max-w-[100vw] bg-[#040D0A] text-white flex flex-col">
       {/* Header 导航栏 - sticky */}
-      <header className="flex-shrink-0 border-b border-[#142D24]">
+      <header className="flex-shrink-0 border-b border-[#142D24] sticky top-0 z-50 bg-[#040D0A]">
         <div className="w-full px-3 sm:px-4 py-2 flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center select-none">
@@ -132,7 +132,7 @@ export default function HomePage() {
       </header>
 
       {/* 主内容区 */}
-      <main className="flex-1 flex flex-col justify-center items-center overflow-hidden px-3 py-2">
+      <main className="flex-1 flex flex-col items-center px-3 py-4 sm:py-6">
         {/* 主标题区 */}
         <div className="text-center mb-2">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-teal-200 to-green-500 mb-1">
