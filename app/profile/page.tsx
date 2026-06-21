@@ -37,42 +37,53 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchUserAndProfile = async () => {
-      if (!supabase) {
+      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
+      if (!storedSession) {
         router.push('/login')
         return
       }
 
-      const { data: sessionData } = await supabase.auth.getSession()
-      
-      if (!sessionData?.session) {
+      let session: any
+      try {
+        session = JSON.parse(storedSession)
+      } catch {
         router.push('/login')
         return
       }
 
-      setUser(sessionData.session.user)
-      const userId = sessionData.session.user.id
-
-      const { data: profileData, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      if (error || !profileData) {
+      const now = Date.now()
+      if (!session.email || session.expiresAt < now) {
         router.push('/login')
         return
       }
 
-      setProfile(profileData)
+      try {
+        const response = await fetch('/api/auth/me', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: session.email })
+        })
+
+        const data = await response.json()
+
+        if (!data.success || !data.user || !data.profile) {
+          router.push('/login')
+          return
+        }
+
+        setUser(data.user)
+        setProfile(data.profile)
+      } catch (error) {
+        console.error('Fetch profile error:', error)
+        router.push('/login')
+      }
     }
 
     fetchUserAndProfile()
   }, [router])
 
   const handleLogout = async () => {
-    if (supabase) {
-      await supabase.auth.signOut()
-    }
+    localStorage.removeItem('ai_handdrawn_login_session')
     router.push('/login')
   }
 
