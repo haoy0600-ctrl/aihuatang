@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
 
 interface ChangePasswordProps {
   show: boolean
@@ -46,30 +45,34 @@ export function ChangePasswordModal({ show, onClose }: ChangePasswordProps) {
     setIsLoading(true)
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession()
-      const email = sessionData?.session?.user?.email || ''
-      
-      if (!email) {
-        setError('无法获取用户信息')
+      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
+      if (!storedSession) {
+        setError('请先登录')
         return
       }
 
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: oldPassword
-      })
-
-      if (signInError) {
-        setError('原密码错误')
+      let session: any
+      try {
+        session = JSON.parse(storedSession)
+      } catch {
+        setError('请先登录')
         return
       }
 
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: session.email,
+          oldPassword,
+          newPassword 
+        })
       })
 
-      if (updateError) {
-        setError(`修改密码失败: ${updateError.message}`)
+      const data = await response.json()
+
+      if (!data.success) {
+        setError(data.error || '修改密码失败')
       } else {
         onClose()
         alert('密码修改成功！下次登录请使用新密码')

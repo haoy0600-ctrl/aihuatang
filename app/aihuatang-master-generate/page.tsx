@@ -55,21 +55,34 @@ export default function AdminCardGeneratorPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      if (!supabase) return
-      const { data } = await supabase.auth.getSession()
-      if (data?.session) {
-        const userEmail = data.session.user?.email || ''
-        const adminCheck = userEmail === ADMIN_EMAIL
-        setUser(data.session.user)
-        setIsAdmin(adminCheck)
-        
-        if (!adminCheck) {
-          setShowNoPermission(true)
-        } else {
-          fetchUsers()
-        }
-      } else {
+      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
+      if (!storedSession) {
         window.location.href = '/login'
+        return
+      }
+
+      let session: any
+      try {
+        session = JSON.parse(storedSession)
+      } catch {
+        window.location.href = '/login'
+        return
+      }
+
+      const now = Date.now()
+      if (!session.email || session.expiresAt < now) {
+        window.location.href = '/login'
+        return
+      }
+
+      const adminCheck = session.email === ADMIN_EMAIL
+      setUser({ email: session.email })
+      setIsAdmin(adminCheck)
+      
+      if (!adminCheck) {
+        setShowNoPermission(true)
+      } else {
+        fetchUsers()
       }
     }
     checkAuth()
@@ -77,31 +90,18 @@ export default function AdminCardGeneratorPage() {
 
   // 获取所有用户
   const fetchUsers = async () => {
-    if (!supabase) return
     setIsLoadingUsers(true)
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, credits, created_at')
-        .order('created_at', { ascending: false })
-      
-      if (data) {
-        // 获取用户邮箱
-        const { data: authData } = await supabase.auth.admin.listUsers()
-        const authUsers = authData?.users || []
-        
-        const userProfiles: UserProfile[] = data.map(profile => {
-          const authUser = authUsers.find(u => u.id === profile.id)
-          return {
-            id: profile.id,
-            email: authUser?.email || '未知邮箱',
-            credits: profile.credits || 0,
-            created_at: profile.created_at
-          }
-        })
-        
-        setUsers(userProfiles)
-        setFilteredUsers(userProfiles)
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      const data = await response.json()
+
+      if (data.success && data.users) {
+        setUsers(data.users)
+        setFilteredUsers(data.users)
       }
     } catch (err) {
       console.error('获取用户失败:', err)
@@ -247,7 +247,7 @@ export default function AdminCardGeneratorPage() {
               </div>
               <div className="relative">
                 <button 
-                  onClick={() => { if (supabase) supabase.auth.signOut(); window.location.href = '/login'; }}
+                  onClick={() => { localStorage.removeItem('ai_handdrawn_login_session'); window.location.href = '/login'; }}
                   className="w-8 h-8 sm:w-9 sm:h-9 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] flex items-center justify-center hover:border-red-500 hover:text-red-400 transition-colors rounded-lg"
                 >
                   <span className="text-white font-bold text-sm">

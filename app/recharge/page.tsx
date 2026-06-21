@@ -253,7 +253,7 @@ export default function RechargePage() {
                         个人中心
                       </button>
                       <button 
-                        onClick={() => { if (supabase) supabase.auth.signOut(); window.location.href = '/login'; }}
+                        onClick={() => { localStorage.removeItem('ai_handdrawn_login_session'); window.location.href = '/login'; }}
                         className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#142D24] transition-colors rounded-lg"
                       >
                         退出登录
