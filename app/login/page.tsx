@@ -101,64 +101,24 @@ export default function LoginPage() {
   }
 
   const ensureProfileExists = async (userId: string, userEmail: string) => {
-    if (!supabase) return
+    try {
+      const response = await fetch('/api/auth/ensure-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, userEmail })
+      })
 
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', userId)
-      .single()
-
-    if (!existingProfile) {
-      const { error } = await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          email: userEmail,
-          credits: 6,
-          created_at: new Date().toISOString(),
-        })
-
-      if (error) {
-        console.error('Failed to create profile:', error)
-      } else {
-        console.log('Profile created successfully with 6 free credits')
-        
-        // 钉钉机器人通知 - 添加硬编码兜底
-        const dingtalkWebhookUrl = process.env.NEXT_PUBLIC_DINGTALK_WEBHOOK_URL || 'https://oapi.dingtalk.com/robot/send?access_token=bd98916c7436bbbf24f547cf095e5cba28a10b7ca1837e3eb35b9e76e10cc98f'
-        
-        try {
-          const response = await fetch(dingtalkWebhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              msgtype: 'markdown',
-              markdown: {
-                title: 'AI画堂·新用户注册通知',
-                text: `### 🤖 AI画堂·新用户注册通知\n\n> 👤 **新用户邮箱**：${userEmail}\n\n> ⏰ **注册时间**：${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}\n\n> 💡 **初始积分**：6 积分\n\n*请主理人注意及时核对微信/QQ私域账号状态。*\n\n---\n\n*安全关键字：AI画堂*`
-              }
-            })
-          })
-          
-          if (response.ok) {
-            console.log('DingTalk notification sent successfully')
-          } else {
-            console.log('DingTalk notification failed with status:', response.status)
-          }
-        } catch (err) {
-          console.log('DingTalk notification failed:', err)
-        }
+      const data = await response.json()
+      if (!data.success) {
+        console.error('Failed to create profile:', data.error)
       }
+    } catch (error) {
+      console.error('Failed to create profile:', error)
     }
   }
 
   const handleSendCode = async () => {
     setError('')
-    
-    if (!supabase) {
-      setError('系统配置未完成，请稍后重试')
-      return
-    }
     
     if (!email) {
       setError('请输入邮箱地址')
@@ -423,11 +383,6 @@ export default function LoginPage() {
 
   const handleForgotPassword = async () => {
     setForgotError('')
-
-    if (!supabase) {
-      setForgotError('系统配置未完成，请稍后重试')
-      return
-    }
 
     if (!forgotEmail) {
       setForgotError('请输入邮箱地址')
@@ -855,19 +810,6 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* 合规信息 - 像素级固定卡在右栏最底部 */}
-          <div className="mt-8 text-center space-y-1">
-            <p className="text-xs text-[#475569]">
-              © 2026 AI画堂 · 自媒体爆款图形设计与智能排版素材工具箱
-            </p>
-            <div className="flex items-center justify-center gap-2 text-xs text-[#475569]">
-              <Link href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" className="hover:text-[#00E676] transition-colors">
-                京ICP备XXXXXXXX号
-              </Link>
-              <span>|</span>
-              <span>公网安备XXXXXXXXXXXXXXXX号</span>
-            </div>
-          </div>
         </div>
       </div>
 

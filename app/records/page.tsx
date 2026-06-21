@@ -227,10 +227,13 @@ export default function RecordsPage() {
   const handleBatchDelete = async () => {
     if (selectedRecords.size === 0) return
     if (!confirm(`确定要删除选中的 ${selectedRecords.size} 条记录吗？`)) return
-    if (!supabase) return
 
     const deletePromises = Array.from(selectedRecords).map(id => 
-      supabase.from('generation_records').delete().eq('id', id)
+      fetch('/api/user/delete-record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, userId: user?.id })
+      })
     )
 
     await Promise.all(deletePromises)
