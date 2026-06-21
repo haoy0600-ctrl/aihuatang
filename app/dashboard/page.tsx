@@ -1320,6 +1320,39 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* 红框高亮合规安全禁令 */}
+          <div className="mt-6 p-4 bg-[#091511]/80 border-2 border-red-500/30 rounded-xl">
+            <div className="flex items-start gap-2 mb-3">
+              <span className="text-yellow-400 text-xl">⚠️</span>
+              <h4 className="text-sm font-bold text-white">【重要】AI画堂·安全合规与使用须知</h4>
+            </div>
+            <p className="text-xs text-gray-300 mb-4">
+              本站为自动化 AI 绘画创意辅助工具，各行各业用户在享受高效生图的同时，必须严格遵守国家网络安全法律法规。
+            </p>
+            
+            <div className="mb-4">
+              <h5 className="text-xs font-bold text-red-400 mb-2">🔴 【全站严厉禁止生成的违规内容】：</h5>
+              <ul className="space-y-1 text-xs text-gray-300 pl-3">
+                <li>• 严禁生成任何涉及色情、低俗、裸露及擦边暴力的图片。</li>
+                <li>• 严禁生成政治敏感、散布谣言、丑化特定人物或涉及国家安全的违法内容。</li>
+                <li>• 严禁用于任何侵犯他人肖像权、名誉权、商业欺诈或违规引流的黑色产业链。</li>
+              </ul>
+            </div>
+            
+            <div className="mb-4">
+              <h5 className="text-xs font-bold text-yellow-400 mb-2">💡 【如何避免违规与处罚说明】：</h5>
+              <ul className="space-y-1 text-xs text-gray-300 pl-3">
+                <li>• 平台已部署后端敏感词自动拦截过滤系统（包含但不限于政治、暴力、色情等中英文关键词）。</li>
+                <li>• 请在输入 Prompt 提示词时主动规范自身的创作意图。</li>
+                <li>• 一经发现恶意尝试绕过风控、生成违规内容者，平台将采取【直接永久封禁账号、清空剩余积分、不予退款】的铁腕处罚，情节严重者将依法向有关部门上报其注册邮箱与访问 IP！</li>
+              </ul>
+            </div>
+            
+            <p className="text-xs text-gray-400">
+              💬 关于售后：大算力完全消耗在海外下游接口。若遇网络延迟卡密未到账、或生图超时失败，积分会自动退回。若有账目疑问，请联系主理人微信人工核对。
+            </p>
+          </div>
         </div>
       </main>
 
