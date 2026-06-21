@@ -75,10 +75,18 @@ export default function LoginPage() {
     checkSession()
 
     const checkAuth = async () => {
-      if (!supabase) return
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        router.push('/dashboard')
+      const storedSession = localStorage.getItem(STORAGE_KEY)
+      if (storedSession) {
+        try {
+          const session = JSON.parse(storedSession)
+          const now = Date.now()
+          if (session.email && session.expiresAt > now) {
+            router.push('/dashboard')
+            return
+          }
+        } catch {
+          // Invalid session
+        }
       }
     }
     checkAuth()
@@ -434,18 +442,28 @@ export default function LoginPage() {
 
     setIsSendingReset(true)
 
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-      redirectTo: `${window.location.origin}/login`,
-    })
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail })
+      })
 
-    if (resetError) {
-      setForgotError(`发送失败: ${resetError.message}`)
+      const data = await response.json()
+
+      if (!data.success) {
+        setForgotError(`发送失败: ${data.error}`)
+        setIsSendingReset(false)
+        return
+      }
+
       setIsSendingReset(false)
-      return
+      setResetSent(true)
+    } catch (resetError) {
+      console.error('Reset password error:', resetError)
+      setForgotError('发送失败，请稍后重试')
+      setIsSendingReset(false)
     }
-
-    setIsSendingReset(false)
-    setResetSent(true)
   }
 
   const handleSetPassword = async () => {
@@ -468,27 +486,31 @@ export default function LoginPage() {
 
     setIsSettingPassword(true)
 
-    if (!supabase) {
-      setPasswordError('系统配置未完成')
+    try {
+      const response = await fetch('/api/auth/update-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: newPassword })
+      })
+
+      const data = await response.json()
+
+      if (!data.success) {
+        setPasswordError(`设置密码失败: ${data.error}`)
+        setIsSettingPassword(false)
+        return
+      }
+
       setIsSettingPassword(false)
-      return
-    }
-
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: newPassword
-    })
-
-    if (updateError) {
-      setPasswordError(`设置密码失败: ${updateError.message}`)
+      setShowSetPassword(false)
+      setNewPassword('')
+      setConfirmNewPassword('')
+      alert('密码设置成功！下次可使用邮箱+密码直接登录')
+    } catch (updateError) {
+      console.error('Update password error:', updateError)
+      setPasswordError('设置密码失败，请稍后重试')
       setIsSettingPassword(false)
-      return
     }
-
-    setIsSettingPassword(false)
-    setShowSetPassword(false)
-    setNewPassword('')
-    setConfirmNewPassword('')
-    alert('密码设置成功！下次可使用邮箱+密码直接登录')
   }
 
   return (
