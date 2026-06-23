@@ -259,9 +259,15 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="text-center py-1 border-t border-[#142D24] flex-shrink-0">
-        <p className="text-xs text-[#10B981]">© 2026 AI画堂</p>
+      {/*{'/* Footer */'}
+      <footer className="text-center py-2 border-t border-[#142D24] flex-shrink-0">
+        <p className="text-[10px] text-gray-500">
+          登录或使用本站即代表您同意{' '}
+          <Link href="/terms" className="text-[#10B981] hover:text-[#00E676] underline underline-offset-1 transition-colors">
+            《安全合规与使用须知》
+          </Link>
+        </p>
+        <p className="text-xs text-[#10B981] mt-1">© 2026 AI画堂</p>
       </footer>
     </div>
   )

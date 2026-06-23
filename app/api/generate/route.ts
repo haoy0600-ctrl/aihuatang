@@ -5,9 +5,26 @@ import { HANDDRAWN_STYLES } from '@/config/styles'
 export const maxDuration = 300
 
 const GRS_API_KEY = process.env.GRSAI_API_KEY || ''
-const BASE_URL = 'https://grsapiapi.com'
+const BASE_URL = (process.env.GRS_API_BASE_URL || 'https://grsapiapi.com').replace(/\/$/, '')
 
-// 降价后计费规则：GPT-Image-2全线2积分，NanoBanana2按分辨率2/8积分
+const timeoutPromise = <T>(promise: Promise<T>, ms: number): Promise<T> => {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`请求超时，超过 ${ms}ms`))
+    }, ms)
+    promise.then(
+      (result) => {
+        clearTimeout(timer)
+        resolve(result)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      }
+    )
+  })
+}
+
 function getResolutionPrice(modelType: string, resolution: string): number {
   if (modelType === 'NanoBanana2') {
     return resolution === '1K' ? 2 : 8
@@ -85,32 +102,43 @@ async function submitGrsTask(
     payload.images = [referenceImage]
   }
 
-  console.log('GrsAI API request:', { url: drawUrl, model, imageSize, isImageMode })
+  console.log('[GrsAI] API request:', { url: drawUrl, model, imageSize, isImageMode, timestamp: Date.now() })
 
-  const response = await fetch(drawUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${GRS_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  })
-
-  const responseText = await response.text()
-  console.log('GrsAI task response:', response.status, responseText)
-
-  let taskJson
   try {
-    taskJson = JSON.parse(responseText)
-  } catch {
-    throw new Error('GrsAI returned invalid JSON')
-  }
+    const response = await timeoutPromise(fetch(drawUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GRS_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    }), 60000)
 
-  if (!taskJson.data || !taskJson.data.id) {
-    throw new Error(taskJson.message || 'GrsAI 任务创建失败')
-  }
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`[GrsAI] API request failed: status=${response.status}, body=${errorText}`)
+      throw new Error(`GrsAI API 请求失败: ${response.status}`)
+    }
 
-  return taskJson.data.id
+    const responseText = await timeoutPromise(response.text(), 30000)
+    console.log('[GrsAI] task response:', response.status, responseText.substring(0, 500))
+
+    let taskJson
+    try {
+      taskJson = JSON.parse(responseText)
+    } catch {
+      throw new Error('GrsAI returned invalid JSON')
+    }
+
+    if (!taskJson.data || !taskJson.data.id) {
+      throw new Error(taskJson.message || 'GrsAI 任务创建失败')
+    }
+
+    return taskJson.data.id
+  } catch (error: any) {
+    console.error('[GrsAI] submitGrsTask error:', error.message, error.stack)
+    throw error
+  }
 }
 
 async function pollGrsResult(taskId: string): Promise<string> {
@@ -118,76 +146,96 @@ async function pollGrsResult(taskId: string): Promise<string> {
   const retryDelay = 4000
 
   for (let i = 0; i < maxRetries; i++) {
-    const checkRes = await fetch(`${BASE_URL}/v1/draw/result`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GRS_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id: taskId }),
-    })
+    try {
+      const checkRes = await timeoutPromise(fetch(`${BASE_URL}/v1/draw/result`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${GRS_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: taskId }),
+      }), 30000)
 
-    const checkJson = await checkRes.json()
-    console.log(`GrsAI poll ${i + 1}/${maxRetries}: status=${checkJson.status || checkJson.data?.status}`)
+      if (!checkRes.ok) {
+        const errorText = await checkRes.text()
+        console.error(`[GrsAI] Poll failed: status=${checkRes.status}, body=${errorText}`)
+        await new Promise(resolve => setTimeout(resolve, retryDelay))
+        continue
+      }
 
-    const results = checkJson.results || checkJson.data?.results
-    const status = checkJson.status || checkJson.data?.status
+      const checkJson = await timeoutPromise(checkRes.json(), 15000)
+      console.log(`[GrsAI] poll ${i + 1}/${maxRetries}: status=${checkJson.status || checkJson.data?.status}`)
 
-    if (status === 'succeeded' && results && results[0]) {
-      return results[0].url
+      const results = checkJson.results || checkJson.data?.results
+      const status = checkJson.status || checkJson.data?.status
+
+      if (status === 'succeeded' && results && results[0]) {
+        return results[0].url
+      }
+
+      if (status === 'failed') {
+        throw new Error('GrsAI 官方节点提示生成失败，已执行免扣费退款')
+      }
+
+      await new Promise(resolve => setTimeout(resolve, retryDelay))
+    } catch (error: any) {
+      console.error(`[GrsAI] Poll attempt ${i + 1} error:`, error.message)
+      if (i === maxRetries - 1) {
+        throw error
+      }
+      await new Promise(resolve => setTimeout(resolve, retryDelay))
     }
-
-    if (status === 'failed') {
-      throw new Error('GrsAI 官方节点提示生成失败，已执行免扣费退款')
-    }
-
-    await new Promise(resolve => setTimeout(resolve, retryDelay))
   }
 
   throw new Error('GrsAI 任务超时，请点击二次生成')
 }
 
 async function downloadAndUploadToSupabase(imageUrl: string, userId: string, index: number): Promise<string> {
-  const imageResponse = await fetch(imageUrl)
+  try {
+    const imageResponse = await timeoutPromise(fetch(imageUrl), 30000)
 
-  if (!imageResponse.ok) {
-    throw new Error(`Failed to download image: ${imageResponse.status}`)
-  }
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to download image: ${imageResponse.status}`)
+    }
 
-  const arrayBuffer = await imageResponse.arrayBuffer()
-  const buffer = Buffer.from(arrayBuffer as ArrayBuffer)
+    const arrayBuffer = await timeoutPromise(imageResponse.arrayBuffer(), 30000)
+    const buffer = Buffer.from(arrayBuffer as ArrayBuffer)
 
-  const timestamp = Date.now()
-  const fileName = `${userId}/${timestamp}-${index}.png`
+    const timestamp = Date.now()
+    const fileName = `${userId}/${timestamp}-${index}.png`
 
-  if (!supabaseAdmin) {
-    console.warn('Supabase admin not configured, skipping upload. Returning original URL.')
+    if (!supabaseAdmin) {
+      console.warn('[Supabase] Supabase admin not configured, skipping upload. Returning original URL.')
+      return imageUrl
+    }
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from('handdrawn-images')
+      .upload(fileName, buffer, {
+        contentType: 'image/png',
+        cacheControl: '31536000',
+        upsert: false,
+      })
+
+    if (uploadError) {
+      console.error('[Supabase] Storage upload failed:', uploadError)
+      return imageUrl
+    }
+
+    const { data: urlData } = supabaseAdmin.storage
+      .from('handdrawn-images')
+      .getPublicUrl(fileName)
+
+    if (!urlData?.publicUrl) {
+      console.warn('[Supabase] Failed to get public URL, returning original URL')
+      return imageUrl
+    }
+
+    return urlData.publicUrl
+  } catch (error: any) {
+    console.error('[Supabase] downloadAndUploadToSupabase error:', error.message)
     return imageUrl
   }
-
-  const { error: uploadError } = await supabaseAdmin.storage
-    .from('handdrawn-images')
-    .upload(fileName, buffer, {
-      contentType: 'image/png',
-      cacheControl: '31536000',
-      upsert: false,
-    })
-
-  if (uploadError) {
-    console.error('Supabase storage upload failed, returning original URL:', uploadError)
-    return imageUrl
-  }
-
-  const { data: urlData } = supabaseAdmin.storage
-    .from('handdrawn-images')
-    .getPublicUrl(fileName)
-
-  if (!urlData?.publicUrl) {
-    console.warn('Failed to get public URL, returning original URL')
-    return imageUrl
-  }
-
-  return urlData.publicUrl
 }
 
 async function generateSingleImage(
@@ -201,19 +249,19 @@ async function generateSingleImage(
   referenceImage?: string
 ): Promise<string> {
   const translatedText = sentence
-  console.log(`Sentence ${index}: ${translatedText}`)
+  console.log(`[Generate] Sentence ${index}: ${translatedText}`)
 
   const finalPrompt = buildFinalPrompt(translatedText, styleName, customStyle)
-  console.log(`Sentence ${index} final prompt: ${finalPrompt}`)
+  console.log(`[Generate] Sentence ${index} final prompt: ${finalPrompt.substring(0, 100)}...`)
 
   const taskId = await submitGrsTask(finalPrompt, imageSize, modelType, referenceImage)
-  console.log(`Sentence ${index} task submitted: ${taskId}`)
+  console.log(`[Generate] Sentence ${index} task submitted: ${taskId}`)
 
   const originImageUrl = await pollGrsResult(taskId)
-  console.log(`Sentence ${index} image generated: ${originImageUrl}`)
+  console.log(`[Generate] Sentence ${index} image generated: ${originImageUrl}`)
 
   const permanentUrl = await downloadAndUploadToSupabase(originImageUrl, userId, index)
-  console.log(`Sentence ${index} image uploaded: ${permanentUrl}`)
+  console.log(`[Generate] Sentence ${index} image uploaded: ${permanentUrl}`)
 
   return permanentUrl
 }
@@ -226,7 +274,7 @@ export async function POST(request: NextRequest) {
   let creditsDeducted = false
 
   try {
-    const body: GenerateRequest = await request.json()
+    const body: GenerateRequest = await timeoutPromise(request.json(), 10000)
     const {
       userId,
       inputContents = [],
@@ -271,26 +319,22 @@ export async function POST(request: NextRequest) {
 
     if (isTextMode) {
       sentences = inputContents.filter(s => s && s.trim().length > 0)
-      console.log('Valid text segments:', sentences.length)
+      console.log('[Generate] Valid text segments:', sentences.length)
     }
 
     const totalImageCount = isTextMode ? sentences.length : (isImageMode ? 1 : 1)
     totalCost = totalImageCount * costPerImage
 
-    console.log(`Total images to generate: ${totalImageCount}`)
-    console.log(`Cost per image: ${costPerImage}`)
-    console.log(`Total cost: ${totalCost}`)
-    console.log(`Resolution: ${resolution}, ImageSize: ${targetImageSize}`)
+    console.log('[Generate] Total images to generate:', totalImageCount)
+    console.log('[Generate] Cost per image:', costPerImage)
+    console.log('[Generate] Total cost:', totalCost)
+    console.log('[Generate] Resolution:', resolution, 'ImageSize:', targetImageSize)
 
-    // ========================================
-    // 核心安全逻辑：先扣费，再生成
-    // ========================================
     if (!supabaseAdmin) {
-      console.warn('Supabase admin not configured, skipping credit check in demo mode')
+      console.warn('[Generate] Supabase admin not configured, skipping credit check in demo mode')
       currentCredits = 9999
     } else {
       try {
-        // 查询用户积分
         const { data: profileData, error: profileError } = await supabaseAdmin
           .from('profiles')
           .select('id, credits')
@@ -298,7 +342,7 @@ export async function POST(request: NextRequest) {
           .single()
 
         if (profileError || !profileData) {
-          console.warn('Profile not found, creating new profile')
+          console.warn('[Generate] Profile not found, creating new profile')
           const { data: newProfileData, error: newProfileError } = await supabaseAdmin
             .from('profiles')
             .insert({
@@ -309,7 +353,7 @@ export async function POST(request: NextRequest) {
             .single()
 
           if (newProfileError || !newProfileData) {
-            console.error('Failed to create profile:', newProfileError)
+            console.error('[Generate] Failed to create profile:', newProfileError)
             return NextResponse.json(
               { success: false, error: 'Failed to initialize profile' },
               { status: 500 }
@@ -323,9 +367,8 @@ export async function POST(request: NextRequest) {
         }
 
         currentCredits = profile.credits
-        console.log(`User credits: ${currentCredits}, Required: ${totalCost}`)
+        console.log('[Generate] User credits:', currentCredits, 'Required:', totalCost)
 
-        // 检查积分是否足够
         if (profile.credits < totalCost) {
           return NextResponse.json(
             {
@@ -337,18 +380,15 @@ export async function POST(request: NextRequest) {
           )
         }
 
-        // ========================================
-        // 【核心安全】：先扣费，再生成
-        // ========================================
         const newCredits = currentCredits - totalCost
         const { error: deductError } = await supabaseAdmin
           .from('profiles')
           .update({ credits: newCredits })
           .eq('id', profileId)
-          .eq('credits', currentCredits) // 乐观锁，防止并发扣费
+          .eq('credits', currentCredits)
 
         if (deductError) {
-          console.error('Failed to deduct credits (concurrent request or error):', deductError)
+          console.error('[Generate] Failed to deduct credits:', deductError)
           return NextResponse.json(
             { success: false, error: '积分扣费失败，请稍后重试' },
             { status: 500 }
@@ -356,10 +396,10 @@ export async function POST(request: NextRequest) {
         }
 
         creditsDeducted = true
-        console.log(`Credits deducted: ${totalCost}, remaining: ${newCredits}`)
+        console.log('[Generate] Credits deducted:', totalCost, 'remaining:', newCredits)
 
       } catch (dbError) {
-        console.error('Database error:', dbError)
+        console.error('[Generate] Database error:', dbError)
         return NextResponse.json(
           { success: false, error: 'Database error' },
           { status: 500 }
@@ -367,9 +407,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ========================================
-    // 扣费成功后，开始生成图片
-    // ========================================
     const imageUrls: string[] = []
     const finalPrompts: string[] = []
     let firstError: string | null = null
@@ -380,7 +417,7 @@ export async function POST(request: NextRequest) {
           generateSingleImage(sentence, styleName, customStyle, targetImageSize, modelType, userId, index)
             .then(url => ({ url, index, error: null as Error | null }))
             .catch(error => {
-              console.error(`Failed to generate image for sentence ${index}:`, error)
+              console.error(`[Generate] Failed to generate image for sentence ${index}:`, error)
               return { url: null, index, error: error as Error }
             })
         )
@@ -409,31 +446,31 @@ export async function POST(request: NextRequest) {
         imageUrls.push(permanentUrl)
       }
 
-      // 如果所有图片都生成失败，回退积分
       if (imageUrls.length === 0) {
         throw new Error(firstError || '所有图片生成均失败')
       }
 
     } catch (generationError: any) {
-      // ========================================
-      // 【核心安全】：生成失败，回退积分
-      // ========================================
-      console.error('Image generation failed, rolling back credits:', generationError.message)
+      console.error('[Generate] Image generation failed:', generationError.message)
 
       if (creditsDeducted && supabaseAdmin) {
-        const { data: currentProfile } = await supabaseAdmin
-          .from('profiles')
-          .select('credits')
-          .eq('id', profileId)
-          .single()
-
-        if (currentProfile) {
-          const rollbackCredits = (currentProfile.credits || 0) + totalCost
-          await supabaseAdmin
+        try {
+          const { data: currentProfile } = await supabaseAdmin
             .from('profiles')
-            .update({ credits: rollbackCredits })
+            .select('credits')
             .eq('id', profileId)
-          console.log(`Credits rolled back: ${totalCost}, restored to: ${rollbackCredits}`)
+            .single()
+
+          if (currentProfile) {
+            const rollbackCredits = (currentProfile.credits || 0) + totalCost
+            await supabaseAdmin
+              .from('profiles')
+              .update({ credits: rollbackCredits })
+              .eq('id', profileId)
+            console.log('[Generate] Credits rolled back:', totalCost, 'restored to:', rollbackCredits)
+          }
+        } catch (rollbackError) {
+          console.error('[Generate] Failed to rollback credits:', rollbackError)
         }
       }
 
@@ -441,15 +478,12 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: generationError.message || '图片生成失败，积分已退回',
-          creditsRemaining: currentCredits, // 回退后的积分
+          creditsRemaining: currentCredits,
         },
         { status: 500 }
       )
     }
 
-    // ========================================
-    // 生成成功，创建生成记录
-    // ========================================
     const newCredits = currentCredits - totalCost
 
     if (supabaseAdmin) {
@@ -468,11 +502,11 @@ export async function POST(request: NextRequest) {
         })
 
       if (recordError) {
-        console.error('Failed to create generation record:', recordError)
+        console.error('[Generate] Failed to create generation record:', recordError)
       }
     }
 
-    console.log(`Generation complete: ${imageUrls.length} images, ${totalCost} credits deducted`)
+    console.log('[Generate] Generation complete:', imageUrls.length, 'images,', totalCost, 'credits deducted')
 
     return NextResponse.json({
       success: true,
@@ -482,9 +516,8 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error('Generate API error:', error)
+    console.error('[Generate] API error:', error.message, error.stack)
 
-    // 如果扣费了但生成过程出错，尝试回退积分
     if (creditsDeducted && supabaseAdmin && profileId) {
       try {
         const { data: currentProfile } = await supabaseAdmin
@@ -499,17 +532,17 @@ export async function POST(request: NextRequest) {
             .from('profiles')
             .update({ credits: rollbackCredits })
             .eq('id', profileId)
-          console.log(`Error handler: Credits rolled back: ${totalCost}`)
+          console.log('[Generate] Error handler: Credits rolled back:', totalCost)
         }
       } catch (rollbackError) {
-        console.error('Failed to rollback credits:', rollbackError)
+        console.error('[Generate] Failed to rollback credits:', rollbackError)
       }
     }
 
     return NextResponse.json(
       {
         success: false,
-        error: error.message,
+        error: error.message || '服务端错误，请稍后重试',
         creditsRemaining: currentCredits,
       },
       { status: 500 }

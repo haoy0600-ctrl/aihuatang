@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await request.json()
+    const { userId, status, page, limit } = await request.json()
 
     if (!supabaseAdmin) {
       return NextResponse.json({
@@ -19,12 +19,22 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const { data: records, error } = await supabaseAdmin
+    const pageNum = page || 1
+    const limitNum = limit || 20
+    const offset = (pageNum - 1) * limitNum
+
+    let query = supabaseAdmin
       .from('generation_records')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(50)
+
+    if (status && status !== 'all') {
+      query = query.eq('status', status)
+    }
+
+    const { data: records, error, count } = await query
+      .range(offset, offset + limitNum - 1)
 
     if (error) {
       console.error('Fetch records error:', error)
@@ -36,7 +46,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      records: records || []
+      records: records || [],
+      total: count || 0,
+      page: pageNum,
+      limit: limitNum,
+      hasMore: ((pageNum - 1) * limitNum + (records?.length || 0)) < (count || 0)
     })
   } catch (error) {
     console.error('Records API error:', error)

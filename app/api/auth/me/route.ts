@@ -3,9 +3,11 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json()
+    const body = await request.json()
+    const { email } = body
 
     if (!supabaseAdmin) {
+      console.error('[Auth/Me] Supabase admin not configured')
       return NextResponse.json({
         success: false,
         error: '系统配置未完成，请稍后重试'
@@ -25,12 +27,22 @@ export async function POST(request: NextRequest) {
       .eq('email', email)
       .single()
 
-    if (profileError || !profileData) {
+    if (profileError) {
+      console.error('[Auth/Me] Profile query error:', profileError)
       return NextResponse.json({
         success: false,
         error: '用户不存在'
       }, { status: 404 })
     }
+
+    if (!profileData) {
+      return NextResponse.json({
+        success: false,
+        error: '用户不存在'
+      }, { status: 404 })
+    }
+
+    console.log('[Auth/Me] User found:', email)
 
     return NextResponse.json({
       success: true,
@@ -41,8 +53,8 @@ export async function POST(request: NextRequest) {
       },
       profile: profileData
     })
-  } catch (error) {
-    console.error('Get user error:', error)
+  } catch (error: any) {
+    console.error('[Auth/Me] Error:', error.message, error.stack)
     return NextResponse.json({
       success: false,
       error: '获取用户信息失败，请稍后重试'

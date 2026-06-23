@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
+import { TermsModal } from '@/components/TermsModal'
 
 interface GenerationRecord {
   id: string
@@ -21,29 +21,29 @@ interface GenerationRecord {
   created_at: string
 }
 
-interface StyleStat {
-  name: string
-  count: number
-  percentage: number
-}
-
 export default function RecordsPage() {
   const router = useRouter()
   const [records, setRecords] = useState<GenerationRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [currentTime, setCurrentTime] = useState('')
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<{ credits: number } | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
+  const [showTermsModal, setShowTermsModal] = useState(false)
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null)
   const [selectedRecord, setSelectedRecord] = useState<GenerationRecord | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
-  const [batchMode, setBatchMode] = useState(false)
-  const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set())
-  const [downloading, setDownloading] = useState(false)
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const [showImagePreview, setShowImagePreview] = useState(false)
+  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [totalRecords, setTotalRecords] = useState(0)
+  const [columns, setColumns] = useState<GenerationRecord[][]>([[], [], []])
+  const observerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const updateTime = () => {
@@ -58,35 +58,44 @@ export default function RecordsPage() {
     return () => clearInterval(interval)
   }, [])
 
-  useEffect(() => {
-    const fetchRecords = async () => {
-      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
-      if (!storedSession) {
+  const fetchRecords = useCallback(async (pageNum: number = 1, reset: boolean = false) => {
+    const storedSession = localStorage.getItem('ai_handdrawn_login_session')
+    if (!storedSession) {
+      if (reset) {
         setRecords([])
+        setColumns([[], [], []])
         setProfile({ credits: 3 })
         setLoading(false)
-        return
       }
+      return
+    }
 
-      let session: any
-      try {
-        session = JSON.parse(storedSession)
-      } catch {
+    let session: any
+    try {
+      session = JSON.parse(storedSession)
+    } catch {
+      if (reset) {
         setRecords([])
+        setColumns([[], [], []])
         setProfile({ credits: 3 })
         setLoading(false)
-        return
       }
+      return
+    }
 
-      const now = Date.now()
-      if (!session.email || session.expiresAt < now) {
+    const now = Date.now()
+    if (!session.email || session.expiresAt < now) {
+      if (reset) {
         setRecords([])
+        setColumns([[], [], []])
         setProfile({ credits: 3 })
         setLoading(false)
-        return
       }
+      return
+    }
 
-      try {
+    try {
+      if (reset) {
         const meResponse = await fetch('/api/auth/me', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -97,6 +106,7 @@ export default function RecordsPage() {
 
         if (!meData.success || !meData.user) {
           setRecords([])
+          setColumns([[], [], []])
           setProfile({ credits: 3 })
           setLoading(false)
           return
@@ -107,56 +117,102 @@ export default function RecordsPage() {
         if (meData.profile) {
           setProfile({ credits: meData.profile.credits })
         }
-
-        const recordsResponse = await fetch('/api/user/records', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: meData.user.id })
-        })
-
-        const recordsData = await recordsResponse.json()
-
-        if (recordsData.success) {
-          setRecords(recordsData.records || [])
-        } else {
-          setRecords([])
-        }
-      } catch (error) {
-        console.error('Fetch records error:', error)
-        setRecords([])
-        setProfile({ credits: 3 })
       }
 
-      setLoading(false)
+      const recordsResponse = await fetch('/api/user/records', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          userId: user?.id, 
+          status: filterStatus,
+          page: pageNum,
+          limit: 20
+        })
+      })
+
+      const recordsData = await recordsResponse.json()
+
+      if (recordsData.success) {
+        setTotalRecords(recordsData.total || 0)
+        setHasMore(recordsData.hasMore || false)
+        
+        if (reset) {
+          setRecords(recordsData.records || [])
+          distributeRecordsToColumns(recordsData.records || [])
+        } else {
+          const newRecords = [...records, ...(recordsData.records || [])]
+          setRecords(newRecords)
+          distributeRecordsToColumns(newRecords)
+        }
+      } else {
+        if (reset) {
+          setRecords([])
+          setColumns([[], [], []])
+        }
+      }
+    } catch (error) {
+      console.error('Fetch records error:', error)
+      if (reset) {
+        setRecords([])
+        setColumns([[], [], []])
+        setProfile({ credits: 3 })
+      }
     }
 
-    fetchRecords()
-    
-    const interval = setInterval(fetchRecords, 10000)
-    
+    setLoading(false)
+    setLoadingMore(false)
+  }, [user?.id, filterStatus, records])
+
+  const distributeRecordsToColumns = (recordsList: GenerationRecord[]) => {
+    const newColumns: GenerationRecord[][] = [[], [], []]
+    recordsList.forEach((record, index) => {
+      const colIndex = index % 3
+      newColumns[colIndex].push(record)
+    })
+    setColumns(newColumns)
+  }
+
+  useEffect(() => {
+    setCurrentPage(1)
+    setLoading(true)
+    fetchRecords(1, true)
+
+    const interval = setInterval(() => fetchRecords(1, true), 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [filterStatus])
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries
+        if (entry.isIntersecting && !loadingMore && hasMore && !loading) {
+          setLoadingMore(true)
+          setCurrentPage(prev => prev + 1)
+          fetchRecords(currentPage + 1, false)
+        }
+      },
+      { rootMargin: '200px' }
+    )
+
+    if (observerRef.current) {
+      observer.observe(observerRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [loadingMore, hasMore, loading, currentPage, fetchRecords])
 
   const getModelPrice = (model: string): number => {
-    return 3 // 所有模型统一3积分
-  }
-
-  const getTotalGenerated = (): number => {
-    return records.reduce((sum, r) => sum + (r.image_count || 1), 0)
-  }
-
-  const getTotalConsumed = (): number => {
-    return records.reduce((sum, r) => sum + getModelPrice(r.model) * (r.image_count || 1), 0)
+    return 3
   }
 
   const handleDownload = async (url: string, index: number) => {
     try {
-      const response = await fetch(url)
+      const response = await fetch(url, { mode: 'cors' })
       const blob = await response.blob()
       const blobUrl = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = blobUrl
-      link.download = `neon-sketch-${Date.now()}-${index + 1}.png`
+      link.download = `AI画堂_${Date.now()}_${index + 1}.png`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -165,8 +221,11 @@ export default function RecordsPage() {
       console.error('Download failed:', error)
       const link = document.createElement('a')
       link.href = url
-      link.download = `neon-sketch-${Date.now()}-${index + 1}.png`
+      link.download = `AI画堂_${Date.now()}_${index + 1}.png`
+      link.target = '_blank'
+      document.body.appendChild(link)
       link.click()
+      document.body.removeChild(link)
     }
   }
 
@@ -190,25 +249,40 @@ export default function RecordsPage() {
   }
 
   const handleDeleteRecord = async (recordId: string) => {
-    if (!confirm('确定要删除这条记录吗？')) return
-    if (!supabase) return
+    const response = await fetch('/api/user/delete-record', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: recordId, userId: user?.id })
+    })
 
-    const { error } = await supabase
-      .from('generation_records')
-      .delete()
-      .eq('id', recordId)
-
-    if (!error) {
+    const data = await response.json()
+    if (data.success) {
       setRecords(records.filter(r => r.id !== recordId))
-      selectedRecords.delete(recordId)
-      setSelectedRecords(new Set(selectedRecords))
+      distributeRecordsToColumns(records.filter(r => r.id !== recordId))
+      setTotalRecords(prev => prev - 1)
     }
+  }
+
+  const handleDeleteAll = async () => {
+    const deletePromises = records.map(record =>
+      fetch('/api/user/delete-record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: record.id, userId: user?.id })
+      })
+    )
+
+    await Promise.all(deletePromises)
+    setRecords([])
+    setColumns([[], [], []])
+    setTotalRecords(0)
+    setShowDeleteAllModal(false)
   }
 
   const downloadAllImages = async (urls: string[]) => {
     for (let i = 0; i < urls.length; i++) {
       try {
-        const response = await fetch(urls[i])
+        const response = await fetch(urls[i], { mode: 'cors' })
         const blob = await response.blob()
         const a = document.createElement('a')
         a.href = URL.createObjectURL(blob)
@@ -216,84 +290,10 @@ export default function RecordsPage() {
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
-        // 微小延迟防止浏览器拦截并发下载
         await new Promise(resolve => setTimeout(resolve, 300))
       } catch (error) {
         console.error(`下载第 ${i + 1} 张图片失败:`, error)
       }
-    }
-  }
-
-  const handleBatchDelete = async () => {
-    if (selectedRecords.size === 0) return
-    if (!confirm(`确定要删除选中的 ${selectedRecords.size} 条记录吗？`)) return
-
-    const deletePromises = Array.from(selectedRecords).map(id => 
-      fetch('/api/user/delete-record', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, userId: user?.id })
-      })
-    )
-
-    await Promise.all(deletePromises)
-    setRecords(records.filter(r => !selectedRecords.has(r.id)))
-    setSelectedRecords(new Set())
-    setBatchMode(false)
-  }
-
-  const handleBatchDownload = async () => {
-    if (selectedRecords.size === 0) return
-
-    setDownloading(true)
-    const zip = new JSZip()
-
-    const selectedRecs = records.filter(r => selectedRecords.has(r.id))
-
-    for (const record of selectedRecs) {
-      const imageUrls = typeof record.image_urls === 'string' ? JSON.parse(record.image_urls) : record.image_urls
-      const folderName = `${record.style_name.replace(/\s+/g, '_')}_${new Date(record.created_at).toISOString().split('T')[0]}`
-      const folder = zip.folder(folderName)
-
-      if (folder && imageUrls) {
-        for (let i = 0; i < imageUrls.length; i++) {
-          try {
-            const response = await fetch(imageUrls[i])
-            const blob = await response.blob()
-            folder.file(`image_${i + 1}.png`, blob)
-          } catch (error) {
-            console.error(`Failed to download image:`, error)
-          }
-        }
-      }
-    }
-
-    try {
-      const content = await zip.generateAsync({ type: 'blob' })
-      saveAs(content, `neon-sketch-batch-${Date.now()}.zip`)
-    } catch (error) {
-      console.error('Failed to create zip:', error)
-      alert('打包下载失败，请重试')
-    }
-
-    setDownloading(false)
-  }
-
-  const toggleRecordSelection = (recordId: string) => {
-    const newSelected = new Set(selectedRecords)
-    if (newSelected.has(recordId)) {
-      newSelected.delete(recordId)
-    } else {
-      newSelected.add(recordId)
-    }
-    setSelectedRecords(newSelected)
-  }
-
-  const selectAll = () => {
-    if (selectedRecords.size === records.length) {
-      setSelectedRecords(new Set())
-    } else {
-      setSelectedRecords(new Set(records.map(r => r.id)))
     }
   }
 
@@ -315,6 +315,19 @@ export default function RecordsPage() {
     setShowDetailModal(true)
   }
 
+  const filteredRecords = records.filter(record => {
+    if (filterStatus === 'all') return true
+    if (filterStatus === 'success') return record.status === 'success' || record.status === 'completed'
+    if (filterStatus === 'failed') return record.status === 'failed' || record.status === 'error'
+    return true
+  })
+
+  const statusCounts = {
+    all: records.length,
+    success: records.filter(r => r.status === 'success' || r.status === 'completed').length,
+    failed: records.filter(r => r.status === 'failed' || r.status === 'error').length
+  }
+
   return (
     <div className="min-h-screen bg-[#0B0D17]">
       <header className="bg-[#0B0D17] border-b border-[#202B3A]">
@@ -328,7 +341,6 @@ export default function RecordsPage() {
               />
             </Link>
 
-            {/* 手机端隐藏导航 */}
             <nav className="hidden md:flex items-center gap-4">
               <Link href="/dashboard" className="px-5 py-2.5 bg-[#141923] text-white font-semibold text-base tracking-wide md:text-lg border border-[#202B3A] hover:bg-[#1a2230] hover:border-[#00F2FE] transition-all rounded-xl">
                 创作
@@ -342,18 +354,15 @@ export default function RecordsPage() {
             </nav>
 
             <div className="flex items-center gap-2 sm:gap-4">
-              {/* 手机端隐藏时间 */}
               <div className="hidden sm:flex items-center gap-2 text-xs text-[#00F2FE]">
                 <span>{new Date().toLocaleDateString('zh-CN')}</span>
                 <span className="text-white font-mono font-bold text-sm">{currentTime}</span>
               </div>
-              {/* 积分显示 */}
               <div className="px-2 sm:px-3 py-1 sm:py-1.5 bg-[#141923] border border-[#202B3A] flex items-center gap-1 sm:gap-1.5 rounded-lg">
                 <span className="w-2 h-2 bg-[#10B981] border border-[#202B3A]"></span>
                 <span className="text-xs text-[#00F2FE] hidden sm:inline">积分</span>
                 <span className="font-bold text-white text-sm">{profile?.credits || 0}</span>
               </div>
-              {/* 用户头像 */}
               <div className="relative">
                 <button 
                   onClick={() => setShowUserMenu(!showUserMenu)}
@@ -370,7 +379,6 @@ export default function RecordsPage() {
                       <p className="text-xs text-[#00F2FE] mb-1">当前账号</p>
                       <p className="text-sm text-white font-medium truncate">{user?.email || '未登录'}</p>
                     </div>
-                    {/* 手机端显示导航链接 */}
                     <div className="p-2 border-b border-[#202B3A] md:hidden">
                       <Link href="/dashboard" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors rounded-lg">
                         🎨 创作工坊
@@ -413,27 +421,19 @@ export default function RecordsPage() {
 
       <main className="p-4 pb-24">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
             <div>
               <h2 className="text-xl font-bold text-white">🎨 生成记录</h2>
-              <p className="text-sm text-[#00F2FE] mt-1">您的创作资产库</p>
+              <p className="text-sm text-[#00F2FE] mt-1">您的创作资产库 · 共 {totalRecords} 条</p>
             </div>
             <div className="flex gap-3">
-              {records.length > 0 && (
-                <button
-                  onClick={() => {
-                    setBatchMode(!batchMode)
-                    setSelectedRecords(new Set())
-                  }}
-                  className={`px-4 py-2 font-bold text-sm border transition-all ${
-                    batchMode 
-                      ? 'bg-[#00F2FE] text-[#0A0F1D] border-[#00F2FE] shadow-[0_0_15px_rgba(0,242,254,0.5)]' 
-                      : 'bg-[#141923] text-white border-[#202B3A] hover:border-[#00F2FE] hover:text-[#00F2FE]'
-                  }`}
-                >
-                  {batchMode ? '✓ 退出批量' : '📦 批量管理'}
-                </button>
-              )}
+              <button
+                onClick={() => setShowDeleteAllModal(true)}
+                disabled={records.length === 0}
+                className="px-4 py-2 bg-red-500/20 text-red-400 font-bold text-sm border border-red-500/50 hover:bg-red-500/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                🗑️ 全部删除
+              </button>
               <Link
                 href="/dashboard"
                 className="px-4 py-2 bg-[#00E676] text-[#0B0D17] font-bold text-sm border border-[#202B3A] shadow-[0_0_15px_rgba(0,230,118,0.4)] hover:shadow-[0_0_20px_rgba(0,230,118,0.6)] transition-all"
@@ -443,20 +443,25 @@ export default function RecordsPage() {
             </div>
           </div>
 
-          {batchMode && records.length > 0 && (
-            <div className="mb-4 flex items-center gap-4 p-3 bg-[#141923] border border-[#00F2FE]/30">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedRecords.size === records.length && records.length > 0}
-                  onChange={selectAll}
-                  className="w-4 h-4 accent-[#00F2FE]"
-                />
-                <span className="text-sm text-white">全选</span>
-              </label>
-              <span className="text-sm text-[#00F2FE]">已选中 {selectedRecords.size} 条记录</span>
-            </div>
-          )}
+          <div className="flex gap-2 mb-6 p-1 bg-[#141923] rounded-xl w-fit">
+            {[
+              { key: 'all', label: '全部', color: 'bg-[#00F2FE] text-[#0A0F1D]' },
+              { key: 'success', label: '生成成功', color: 'bg-[#10B981] text-[#0A0F1D]' },
+              { key: 'failed', label: '生成失败', color: 'bg-red-500 text-white' }
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setFilterStatus(tab.key)}
+                className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${
+                  filterStatus === tab.key
+                    ? `${tab.color} shadow-lg`
+                    : 'text-[#94A3B8] hover:text-white'
+                }`}
+              >
+                {tab.label} ({statusCounts[tab.key as keyof typeof statusCounts]})
+              </button>
+            ))}
+          </div>
 
           {loading ? (
             <div className="text-center py-20">
@@ -483,127 +488,163 @@ export default function RecordsPage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-              {records.map((record) => {
-                const imageUrls = typeof record.image_urls === 'string' ? JSON.parse(record.image_urls) : record.image_urls
-                const totalCost = getModelPrice(record.model) * (record.image_count || 1)
-                const isSelected = selectedRecords.has(record.id)
-                const firstSentence = getFirstSentence(record.prompt)
-                
-                return (
-                  <div 
-                    key={record.id} 
-                    className={`bg-[#0D111A] border overflow-hidden hover:border-[#00F2FE]/50 transition-all duration-300 relative rounded-lg ${
-                      isSelected ? 'border-[#00F2FE] shadow-[0_0_15px_rgba(0,242,254,0.3)]' : 'border-[#1E293B]'
-                    }`}
-                  >
-                    {batchMode && (
-                      <div className="absolute top-1.5 left-1.5 z-20">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleRecordSelection(record.id)}
-                          className="w-3 h-3 accent-[#00F2FE] cursor-pointer"
-                        />
-                      </div>
-                    )}
+            <div className="flex gap-4">
+              {columns.map((column, colIndex) => (
+                <div key={colIndex} className="flex-1 space-y-4">
+                  {column.map((record) => {
+                    const imageUrls = typeof record.image_urls === 'string' ? JSON.parse(record.image_urls) : record.image_urls
+                    const totalCost = getModelPrice(record.model) * (record.image_count || 1)
+                    const firstSentence = getFirstSentence(record.prompt)
+                    
+                    return (
+                      <div 
+                        key={record.id} 
+                        className="bg-[#0D111A] border border-[#1E293B] overflow-hidden hover:border-[#00F2FE]/50 transition-all duration-300 rounded-xl group"
+                      >
+                        <div className="relative overflow-hidden bg-[#161a2b]">
+                          {imageUrls && imageUrls[0] ? (
+                            <img 
+                              src={imageUrls[0]} 
+                              alt="生成图" 
+                              className="w-full h-auto object-contain"
+                            />
+                          ) : (
+                            <div className="w-full aspect-square flex items-center justify-center text-[#94A3B8] bg-[#0B0D17]">
+                              {record.status === 'failed' || record.status === 'error' ? (
+                                <span className="text-center p-4">❌ 生成失败</span>
+                              ) : (
+                                <span>无图片</span>
+                              )}
+                            </div>
+                          )}
 
-                    <div className="relative group overflow-hidden bg-[#161a2b]">
-                      {imageUrls && imageUrls[0] ? (
-                        <img 
-                          src={imageUrls[0]} 
-                          alt="生成图" 
-                          className="w-full max-h-36 sm:max-h-40 object-contain mx-auto"
-                        />
-                      ) : (
-                        <div className="w-full aspect-square flex items-center justify-center text-[#94A3B8] bg-[#0B0D17]">
-                          无图片
-                        </div>
-                      )}
+                          <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center gap-2 p-4">
+                            {imageUrls && imageUrls[0] && (
+                              <>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setPreviewImageUrl(imageUrls?.[0] || '')
+                                    setShowImagePreview(true)
+                                  }}
+                                  className="w-full max-w-[140px] px-4 py-2.5 bg-[#00E676] text-[#0A0F1D] text-sm font-bold hover:bg-[#00ff80] transition-all backdrop-blur-sm border border-[#00E676] flex items-center justify-center gap-2"
+                                >
+                                  <span>🔍</span>
+                                  <span>预览</span>
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDownload(imageUrls?.[0] || '', 0)
+                                  }}
+                                  className="w-full max-w-[140px] px-4 py-2.5 bg-[#00F2FE] text-[#0A0F1D] text-sm font-bold hover:bg-[#33f5ff] transition-all backdrop-blur-sm border border-[#00F2FE] flex items-center justify-center gap-2"
+                                >
+                                  <span>⬇️</span>
+                                  <span>下载原图</span>
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleCopyLink(imageUrls?.[0] || '')
+                                  }}
+                                  className="w-full max-w-[140px] px-4 py-2.5 bg-white/90 text-[#0A0F1D] text-sm font-bold hover:bg-white transition-all backdrop-blur-sm border border-white/50 flex items-center justify-center gap-2"
+                                >
+                                  <span>🔗</span>
+                                  <span>复制链接</span>
+                                </button>
+                              </>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (confirm('确定要删除这条记录吗？')) {
+                                  handleDeleteRecord(record.id)
+                                }
+                              }}
+                              className="w-full max-w-[140px] px-4 py-2.5 bg-red-500/90 text-white text-sm font-bold hover:bg-red-500 transition-all backdrop-blur-sm border border-red-500/50 flex items-center justify-center gap-2"
+                            >
+                              <span>🗑️</span>
+                              <span>删除记录</span>
+                            </button>
+                          </div>
 
-                      <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center gap-2 p-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setPreviewImageUrl(imageUrls?.[0] || '')
-                            setShowImagePreview(true)
-                          }}
-                          className="w-full max-w-[100px] px-3 py-2 bg-[#00E676] text-[#0A0F1D] text-xs font-bold hover:bg-[#00ff80] transition-all backdrop-blur-sm border border-[#00E676] flex items-center justify-center gap-1.5"
-                        >
-                          <span className="text-sm">🔍</span>
-                          <span>预览</span>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDownload(imageUrls?.[0] || '', 0)
-                          }}
-                          className="w-full max-w-[100px] px-3 py-2 bg-[#00F2FE] text-[#0A0F1D] text-xs font-bold hover:bg-[#33f5ff] transition-all backdrop-blur-sm border border-[#00F2FE] flex items-center justify-center gap-1.5"
-                        >
-                          <span className="text-sm">⬇️</span>
-                          <span>下载</span>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleCopyLink(imageUrls?.[0] || '')
-                          }}
-                          className="w-full max-w-[100px] px-3 py-2 bg-white/90 text-[#0A0F1D] text-xs font-bold hover:bg-white transition-all backdrop-blur-sm border border-white/50 flex items-center justify-center gap-1.5"
-                        >
-                          <span className="text-sm">🔗</span>
-                          <span>复制</span>
-                        </button>
-                      </div>
+                          {imageUrls && imageUrls.length > 1 && (
+                            <div className="absolute top-2 right-2">
+                              <div className="px-2 py-1 bg-black/60 text-[#00F2FE] text-xs font-bold backdrop-blur-sm rounded">
+                                +{imageUrls.length - 1}
+                              </div>
+                            </div>
+                          )}
 
-                      {imageUrls && imageUrls.length > 1 && (
-                        <div className="absolute top-1.5 right-1.5">
-                          <div className="px-1.5 py-0.5 bg-black/60 text-[#00F2FE] text-[9px] backdrop-blur-sm">
-                            +{imageUrls.length - 1}
+                          <div className="absolute top-2 left-2">
+                            <span className={`px-2 py-1 text-xs font-bold backdrop-blur-sm rounded ${
+                              record.status === 'success' || record.status === 'completed'
+                                ? 'bg-[#10B981]/80 text-white'
+                                : record.status === 'failed' || record.status === 'error'
+                                  ? 'bg-red-500/80 text-white'
+                                  : 'bg-yellow-500/80 text-black'
+                            }`}>
+                              {record.status === 'success' || record.status === 'completed' ? '✓ 成功' : record.status === 'failed' || record.status === 'error' ? '✕ 失败' : '⏳ 处理中'}
+                            </span>
                           </div>
                         </div>
-                      )}
 
-                      {batchMode && (
-                        <div className="absolute top-1.5 right-1.5">
-                          <button
-                            onClick={() => handleDeleteRecord(record.id)}
-                            className="w-5 h-5 bg-red-500/90 text-white text-[10px] flex items-center justify-center hover:bg-red-500 transition-all backdrop-blur-sm"
-                            title="删除记录"
-                          >
-                            ✕
-                          </button>
+                        <div className="p-3">
+                          <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                            <span className="px-2 py-0.5 bg-[#10B981]/20 text-[#10B981] text-xs font-bold border border-[#10B981]/50 rounded">
+                              {record.style_name}
+                            </span>
+                            <span className="px-2 py-0.5 bg-[#00F2FE]/20 text-[#00F2FE] text-xs font-bold border border-[#00F2FE]/50 rounded">
+                              {record.model}
+                            </span>
+                            <span className="px-2 py-0.5 bg-[#F59E0B]/20 text-[#F59E0B] text-xs font-bold border border-[#F59E0B]/50 rounded">
+                              ⚡️ {totalCost}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-[#94A3B8] truncate flex-1 mr-2">
+                              {firstSentence}
+                            </p>
+                            <button
+                              onClick={() => openDetailModal(record)}
+                              className="text-xs text-[#00F2FE] hover:text-[#00E676] transition-colors"
+                            >
+                              ▼
+                            </button>
+                          </div>
+
+                          <p className="text-[10px] text-[#475569] mt-2">
+                            {formatDate(record.created_at)}
+                          </p>
                         </div>
-                      )}
-                    </div>
-
-                    <div className="p-2">
-                      <div className="flex items-center gap-1 flex-wrap mb-1.5">
-                        <span className="px-1.5 py-0.5 bg-[#10B981]/20 text-[#10B981] text-[9px] font-bold border border-[#10B981]/50">
-                          {record.style_name}
-                        </span>
-                        <span className="px-1.5 py-0.5 bg-[#00F2FE]/20 text-[#00F2FE] text-[9px] font-bold border border-[#00F2FE]/50">
-                          {record.model}
-                        </span>
-                        <span className="px-1.5 py-0.5 bg-[#F59E0B]/20 text-[#F59E0B] text-[9px] font-bold border border-[#F59E0B]/50">
-                          ⚡️ {totalCost}
-                        </span>
                       </div>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
 
-                      <div className="flex items-center justify-between">
-                        <p className="text-[9px] text-[#94A3B8] truncate flex-1 mr-1.5">
-                          {firstSentence}
-                        </p>
-                        <button
-                          onClick={() => openDetailModal(record)}
-                          className="text-[9px] text-[#00F2FE] hover:text-[#00E676] transition-colors"
-                        >
-                          ▼
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+          {hasMore && !loading && (
+            <div ref={observerRef} className="text-center py-8">
+              {loadingMore ? (
+                <div className="inline-flex items-center gap-2 px-6 py-3 bg-[#141923] border border-[#202B3A] rounded-xl">
+                  <div className="w-4 h-4 border-2 border-[#00F2FE] border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-sm text-[#00F2FE]">加载更多...</span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setLoadingMore(true)
+                    setCurrentPage(prev => prev + 1)
+                    fetchRecords(currentPage + 1, false)
+                  }}
+                  className="px-8 py-3 bg-[#141923] border border-[#00F2FE] text-[#00F2FE] font-bold text-sm hover:bg-[#00F2FE] hover:text-[#0A0F1D] transition-all rounded-xl"
+                >
+                  📥 加载更多记录
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -631,7 +672,7 @@ export default function RecordsPage() {
 
       {showDetailModal && selectedRecord && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-2xl bg-[#141923] border border-[#202B3A] max-h-[90vh] overflow-y-auto rounded-lg">
+          <div className="w-full max-w-2xl bg-[#141923] border border-[#202B3A] max-h-[90vh] overflow-y-auto rounded-xl">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-white">📋 记录详情</h3>
@@ -672,21 +713,29 @@ export default function RecordsPage() {
                   <p className="text-xs text-[#00F2FE] mb-3 uppercase">全部图片 ({JSON.parse(selectedRecord.image_urls).length}张)</p>
                   <div className="grid grid-cols-3 gap-3">
                     {JSON.parse(selectedRecord.image_urls).map((url: string, index: number) => (
-                      <a 
-                        key={index} 
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="relative aspect-square bg-[#0A0F1D] border border-[#202B3A] overflow-hidden group cursor-pointer hover:border-[#00F2FE] transition-all"
-                      >
+                      <div key={index} className="relative aspect-square bg-[#0A0F1D] border border-[#202B3A] overflow-hidden group cursor-pointer hover:border-[#00F2FE] transition-all">
                         <img src={url} alt={`图 ${index + 1}`} className="w-full h-full object-cover" />
                         <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-black/60 text-[#00F2FE] text-[10px]">
                           {index + 1}
                         </div>
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-2xl">🔍</span>
+                          <button
+                            onClick={() => {
+                              setPreviewImageUrl(url)
+                              setShowImagePreview(true)
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-2xl"
+                          >
+                            🔍
+                          </button>
                         </div>
-                      </a>
+                        <button
+                          onClick={() => handleDownload(url, index)}
+                          className="absolute bottom-1 right-1 w-6 h-6 bg-[#00F2FE]/80 text-[#0A0F1D] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all text-xs font-bold"
+                        >
+                          ⬇️
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -699,18 +748,22 @@ export default function RecordsPage() {
                 >
                   关闭
                 </button>
+                {selectedRecord.image_urls && (
+                  <button
+                    onClick={() => {
+                      const urls = JSON.parse(selectedRecord.image_urls)
+                      downloadAllImages(urls)
+                    }}
+                    className="flex-1 py-3 bg-[#00F2FE] text-[#0A0F1D] font-bold text-sm border border-[#00F2FE] shadow-[0_0_15px_rgba(0,242,254,0.4)] hover:shadow-[0_0_20px_rgba(0,242,254,0.6)] transition-all"
+                  >
+                    📥 一键批量下载全部图片
+                  </button>
+                )}
                 <button
                   onClick={() => {
-                    const urls = JSON.parse(selectedRecord.image_urls)
-                    downloadAllImages(urls)
-                  }}
-                  className="flex-1 py-3 bg-[#00F2FE] text-[#0A0F1D] font-bold text-sm border border-[#00F2FE] shadow-[0_0_15px_rgba(0,242,254,0.4)] hover:shadow-[0_0_20px_rgba(0,242,254,0.6)] transition-all"
-                >
-                  📥 一键批量下载全部图片
-                </button>
-                <button
-                  onClick={() => {
-                    handleDeleteRecord(selectedRecord.id)
+                    if (confirm('确定要删除这条记录吗？')) {
+                      handleDeleteRecord(selectedRecord.id)
+                    }
                     setShowDetailModal(false)
                   }}
                   className="flex-1 py-3 bg-red-500/20 text-red-400 font-bold text-sm border border-red-500/50 hover:bg-red-500/30 transition-all"
@@ -723,40 +776,34 @@ export default function RecordsPage() {
         </div>
       )}
 
-      {batchMode && selectedRecords.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-[#141923]/95 backdrop-blur-lg border-t border-[#00F2FE]/30 p-4">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <span className="text-[#00F2FE] font-bold">
-                已选中 <span className="text-white text-xl">{selectedRecords.size}</span> 条记录
-              </span>
-              <span className="text-[#94A3B8] text-sm">
-                共 {records.reduce((sum, r) => selectedRecords.has(r.id) ? sum + (r.image_count || 1) : sum, 0)} 张图片
-              </span>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleBatchDelete}
-                className="px-5 py-2.5 bg-red-500/20 text-red-400 font-bold text-sm border border-red-500/50 hover:bg-red-500/30 transition-all"
-              >
-                🗑️ 批量删除
-              </button>
-              <button
-                onClick={handleBatchDownload}
-                disabled={downloading}
-                className="px-5 py-2.5 bg-[#00F2FE] text-[#0A0F1D] font-bold text-sm border border-[#00F2FE] shadow-[0_0_15px_rgba(0,242,254,0.4)] hover:shadow-[0_0_20px_rgba(0,242,254,0.6)] transition-all disabled:opacity-50"
-              >
-                {downloading ? '⏳ 打包中...' : '📥 一键打包下载 (ZIP)'}
-              </button>
-              <button
-                onClick={() => {
-                  setBatchMode(false)
-                  setSelectedRecords(new Set())
-                }}
-                className="px-5 py-2.5 bg-[#202B3A] text-white font-bold text-sm border border-[#202B3A] hover:bg-[#2a3343] transition-all"
-              >
-                取消
-              </button>
+      {showDeleteAllModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-md bg-[#141923] border border-[#202B3A] rounded-xl">
+            <div className="p-6">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-500/20 border border-red-500/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-3xl">⚠️</span>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">确认清空所有记录</h3>
+                <p className="text-sm text-[#94A3B8]">
+                  此操作将删除您的全部 {records.length} 条生成记录，且无法恢复。<br/>
+                  <span className="text-red-400">请谨慎操作！</span>
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteAllModal(false)}
+                  className="flex-1 py-3 bg-[#0B0D17] border border-[#202B3A] text-white font-bold text-sm hover:border-[#00F2FE] transition-all"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleDeleteAll}
+                  className="flex-1 py-3 bg-red-500 text-white font-bold text-sm hover:bg-red-600 transition-all"
+                >
+                  ✕ 确认删除全部
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -766,6 +813,25 @@ export default function RecordsPage() {
         show={showChangePassword}
         onClose={() => setShowChangePassword(false)}
       />
+
+      <TermsModal
+        show={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+      />
+
+      <footer className="fixed bottom-0 left-0 right-0 py-2 bg-[#0B0D17]/95 border-t border-[#202B3A]/50 backdrop-blur-sm z-40">
+        <div className="max-w-[1400px] mx-auto px-4 text-center">
+          <p className="text-[10px] text-gray-500">
+            登录或使用本站即代表您同意{' '}
+            <button 
+              onClick={() => setShowTermsModal(true)}
+              className="text-[#00F2FE] hover:text-[#00E676] underline underline-offset-1 transition-colors"
+            >
+              《安全合规与使用须知》
+            </button>
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }
