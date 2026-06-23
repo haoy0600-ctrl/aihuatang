@@ -1,12 +1,30 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { TermsModal } from '@/components/TermsModal'
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    const checkAdmin = () => {
+      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
+      if (storedSession) {
+        try {
+          const session = JSON.parse(storedSession)
+          if (session.email === '50923561@qq.com') {
+            setIsAdmin(true)
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+    checkAdmin()
+  }, [])
 
   const features = [
     {
@@ -45,8 +63,13 @@ export default function HomePage() {
   ]
 
   return (
-    <div className="min-h-screen w-full max-w-[100vw] bg-[#040D0A] text-white flex flex-col">
-      <header className="flex-shrink-0 border-b border-[#142D24] sticky top-0 z-50 bg-[#040D0A]">
+    <div className="min-h-screen w-full max-w-[100vw] bg-black text-white flex flex-col relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0a1a15] via-[#0d1a20] via-[#0a1520] to-[#150a1a] pointer-events-none opacity-50"></div>
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent pointer-events-none opacity-60"></div>
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#10B981]/5 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-[#00F2FE]/5 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className="absolute bottom-1/4 left-1/3 w-72 h-72 bg-[#8B5CF6]/5 rounded-full blur-[100px] pointer-events-none"></div>
+      <header className="flex-shrink-0 border-b border-[#142D24] sticky top-0 z-[60] bg-black/90 backdrop-blur-sm">
         <div className="w-full px-3 sm:px-4 py-2 flex items-center justify-between">
           <Link href="/" className="flex items-center select-none">
             <img 
@@ -75,6 +98,14 @@ export default function HomePage() {
             >
               卡密兑换
             </Link>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="px-3 py-1.5 bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] text-white rounded-lg text-sm font-semibold shadow-[0_0_10px_rgba(139,92,246,0.3)]"
+              >
+                后台管理
+              </Link>
+            )}
           </nav>
 
           <button
@@ -122,6 +153,15 @@ export default function HomePage() {
               >
                 📁 生成记录
               </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-3 py-2 bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] text-white rounded-lg text-sm font-semibold text-center"
+                >
+                  ⚙️ 后台管理
+                </Link>
+              )}
             </div>
           </div>
         )}
@@ -247,13 +287,13 @@ export default function HomePage() {
         </div>
       </main>
 
-      <footer className="fixed bottom-0 left-0 right-0 py-2 bg-[#040D0A]/95 border-t border-[#142D24]/50 backdrop-blur-sm z-40">
+      <footer className="fixed bottom-0 left-0 right-0 py-2 bg-black/95 border-t border-[#142D24]/50 backdrop-blur-sm z-40">
         <div className="max-w-[1400px] mx-auto px-4 text-center">
-          <p className="text-[10px] text-gray-500">
+          <p className="text-xs text-gray-400">
             登录或使用本站即代表您同意{' '}
             <button 
               onClick={() => setShowTermsModal(true)}
-              className="text-[#10B981] hover:text-[#00E676] underline underline-offset-1 transition-colors"
+              className="text-[#10B981] hover:text-[#00E676] font-semibold underline underline-offset-1 transition-colors"
             >
               《安全合规与使用须知》
             </button>

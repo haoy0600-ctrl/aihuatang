@@ -53,7 +53,7 @@ export function TermsModal({ show, onClose }: TermsModalProps) {
           </button>
         </div>
         
-        <div className="p-6 overflow-y-auto max-h-[calc(80vh-80px)]">
+        <div className="p-6 overflow-y-auto max-h-[calc(80vh-80px)] scrollbar-hide">
           <p className="text-sm text-gray-300 mb-6">
             本站为自动化 AI 绘画创意辅助工具，各行各业用户在享受高效生图的同时，必须严格遵守国家网络安全法律法规。
           </p>

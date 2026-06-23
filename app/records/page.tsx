@@ -42,7 +42,7 @@ export default function RecordsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [totalRecords, setTotalRecords] = useState(0)
-  const [columns, setColumns] = useState<GenerationRecord[][]>([[], [], []])
+  const [columns, setColumns] = useState<GenerationRecord[][]>([[], [], [], [], []])
   const observerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -63,7 +63,7 @@ export default function RecordsPage() {
     if (!storedSession) {
       if (reset) {
         setRecords([])
-        setColumns([[], [], []])
+        setColumns([[], [], [], [], []])
         setProfile({ credits: 3 })
         setLoading(false)
       }
@@ -76,7 +76,7 @@ export default function RecordsPage() {
     } catch {
       if (reset) {
         setRecords([])
-        setColumns([[], [], []])
+        setColumns([[], [], [], [], []])
         setProfile({ credits: 3 })
         setLoading(false)
       }
@@ -87,7 +87,7 @@ export default function RecordsPage() {
     if (!session.email || session.expiresAt < now) {
       if (reset) {
         setRecords([])
-        setColumns([[], [], []])
+        setColumns([[], [], [], [], []])
         setProfile({ credits: 3 })
         setLoading(false)
       }
@@ -106,7 +106,7 @@ export default function RecordsPage() {
 
         if (!meData.success || !meData.user) {
           setRecords([])
-          setColumns([[], [], []])
+          setColumns([[], [], [], [], []])
           setProfile({ credits: 3 })
           setLoading(false)
           return
@@ -164,9 +164,10 @@ export default function RecordsPage() {
   }, [user?.id, filterStatus, records])
 
   const distributeRecordsToColumns = (recordsList: GenerationRecord[]) => {
-    const newColumns: GenerationRecord[][] = [[], [], []]
+    const COLUMN_COUNT = 5
+    const newColumns: GenerationRecord[][] = Array.from({ length: COLUMN_COUNT }, () => [])
     recordsList.forEach((record, index) => {
-      const colIndex = index % 3
+      const colIndex = index % COLUMN_COUNT
       newColumns[colIndex].push(record)
     })
     setColumns(newColumns)
@@ -488,9 +489,9 @@ export default function RecordsPage() {
               </Link>
             </div>
           ) : (
-            <div className="flex gap-4">
+            <div className="flex gap-3">
               {columns.map((column, colIndex) => (
-                <div key={colIndex} className="flex-1 space-y-4">
+                <div key={colIndex} className="flex-1 space-y-3">
                   {column.map((record) => {
                     const imageUrls = typeof record.image_urls === 'string' ? JSON.parse(record.image_urls) : record.image_urls
                     const totalCost = getModelPrice(record.model) * (record.image_count || 1)
@@ -499,7 +500,7 @@ export default function RecordsPage() {
                     return (
                       <div 
                         key={record.id} 
-                        className="bg-[#0D111A] border border-[#1E293B] overflow-hidden hover:border-[#00F2FE]/50 transition-all duration-300 rounded-xl group"
+                        className="bg-[#0D111A] border border-[#1E293B] overflow-hidden hover:border-[#00F2FE]/50 transition-all duration-300 rounded-lg group"
                       >
                         <div className="relative overflow-hidden bg-[#161a2b]">
                           {imageUrls && imageUrls[0] ? (
@@ -509,16 +510,16 @@ export default function RecordsPage() {
                               className="w-full h-auto object-contain"
                             />
                           ) : (
-                            <div className="w-full aspect-square flex items-center justify-center text-[#94A3B8] bg-[#0B0D17]">
+                            <div className="w-full aspect-square flex items-center justify-center text-[#94A3B8] bg-[#0B0D17] text-xs">
                               {record.status === 'failed' || record.status === 'error' ? (
-                                <span className="text-center p-4">❌ 生成失败</span>
+                                <span className="text-center p-2">❌ 生成失败</span>
                               ) : (
                                 <span>无图片</span>
                               )}
                             </div>
                           )}
 
-                          <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center gap-2 p-4">
+                          <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col items-center justify-center gap-1.5 p-2">
                             {imageUrls && imageUrls[0] && (
                               <>
                                 <button
@@ -527,30 +528,27 @@ export default function RecordsPage() {
                                     setPreviewImageUrl(imageUrls?.[0] || '')
                                     setShowImagePreview(true)
                                   }}
-                                  className="w-full max-w-[140px] px-4 py-2.5 bg-[#00E676] text-[#0A0F1D] text-sm font-bold hover:bg-[#00ff80] transition-all backdrop-blur-sm border border-[#00E676] flex items-center justify-center gap-2"
+                                  className="w-full px-2 py-1.5 bg-[#00E676] text-[#0A0F1D] text-xs font-bold hover:bg-[#00ff80] transition-all backdrop-blur-sm border border-[#00E676] flex items-center justify-center gap-1 rounded"
                                 >
-                                  <span>🔍</span>
-                                  <span>预览</span>
+                                  🔍 预览
                                 </button>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     handleDownload(imageUrls?.[0] || '', 0)
                                   }}
-                                  className="w-full max-w-[140px] px-4 py-2.5 bg-[#00F2FE] text-[#0A0F1D] text-sm font-bold hover:bg-[#33f5ff] transition-all backdrop-blur-sm border border-[#00F2FE] flex items-center justify-center gap-2"
+                                  className="w-full px-2 py-1.5 bg-[#00F2FE] text-[#0A0F1D] text-xs font-bold hover:bg-[#33f5ff] transition-all backdrop-blur-sm border border-[#00F2FE] flex items-center justify-center gap-1 rounded"
                                 >
-                                  <span>⬇️</span>
-                                  <span>下载原图</span>
+                                  ⬇️ 下载
                                 </button>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     handleCopyLink(imageUrls?.[0] || '')
                                   }}
-                                  className="w-full max-w-[140px] px-4 py-2.5 bg-white/90 text-[#0A0F1D] text-sm font-bold hover:bg-white transition-all backdrop-blur-sm border border-white/50 flex items-center justify-center gap-2"
+                                  className="w-full px-2 py-1.5 bg-white/90 text-[#0A0F1D] text-xs font-bold hover:bg-white transition-all backdrop-blur-sm border border-white/50 flex items-center justify-center gap-1 rounded"
                                 >
-                                  <span>🔗</span>
-                                  <span>复制链接</span>
+                                  🔗 复制
                                 </button>
                               </>
                             )}
@@ -561,60 +559,59 @@ export default function RecordsPage() {
                                   handleDeleteRecord(record.id)
                                 }
                               }}
-                              className="w-full max-w-[140px] px-4 py-2.5 bg-red-500/90 text-white text-sm font-bold hover:bg-red-500 transition-all backdrop-blur-sm border border-red-500/50 flex items-center justify-center gap-2"
+                              className="w-full px-2 py-1.5 bg-red-500/90 text-white text-xs font-bold hover:bg-red-500 transition-all backdrop-blur-sm border border-red-500/50 flex items-center justify-center gap-1 rounded"
                             >
-                              <span>🗑️</span>
-                              <span>删除记录</span>
+                              🗑️ 删除
                             </button>
                           </div>
 
                           {imageUrls && imageUrls.length > 1 && (
-                            <div className="absolute top-2 right-2">
-                              <div className="px-2 py-1 bg-black/60 text-[#00F2FE] text-xs font-bold backdrop-blur-sm rounded">
+                            <div className="absolute top-1 right-1">
+                              <div className="px-1.5 py-0.5 bg-black/60 text-[#00F2FE] text-[10px] font-bold backdrop-blur-sm rounded">
                                 +{imageUrls.length - 1}
                               </div>
                             </div>
                           )}
 
-                          <div className="absolute top-2 left-2">
-                            <span className={`px-2 py-1 text-xs font-bold backdrop-blur-sm rounded ${
+                          <div className="absolute top-1 left-1">
+                            <span className={`px-1.5 py-0.5 text-[10px] font-bold backdrop-blur-sm rounded ${
                               record.status === 'success' || record.status === 'completed'
                                 ? 'bg-[#10B981]/80 text-white'
                                 : record.status === 'failed' || record.status === 'error'
                                   ? 'bg-red-500/80 text-white'
                                   : 'bg-yellow-500/80 text-black'
                             }`}>
-                              {record.status === 'success' || record.status === 'completed' ? '✓ 成功' : record.status === 'failed' || record.status === 'error' ? '✕ 失败' : '⏳ 处理中'}
+                              {record.status === 'success' || record.status === 'completed' ? '✓' : record.status === 'failed' || record.status === 'error' ? '✕' : '⏳'}
                             </span>
                           </div>
                         </div>
 
-                        <div className="p-3">
-                          <div className="flex items-center gap-1.5 flex-wrap mb-2">
-                            <span className="px-2 py-0.5 bg-[#10B981]/20 text-[#10B981] text-xs font-bold border border-[#10B981]/50 rounded">
+                        <div className="p-2">
+                          <div className="flex items-center gap-1 flex-wrap mb-1">
+                            <span className="px-1.5 py-0.5 bg-[#10B981]/20 text-[#10B981] text-[10px] font-bold border border-[#10B981]/50 rounded">
                               {record.style_name}
                             </span>
                             <span className="px-2 py-0.5 bg-[#00F2FE]/20 text-[#00F2FE] text-xs font-bold border border-[#00F2FE]/50 rounded">
                               {record.model}
                             </span>
-                            <span className="px-2 py-0.5 bg-[#F59E0B]/20 text-[#F59E0B] text-xs font-bold border border-[#F59E0B]/50 rounded">
+                            <span className="px-1.5 py-0.5 bg-[#F59E0B]/20 text-[#F59E0B] text-[10px] font-bold border border-[#F59E0B]/50 rounded">
                               ⚡️ {totalCost}
                             </span>
                           </div>
 
                           <div className="flex items-center justify-between">
-                            <p className="text-xs text-[#94A3B8] truncate flex-1 mr-2">
+                            <p className="text-[10px] text-[#94A3B8] truncate flex-1 mr-2">
                               {firstSentence}
                             </p>
                             <button
                               onClick={() => openDetailModal(record)}
-                              className="text-xs text-[#00F2FE] hover:text-[#00E676] transition-colors"
+                              className="text-[10px] text-[#00F2FE] hover:text-[#00E676] transition-colors"
                             >
                               ▼
                             </button>
                           </div>
 
-                          <p className="text-[10px] text-[#475569] mt-2">
+                          <p className="text-[9px] text-[#475569] mt-1">
                             {formatDate(record.created_at)}
                           </p>
                         </div>

@@ -11,6 +11,15 @@ button, input, select, textarea {
   border-radius: 0.5rem;
 }
 
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 .brutal-shadow {
   box-shadow: 4px 4px 0px 0px #000000;
 }

@@ -5,11 +5,12 @@ import { HANDDRAWN_STYLES } from '@/config/styles'
 export const maxDuration = 300
 
 const GRS_API_KEY = process.env.GRSAI_API_KEY || ''
-const BASE_URL = (process.env.GRS_API_BASE_URL || 'https://grsapiapi.com').replace(/\/$/, '')
+const GRS_API_BASE_URL = (process.env.GRS_API_BASE_URL || 'https://grsapiapi.com').replace(/\/+$/, '')
 
-const timeoutPromise = <T>(promise: Promise<T>, ms: number): Promise<T> => {
+function timeoutPromise<T>(promise: Promise<T>, ms: number, label: string = '请求'): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
+      console.error(`[${label}] 超时，超过 ${ms}ms`)
       reject(new Error(`请求超时，超过 ${ms}ms`))
     }, ms)
     promise.then(
@@ -23,6 +24,29 @@ const timeoutPromise = <T>(promise: Promise<T>, ms: number): Promise<T> => {
       }
     )
   })
+}
+
+function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number, label: string): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+  
+  return fetch(url, {
+    ...options,
+    signal: controller.signal,
+  })
+    .then((response) => {
+      clearTimeout(timeoutId)
+      return response
+    })
+    .catch((error) => {
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        console.error(`[${label}] 请求被中止 (超时 ${timeoutMs}ms)`)
+        throw new Error(`${label}请求超时，请稍后重试`)
+      }
+      console.error(`[${label}] fetch错误:`, error.message, 'URL:', url)
+      throw error
+    })
 }
 
 function getResolutionPrice(modelType: string, resolution: string): number {
@@ -88,8 +112,8 @@ async function submitGrsTask(
   const isImageMode = !!referenceImage
   const model = modelType === 'NanoBanana2' ? 'nano-banana-pro' : 'gpt-image-2'
   const drawUrl = modelType === 'NanoBanana2'
-    ? `${BASE_URL}/v1/draw/nano-banana`
-    : `${BASE_URL}/v1/draw/completions`
+    ? `${GRS_API_BASE_URL}/v1/draw/nano-banana`
+    : `${GRS_API_BASE_URL}/v1/draw/completions`
 
   const payload: any = {
     model: model,
@@ -104,39 +128,47 @@ async function submitGrsTask(
 
   console.log('[GrsAI] API request:', { url: drawUrl, model, imageSize, isImageMode, timestamp: Date.now() })
 
+  if (!GRS_API_KEY) {
+    console.error('[GrsAI] GRS_API_KEY 未配置')
+    throw new Error('GRS_API_KEY 未配置，请联系管理员')
+  }
+
   try {
-    const response = await timeoutPromise(fetch(drawUrl, {
+    const response = await fetchWithTimeout(drawUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${GRS_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
-    }), 60000)
+    }, 60000, 'GrsAI提交任务')
 
     if (!response.ok) {
       const errorText = await response.text()
       console.error(`[GrsAI] API request failed: status=${response.status}, body=${errorText}`)
-      throw new Error(`GrsAI API 请求失败: ${response.status}`)
+      throw new Error(`GrsAI API 请求失败: ${response.status} - ${errorText.substring(0, 200)}`)
     }
 
-    const responseText = await timeoutPromise(response.text(), 30000)
-    console.log('[GrsAI] task response:', response.status, responseText.substring(0, 500))
-
+    const responseText = await timeoutPromise(response.text().then(t => { console.log('[GrsAI] raw response:', t.substring(0, 500)); return t }), 30000, 'GrsAI读取响应')
+    
     let taskJson
     try {
       taskJson = JSON.parse(responseText)
     } catch {
-      throw new Error('GrsAI returned invalid JSON')
+      console.error('[GrsAI] JSON解析失败, raw:', responseText.substring(0, 500))
+      throw new Error('GrsAI 返回了无效的JSON响应')
     }
 
     if (!taskJson.data || !taskJson.data.id) {
-      throw new Error(taskJson.message || 'GrsAI 任务创建失败')
+      const msg = taskJson.message || taskJson.error || 'GrsAI 任务创建失败(无taskId)'
+      console.error('[GrsAI] 任务创建失败:', msg, '完整响应:', JSON.stringify(taskJson).substring(0, 500))
+      throw new Error(msg)
     }
 
+    console.log('[GrsAI] 任务创建成功, taskId:', taskJson.data.id)
     return taskJson.data.id
   } catch (error: any) {
-    console.error('[GrsAI] submitGrsTask error:', error.message, error.stack)
+    console.error('[GrsAI] submitGrsTask error:', error.message)
     throw error
   }
 }
@@ -144,44 +176,48 @@ async function submitGrsTask(
 async function pollGrsResult(taskId: string): Promise<string> {
   const maxRetries = 30
   const retryDelay = 4000
+  const pollUrl = `${GRS_API_BASE_URL}/v1/draw/result`
 
   for (let i = 0; i < maxRetries; i++) {
     try {
-      const checkRes = await timeoutPromise(fetch(`${BASE_URL}/v1/draw/result`, {
+      const checkRes = await fetchWithTimeout(pollUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${GRS_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ id: taskId }),
-      }), 30000)
+      }, 30000, `GrsAI轮询${i + 1}/${maxRetries}`)
 
       if (!checkRes.ok) {
         const errorText = await checkRes.text()
-        console.error(`[GrsAI] Poll failed: status=${checkRes.status}, body=${errorText}`)
+        console.error(`[GrsAI] Poll failed: status=${checkRes.status}, body=${errorText.substring(0, 200)}`)
         await new Promise(resolve => setTimeout(resolve, retryDelay))
         continue
       }
 
-      const checkJson = await timeoutPromise(checkRes.json(), 15000)
+      const checkJson = await timeoutPromise(checkRes.json(), 15000, 'GrsAI解析轮询响应')
       console.log(`[GrsAI] poll ${i + 1}/${maxRetries}: status=${checkJson.status || checkJson.data?.status}`)
 
       const results = checkJson.results || checkJson.data?.results
       const status = checkJson.status || checkJson.data?.status
 
       if (status === 'succeeded' && results && results[0]) {
+        console.log('[GrsAI] 生成成功, 图片URL:', results[0].url ? results[0].url.substring(0, 100) + '...' : '无URL')
         return results[0].url
       }
 
       if (status === 'failed') {
-        throw new Error('GrsAI 官方节点提示生成失败，已执行免扣费退款')
+        const failReason = checkJson.error || checkJson.data?.error || '未知原因'
+        console.error('[GrsAI] 生成失败:', failReason)
+        throw new Error(`GrsAI 官方节点提示生成失败(${failReason})，已执行免扣费退款`)
       }
 
       await new Promise(resolve => setTimeout(resolve, retryDelay))
     } catch (error: any) {
       console.error(`[GrsAI] Poll attempt ${i + 1} error:`, error.message)
       if (i === maxRetries - 1) {
-        throw error
+        throw new Error(`GrsAI 任务超时(${maxRetries}次轮询均失败): ${error.message}`)
       }
       await new Promise(resolve => setTimeout(resolve, retryDelay))
     }
