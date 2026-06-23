@@ -1,1 +1,1 @@
-{"version":1,"functions":{"/api/generate":{"maxDuration":300}}}
+{"version":1,"functions":{"/api/cron/clean":{"maxDuration":300},"/api/generate":{"maxDuration":300}}}

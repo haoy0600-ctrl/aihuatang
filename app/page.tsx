@@ -129,7 +129,7 @@ export default function HomePage() {
 
       <main className="flex-1 flex flex-col items-center px-3 py-4 sm:py-6">
         <div className="text-center mb-2">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-teal-200 to-green-500 mb-1">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold mb-1 bg-gradient-to-r from-[#03F09C] via-[#00F2FE] via-[#10B981] to-[#03F09C] bg-[length:200%_auto] bg-clip-text text-transparent animate-[gradient-flow_4s_ease_infinite] drop-shadow-[0_0_20px_rgba(3,240,156,0.4)]">
             AI画堂 · 自媒体全自动知识图卡生产线
           </h1>
           <p className="text-xs text-[#94A3B8] max-w-2xl mx-auto">

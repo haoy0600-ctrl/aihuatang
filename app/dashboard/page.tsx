@@ -671,19 +671,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#040D0A] flex items-center justify-center">
-        <div className="animate-pulse">
-          <div className="flex items-center justify-center gap-2 text-4xl font-bold font-sans mb-4">
-            <div className="w-12 h-12 bg-[#03F09C] rounded-md flex items-center justify-center shadow-[0_0_20px_rgba(3,240,156,0.5)]">
-              <svg className="w-6 h-6 text-[#040D0A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 6v6l4 2"/>
-              </svg>
-            </div>
-            <span className="px-2 py-1 rounded-md bg-[#03F09C] text-[#040D0A] font-extrabold text-sm tracking-tighter mr-1 shadow-[0_0_12px_rgba(3,240,156,0.4)]">AI</span>
-            <span className="font-serif tracking-widest bg-gradient-to-r from-[#03F09C] via-[#00F2FE] to-[#03F09C] bg-clip-text text-transparent italic filter drop-shadow-[0_0_6px_rgba(0,242,254,0.3)]">画堂</span>
-          </div>
-          <p className="text-[#03F09C]">正在加载...</p>
-        </div>
+        <p className="text-[#03F09C] text-sm">正在加载...</p>
       </div>
     )
   }
