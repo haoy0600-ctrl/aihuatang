@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     ] = await Promise.all([
       supabaseAdmin.from('profiles').select('id', { count: 'exact' }).limit(0),
       supabaseAdmin.from('generation_records').select('id', { count: 'exact' }).limit(0),
-      supabaseAdmin.from('generation_records').select('status'),
+      supabaseAdmin.from('generation_records').select('status, image_count'),
       supabaseAdmin.from('generation_records').select('*').eq('status', 'processing').order('created_at', { ascending: true })
     ])
 
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       return sum + 3 * imageCount
     }, 0) || 0
 
-    const successRate = generationCount > 0 ? ((successCount / generationCount) * 100).toFixed(1) : '0.0'
+    const successRate = generationCount != null && generationCount > 0 ? ((successCount / generationCount) * 100).toFixed(1) : '0.0'
 
     return NextResponse.json({
       success: true,

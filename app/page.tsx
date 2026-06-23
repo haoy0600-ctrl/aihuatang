@@ -259,7 +259,7 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/*{'/* Footer */'}
+      {'/* Footer */'}
       <footer className="text-center py-2 border-t border-[#142D24] flex-shrink-0">
         <p className="text-[10px] text-gray-500">
           登录或使用本站即代表您同意{' '}

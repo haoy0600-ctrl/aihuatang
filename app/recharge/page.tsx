@@ -8,7 +8,7 @@ import { TermsModal } from '@/components/TermsModal'
 export default function RechargePage() {
   const [currentTime, setCurrentTime] = useState('')
   const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState<{ credits: number } | null>(null)
+  const [profile, setProfile] = useState<{ credits: number; avatar_url?: string } | null>(null)
   const [isRedeeming, setIsRedeeming] = useState(false)
   const [cardCode, setCardCode] = useState('')
   const [toastMessage, setToastMessage] = useState('')

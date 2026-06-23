@@ -55,13 +55,13 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    const { data: publicUrlData, error: publicUrlError } = supabaseAdmin
+    const { data: publicUrlData } = supabaseAdmin 
       .storage
       .from('avatars')
       .getPublicUrl(fileName)
 
-    if (publicUrlError || !publicUrlData) {
-      console.error('Get public URL error:', publicUrlError)
+    if (!publicUrlData) {
+      console.error('Get public URL error: no data returned')
       return NextResponse.json({
         success: false,
         error: '获取图片链接失败'
