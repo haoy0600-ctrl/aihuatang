@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
+import { TermsModal } from '@/components/TermsModal'
 
 interface UserProfile {
   id: string
@@ -94,6 +95,7 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<'info' | 'password'>('info')
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [showTermsModal, setShowTermsModal] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -487,6 +489,25 @@ export default function ProfilePage() {
         show={showChangePassword}
         onClose={() => setShowChangePassword(false)}
       />
+
+      <TermsModal
+        show={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+      />
+
+      <footer className="fixed bottom-0 left-0 right-0 py-2 bg-[#040D0A]/95 border-t border-[#142D24]/50 backdrop-blur-sm z-40">
+        <div className="max-w-[1400px] mx-auto px-4 text-center">
+          <p className="text-[10px] text-gray-500">
+            登录或使用本站即代表您同意{' '}
+            <button 
+              onClick={() => setShowTermsModal(true)}
+              className="text-[#10B981] hover:text-[#00E676] underline underline-offset-1 transition-colors"
+            >
+              《安全合规与使用须知》
+            </button>
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }

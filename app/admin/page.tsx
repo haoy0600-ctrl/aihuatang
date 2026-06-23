@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { TermsModal } from '@/components/TermsModal'
 
 interface User {
   id: string
@@ -47,6 +48,7 @@ export default function AdminPage() {
   const [creditAmount, setCreditAmount] = useState(0)
   const [showCreditModal, setShowCreditModal] = useState(false)
   const [creditAction, setCreditAction] = useState<'add' | 'subtract'>('add')
+  const [showTermsModal, setShowTermsModal] = useState(false)
 
   useEffect(() => {
     const updateTime = () => {
@@ -565,6 +567,25 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      <TermsModal
+        show={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+      />
+
+      <footer className="fixed bottom-0 left-0 right-0 py-2 bg-[#0B0D17]/95 border-t border-[#202B3A]/50 backdrop-blur-sm z-40">
+        <div className="max-w-[1400px] mx-auto px-4 text-center">
+          <p className="text-[10px] text-gray-500">
+            登录或使用本站即代表您同意{' '}
+            <button 
+              onClick={() => setShowTermsModal(true)}
+              className="text-[#00F2FE] hover:text-[#00E676] underline underline-offset-1 transition-colors"
+            >
+              《安全合规与使用须知》
+            </button>
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }

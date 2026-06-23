@@ -2,9 +2,11 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
+import { TermsModal } from '@/components/TermsModal'
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showTermsModal, setShowTermsModal] = useState(false)
 
   const features = [
     {
@@ -44,10 +46,8 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen w-full max-w-[100vw] bg-[#040D0A] text-white flex flex-col">
-      {/* Header 导航栏 - sticky */}
       <header className="flex-shrink-0 border-b border-[#142D24] sticky top-0 z-50 bg-[#040D0A]">
         <div className="w-full px-3 sm:px-4 py-2 flex items-center justify-between">
-          {/* Logo */}
           <Link href="/" className="flex items-center select-none">
             <img 
               src="/logo.png?v=8" 
@@ -56,7 +56,6 @@ export default function HomePage() {
             />
           </Link>
 
-          {/* 桌面端导航 */}
           <nav className="hidden md:flex items-center gap-2">
             <Link
               href="/dashboard"
@@ -78,7 +77,6 @@ export default function HomePage() {
             </Link>
           </nav>
 
-          {/* 移动端汉堡菜单按钮 */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden w-10 h-10 flex items-center justify-center bg-[#141923] border border-[#202B3A] rounded-lg"
@@ -92,7 +90,6 @@ export default function HomePage() {
             </svg>
           </button>
 
-          {/* 桌面端快捷按钮 */}
           <Link
             href="/dashboard"
             className="hidden md:flex px-3 py-1.5 bg-[#10B981] text-[#0B0D17] rounded-lg text-sm font-semibold shadow-[0_0_10px_rgba(16,185,129,0.3)]"
@@ -101,7 +98,6 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {/* 移动端下拉菜单 */}
         {mobileMenuOpen && (
           <div className="md:hidden px-3 pb-2 border-t border-[#142D24] pt-2">
             <div className="flex flex-col gap-1">
@@ -131,9 +127,7 @@ export default function HomePage() {
         )}
       </header>
 
-      {/* 主内容区 */}
       <main className="flex-1 flex flex-col items-center px-3 py-4 sm:py-6">
-        {/* 主标题区 */}
         <div className="text-center mb-2">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-teal-200 to-green-500 mb-1">
             AI画堂 · 自媒体全自动知识图卡生产线
@@ -150,7 +144,6 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {/* 核心功能区 */}
         <div className="w-full max-w-4xl mb-2">
           <div className="text-center mb-2">
             <h2 className="text-sm font-bold text-white">核心功能</h2>
@@ -170,13 +163,11 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 痛点对比面板 */}
         <div className="w-full max-w-4xl mb-2">
           <div className="text-center mb-2">
             <h2 className="text-sm font-bold text-white">为什么选择 AI画堂？</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-            {/* 左栏 */}
             <div className="md:col-span-2 bg-[#1a0a0a] border border-red-900/50 rounded-lg p-3">
               <h3 className="text-xs font-bold text-red-400 mb-2">❌ 传统工具的痛点</h3>
               <div className="space-y-1.5">
@@ -204,12 +195,10 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* VS 大字 */}
             <div className="hidden md:flex md:col-span-1 items-center justify-center">
               <div className="font-black text-3xl text-zinc-600">VS</div>
             </div>
 
-            {/* 右栏 */}
             <div className="md:col-span-2 bg-gradient-to-br from-[#0a1a0a] to-[#0a1a15] border border-[#10B981]/50 rounded-lg p-3">
               <h3 className="text-xs font-bold text-[#10B981] mb-2">✅ AI画堂的优势</h3>
               <div className="space-y-1.5">
@@ -239,7 +228,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 创作流程 */}
         <div className="w-full max-w-3xl">
           <div className="text-center mb-2">
             <h2 className="text-sm font-bold text-white">创作流程</h2>
@@ -259,16 +247,24 @@ export default function HomePage() {
         </div>
       </main>
 
-      {'/* Footer */'}
-      <footer className="text-center py-2 border-t border-[#142D24] flex-shrink-0">
-        <p className="text-[10px] text-gray-500">
-          登录或使用本站即代表您同意{' '}
-          <Link href="/terms" className="text-[#10B981] hover:text-[#00E676] underline underline-offset-1 transition-colors">
-            《安全合规与使用须知》
-          </Link>
-        </p>
-        <p className="text-xs text-[#10B981] mt-1">© 2026 AI画堂</p>
+      <footer className="fixed bottom-0 left-0 right-0 py-2 bg-[#040D0A]/95 border-t border-[#142D24]/50 backdrop-blur-sm z-40">
+        <div className="max-w-[1400px] mx-auto px-4 text-center">
+          <p className="text-[10px] text-gray-500">
+            登录或使用本站即代表您同意{' '}
+            <button 
+              onClick={() => setShowTermsModal(true)}
+              className="text-[#10B981] hover:text-[#00E676] underline underline-offset-1 transition-colors"
+            >
+              《安全合规与使用须知》
+            </button>
+          </p>
+        </div>
       </footer>
+
+      <TermsModal
+        show={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+      />
     </div>
   )
 }
