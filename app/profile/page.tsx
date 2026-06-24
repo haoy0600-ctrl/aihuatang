@@ -483,13 +483,13 @@ export default function ProfilePage() {
         onClose={() => setShowTermsModal(false)}
       />
 
-      <footer className="fixed bottom-0 left-0 right-0 py-2 bg-[#040D0A]/95 border-t border-[#142D24]/50 backdrop-blur-sm z-40">
+      <footer className="fixed bottom-0 left-0 right-0 py-2.5 bg-[#030712]/95 border-t border-[#1e293b]/50 backdrop-blur-sm z-40">
         <div className="max-w-[1400px] mx-auto px-4 text-center">
-          <p className="text-[10px] text-gray-500">
+          <p className="text-sm text-gray-400">
             登录或使用本站即代表您同意{' '}
             <button 
               onClick={() => setShowTermsModal(true)}
-              className="text-[#10B981] hover:text-[#00E676] underline underline-offset-1 transition-colors"
+              className="text-[#10B981] hover:text-[#00F2FE] font-semibold underline underline-offset-2 decoration-[#10B981]/50 hover:decoration-[#00F2FE] transition-all duration-300 hover:shadow-[0_0_8px_rgba(16,185,129,0.3)] rounded px-1"
             >
               《安全合规与使用须知》
             </button>

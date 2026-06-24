@@ -49,11 +49,13 @@ function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number, 
     })
 }
 
+// 分辨率积分定价：1K=2分 / 2K=4分 / 4K=8分
 function getResolutionPrice(modelType: string, resolution: string): number {
-  if (modelType === 'NanoBanana2') {
-    return resolution === '1K' ? 2 : 8
-  } else {
-    return 2
+  switch (resolution) {
+    case '1K': return 2
+    case '2K': return 4
+    case '4K': return 8
+    default: return 2
   }
 }
 

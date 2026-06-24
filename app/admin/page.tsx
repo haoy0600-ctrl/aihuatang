@@ -254,20 +254,33 @@ export default function AdminPage() {
               {[
                 { key: 'dashboard', label: '数据看板' },
                 { key: 'users', label: '用户管理' },
-                { key: 'cards', label: '卡密管理' }
-              ].map(tab => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`px-4 py-2 font-bold text-sm border transition-all rounded-lg ${
-                    activeTab === tab.key
-                      ? 'bg-[#00F2FE] text-[#0A0F1D] border-[#00F2FE]'
-                      : 'bg-[#141923] text-white border-[#202B3A] hover:border-[#00F2FE]'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+                { key: 'cards', label: '🔑 卡密管理', href: '/admin/cards' }
+              ].map(tab => {
+                if (tab.href) {
+                  return (
+                    <Link
+                      key={tab.key}
+                      href={tab.href}
+                      className="px-3 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+                    >
+                      {tab.label}
+                    </Link>
+                  )
+                }
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`px-4 py-2 font-bold text-sm border transition-all rounded-lg ${
+                      activeTab === tab.key
+                        ? 'bg-[#00F2FE] text-[#0A0F1D] border-[#00F2FE]'
+                        : 'bg-[#141923] text-white border-[#202B3A] hover:border-[#00F2FE]'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                )
+              })}
             </nav>
 
             <div className="flex items-center gap-2 sm:gap-4">
@@ -573,13 +586,13 @@ export default function AdminPage() {
         onClose={() => setShowTermsModal(false)}
       />
 
-      <footer className="fixed bottom-0 left-0 right-0 py-2 bg-[#0B0D17]/95 border-t border-[#202B3A]/50 backdrop-blur-sm z-40">
+      <footer className="fixed bottom-0 left-0 right-0 py-2.5 bg-[#030712]/95 border-t border-[#1e293b]/50 backdrop-blur-sm z-40">
         <div className="max-w-[1400px] mx-auto px-4 text-center">
-          <p className="text-[10px] text-gray-500">
+          <p className="text-sm text-gray-400">
             登录或使用本站即代表您同意{' '}
             <button 
               onClick={() => setShowTermsModal(true)}
-              className="text-[#00F2FE] hover:text-[#00E676] underline underline-offset-1 transition-colors"
+              className="text-[#10B981] hover:text-[#00F2FE] font-semibold underline underline-offset-2 decoration-[#10B981]/50 hover:decoration-[#00F2FE] transition-all duration-300 hover:shadow-[0_0_8px_rgba(16,185,129,0.3)] rounded px-1"
             >
               《安全合规与使用须知》
             </button>

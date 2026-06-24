@@ -527,10 +527,10 @@ export default function DashboardPage() {
     try {
       const resolutionMap: Record<string, string> = {
         '1K': '1024x1024',
-        '2K': '1440x2560',
-        '4K': '2160x3840',
+        '2K': '2048x2048',
+        '4K': '4096x4096',
       }
-      const targetSize = resolutionMap[selectedResolution] || '1440x2560'
+      const targetSize = resolutionMap[selectedResolution] || '2048x2048'
 
       const response = await fetch('/api/generate', {
         method: 'POST',
@@ -635,12 +635,13 @@ export default function DashboardPage() {
     }
   }
 
-  // 降价后计费规则：GPT-Image-2全线2积分，NanoBanana2按分辨率2/8积分
+  // 分辨率积分定价：1K=2分 / 2K=4分 / 4K=8分
   const getResolutionPrice = (model: string, res: string) => {
-    if (model === 'NanoBanana2') {
-      return res === '1K' ? 2 : 8
-    } else {
-      return 2
+    switch (res) {
+      case '1K': return 2
+      case '2K': return 4
+      case '4K': return 8
+      default: return 2
     }
   }
   const validSegments = textSegments.filter(s => s && s.trim().length > 0)
@@ -1436,13 +1437,13 @@ export default function DashboardPage() {
         onClose={() => setShowTermsModal(false)}
       />
 
-      <footer className="fixed bottom-0 left-0 right-0 py-2 bg-[#0B0D17]/95 border-t border-[#202B3A]/50 backdrop-blur-sm z-40">
+      <footer className="fixed bottom-0 left-0 right-0 py-2.5 bg-[#030712]/95 border-t border-[#1e293b]/50 backdrop-blur-sm z-40">
         <div className="max-w-[1400px] mx-auto px-4 text-center">
-          <p className="text-[10px] text-gray-500">
+          <p className="text-sm text-gray-400">
             登录或使用本站即代表您同意{' '}
             <button 
               onClick={() => setShowTermsModal(true)}
-              className="text-[#00F2FE] hover:text-[#00E676] underline underline-offset-1 transition-colors"
+              className="text-[#10B981] hover:text-[#00F2FE] font-semibold underline underline-offset-2 decoration-[#10B981]/50 hover:decoration-[#00F2FE] transition-all duration-300 hover:shadow-[0_0_8px_rgba(16,185,129,0.3)] rounded px-1"
             >
               《安全合规与使用须知》
             </button>

@@ -466,9 +466,23 @@ export default function RecordsPage() {
 
           {loading ? (
             <div className="text-center py-20">
+              {/* 改进的骨架屏 - 固定高度防止布局抖动 */}
               <div className="animate-pulse">
-                <div className="w-12 h-12 bg-[#10B981] border border-[#202B3A] mx-auto mb-4"></div>
+                <div className="w-12 h-12 bg-[#10B981] border border-[#202B3A] mx-auto mb-4 rounded-full"></div>
                 <p className="text-[#00F2FE]">加载中...</p>
+              </div>
+              {/* 骨架屏网格 */}
+              <div className="flex gap-3 mt-8 max-w-6xl mx-auto px-4">
+                {[1, 2, 3, 4, 5].map(col => (
+                  <div key={col} className="flex-1 space-y-3">
+                    {[1, 2, 3].map(row => (
+                      <div 
+                        key={`${col}-${row}`} 
+                        className="h-48 bg-[#141923] border border-[#1E293B] rounded-lg animate-pulse transition-all duration-300"
+                      />
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
           ) : records.length === 0 ? (
@@ -816,13 +830,13 @@ export default function RecordsPage() {
         onClose={() => setShowTermsModal(false)}
       />
 
-      <footer className="fixed bottom-0 left-0 right-0 py-2 bg-[#0B0D17]/95 border-t border-[#202B3A]/50 backdrop-blur-sm z-40">
+      <footer className="fixed bottom-0 left-0 right-0 py-2.5 bg-[#030712]/95 border-t border-[#1e293b]/50 backdrop-blur-sm z-40">
         <div className="max-w-[1400px] mx-auto px-4 text-center">
-          <p className="text-[10px] text-gray-500">
+          <p className="text-sm text-gray-400">
             登录或使用本站即代表您同意{' '}
             <button 
               onClick={() => setShowTermsModal(true)}
-              className="text-[#00F2FE] hover:text-[#00E676] underline underline-offset-1 transition-colors"
+              className="text-[#10B981] hover:text-[#00F2FE] font-semibold underline underline-offset-2 decoration-[#10B981]/50 hover:decoration-[#00F2FE] transition-all duration-300 hover:shadow-[0_0_8px_rgba(16,185,129,0.3)] rounded px-1"
             >
               《安全合规与使用须知》
             </button>
