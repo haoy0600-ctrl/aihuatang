@@ -7,6 +7,7 @@ import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
+import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
 
 interface GenerationRecord {
   id: string
@@ -59,32 +60,8 @@ export default function RecordsPage() {
   }, [])
 
   const fetchRecords = useCallback(async (pageNum: number = 1, reset: boolean = false) => {
-    const storedSession = localStorage.getItem('ai_handdrawn_login_session')
-    if (!storedSession) {
-      if (reset) {
-        setRecords([])
-        setColumns([[], [], [], [], []])
-        setProfile({ credits: 3 })
-        setLoading(false)
-      }
-      return
-    }
-
-    let session: any
-    try {
-      session = JSON.parse(storedSession)
-    } catch {
-      if (reset) {
-        setRecords([])
-        setColumns([[], [], [], [], []])
-        setProfile({ credits: 3 })
-        setLoading(false)
-      }
-      return
-    }
-
-    const now = Date.now()
-    if (!session.email || session.expiresAt < now) {
+    const session = getStoredSession()
+    if (!session) {
       if (reset) {
         setRecords([])
         setColumns([[], [], [], [], []])
@@ -98,8 +75,8 @@ export default function RecordsPage() {
       if (reset) {
         const meResponse = await fetch('/api/auth/me', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: session.email })
+          headers: authHeaders(),
+          body: JSON.stringify({})
         })
 
         const meData = await meResponse.json()
@@ -121,9 +98,8 @@ export default function RecordsPage() {
 
       const recordsResponse = await fetch('/api/user/records', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ 
-          userId: user?.id, 
           status: filterStatus,
           page: pageNum,
           limit: 20
@@ -252,8 +228,8 @@ export default function RecordsPage() {
   const handleDeleteRecord = async (recordId: string) => {
     const response = await fetch('/api/user/delete-record', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: recordId, userId: user?.id })
+      headers: authHeaders(),
+      body: JSON.stringify({ id: recordId })
     })
 
     const data = await response.json()
@@ -268,8 +244,8 @@ export default function RecordsPage() {
     const deletePromises = records.map(record =>
       fetch('/api/user/delete-record', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: record.id, userId: user?.id })
+        headers: authHeaders(),
+        body: JSON.stringify({ id: record.id })
       })
     )
 
@@ -314,6 +290,11 @@ export default function RecordsPage() {
   const openDetailModal = (record: GenerationRecord) => {
     setSelectedRecord(record)
     setShowDetailModal(true)
+  }
+
+  const handleLogout = () => {
+    clearStoredSession()
+    window.location.href = '/login'
   }
 
   const filteredRecords = records.filter(record => {
@@ -406,7 +387,7 @@ export default function RecordsPage() {
                         个人中心
                       </button>
                       <button 
-                        onClick={() => { localStorage.removeItem('ai_handdrawn_login_session'); window.location.href = '/login'; }}
+                        onClick={handleLogout}
                         className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#1a2230] transition-colors rounded-lg"
                       >
                         退出登录

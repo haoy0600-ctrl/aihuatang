@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAdminUser } from '@/lib/auth'
 
-const ADMIN_EMAIL = '50923561@qq.com'
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,18 +13,12 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
-    const adminEmail = request.headers.get('x-admin-email')
-    
-    if (!adminEmail || adminEmail !== ADMIN_EMAIL) {
-      return NextResponse.json({
-        success: false,
-        error: '权限不足'
-      }, { status: 403 })
-    }
+    const auth = await requireAdminUser(request)
+    if (auth.response || !auth.user) return auth.response
 
     const { data: cards, error } = await supabaseAdmin
-      .from('cards')
-      .select('*')
+      .from('card_codes')
+      .select('id, code, credits, status, used_by, used_email, used_at, created_at')
       .order('created_at', { ascending: false })
       .limit(500)
 
@@ -37,7 +32,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      cards: cards || [],
+      cards: (cards || []).map(card => ({
+        ...card,
+        is_used: card.status === 'used',
+      })),
       total: cards?.length || 0
     })
   } catch (error) {

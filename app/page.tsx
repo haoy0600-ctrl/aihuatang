@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { TermsModal } from '@/components/TermsModal'
+import { getStoredSession } from '@/lib/session'
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -11,16 +12,9 @@ export default function HomePage() {
 
   useEffect(() => {
     const checkAdmin = () => {
-      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
-      if (storedSession) {
-        try {
-          const session = JSON.parse(storedSession)
-          if (session.email === '50923561@qq.com') {
-            setIsAdmin(true)
-          }
-        } catch {
-          // ignore
-        }
+      const session = getStoredSession()
+      if (session?.email === '50923561@qq.com') {
+        setIsAdmin(true)
       }
     }
     checkAdmin()

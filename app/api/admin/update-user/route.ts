@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAdminUser } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,14 +11,10 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    const { adminEmail, userId, action, amount } = await request.json()
+    const { userId, action, amount } = await request.json()
 
-    if (!adminEmail || adminEmail !== '50923561@qq.com') {
-      return NextResponse.json({
-        success: false,
-        error: '权限不足'
-      }, { status: 403 })
-    }
+    const auth = await requireAdminUser(request)
+    if (auth.response || !auth.user) return auth.response
 
     if (!userId) {
       return NextResponse.json({

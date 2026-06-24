@@ -4,13 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-
-const STORAGE_KEY = 'ai_handdrawn_login_session'
-
-interface LoginSession {
-  email: string
-  expiresAt: number
-}
+import { LoginSession, authHeaders, getStoredSession, saveStoredSession } from '@/lib/session'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -57,15 +51,9 @@ export default function LoginPage() {
   useEffect(() => {
     const checkSession = () => {
       try {
-        const storedSession = localStorage.getItem(STORAGE_KEY)
-        if (storedSession) {
-          const session: LoginSession = JSON.parse(storedSession)
-          const now = Date.now()
-          if (session.expiresAt > now) {
-            setEmail(session.email)
-          } else {
-            localStorage.removeItem(STORAGE_KEY)
-          }
+        const session = getStoredSession()
+        if (session) {
+          setEmail(session.email)
         }
       } catch (e) {
         console.error('Failed to read session from localStorage:', e)
@@ -75,36 +63,31 @@ export default function LoginPage() {
     checkSession()
 
     const checkAuth = async () => {
-      const storedSession = localStorage.getItem(STORAGE_KEY)
-      if (storedSession) {
-        try {
-          const session = JSON.parse(storedSession)
-          const now = Date.now()
-          if (session.email && session.expiresAt > now) {
-            router.push('/dashboard')
-            return
-          }
-        } catch {
-          // Invalid session
-        }
+      const session = getStoredSession()
+      if (session) {
+        router.push('/dashboard')
+        return
       }
     }
     checkAuth()
   }, [router])
 
-  const saveSession = (userEmail: string) => {
+  const saveSession = (userId: string, userEmail: string, authSession: any) => {
     const session: LoginSession = {
+      id: userId,
       email: userEmail,
-      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+      accessToken: authSession.accessToken,
+      refreshToken: authSession.refreshToken,
+      expiresAt: authSession.expiresAt || Date.now() + 30 * 24 * 60 * 60 * 1000,
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+    saveStoredSession(session)
   }
 
   const ensureProfileExists = async (userId: string, userEmail: string) => {
     try {
       const response = await fetch('/api/auth/ensure-profile', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ userId, userEmail })
       })
 
@@ -214,10 +197,13 @@ export default function LoginPage() {
         return
       }
 
-      saveSession(email)
-
-      if (data.user) {
+      if (data.user && data.session?.accessToken) {
+        saveSession(data.user.id, data.user.email || email, data.session)
         await ensureProfileExists(data.user.id, data.user.email || email)
+      } else {
+        setError('登录失败：未获取到登录凭证')
+        setIsSubmitting(false)
+        return
       }
 
       setTimeout(() => {
@@ -261,7 +247,12 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        saveSession(email)
+        if (!data.session?.accessToken) {
+          setError('登录失败：未获取到登录凭证')
+          setIsSubmitting(false)
+          return
+        }
+        saveSession(data.user.id, data.user.email || email, data.session)
         await ensureProfileExists(data.user.id, data.user.email || email)
 
         if (!data.user.email_confirmed_at) {
@@ -339,10 +330,17 @@ export default function LoginPage() {
       }
 
       if (verifyData.user) {
+        if (!verifyData.session?.accessToken) {
+          setError('注册失败：未获取到登录凭证')
+          setIsSubmitting(false)
+          return
+        }
+        saveSession(verifyData.user.id, verifyData.user.email || email, verifyData.session)
+
         const updateResponse = await fetch('/api/auth/update-password', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
+          headers: authHeaders(),
+          body: JSON.stringify({ password })
         })
         
         const updateData = await updateResponse.json()
@@ -353,8 +351,6 @@ export default function LoginPage() {
           return
         }
 
-        saveSession(email)
-        
         try {
           await fetch('/api/auth/register-check', {
             method: 'PUT',

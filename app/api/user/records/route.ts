@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAuthenticatedUser } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, status, page, limit } = await request.json()
+    const { status, page, limit } = await request.json()
 
     if (!supabaseAdmin) {
       return NextResponse.json({
@@ -12,12 +13,8 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    if (!userId) {
-      return NextResponse.json({
-        success: false,
-        error: '用户ID不能为空'
-      }, { status: 400 })
-    }
+    const auth = await requireAuthenticatedUser(request)
+    if (auth.response || !auth.user) return auth.response
 
     const pageNum = page || 1
     const limitNum = limit || 20
@@ -26,7 +23,7 @@ export async function POST(request: NextRequest) {
     let query = supabaseAdmin
       .from('generation_records')
       .select('*', { count: 'exact' })
-      .eq('user_id', userId)
+      .eq('user_id', auth.user.id)
       .order('created_at', { ascending: false })
 
     if (status && status !== 'all') {

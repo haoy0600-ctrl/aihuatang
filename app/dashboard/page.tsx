@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { HANDDRAWN_STYLES, HanddrawnStyle } from '@/config/styles'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
+import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
 
 interface UserProfile {
   id: string
@@ -203,11 +204,9 @@ export default function DashboardPage() {
   }, [generatedImages])
 
   useEffect(() => {
-    const STORAGE_KEY = 'ai_handdrawn_login_session'
-    
     const clearLocalSession = () => {
       try {
-        localStorage.removeItem(STORAGE_KEY)
+        clearStoredSession()
         localStorage.removeItem('sb-gpaptwlbqoxwuawpzcnj-auth-token')
       } catch (e) {
         console.error('Failed to clear local storage:', e)
@@ -234,22 +233,8 @@ export default function DashboardPage() {
           return
         }
 
-        const storedSession = localStorage.getItem('ai_handdrawn_login_session')
-        if (!storedSession) {
-          redirectToLogin()
-          return
-        }
-
-        let session: any
-        try {
-          session = JSON.parse(storedSession)
-        } catch {
-          redirectToLogin()
-          return
-        }
-
-        const now = Date.now()
-        if (!session.email || session.expiresAt < now) {
+        const session = getStoredSession()
+        if (!session) {
           redirectToLogin()
           return
         }
@@ -257,8 +242,8 @@ export default function DashboardPage() {
         try {
           const response = await fetch('/api/auth/me', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: session.email })
+            headers: authHeaders(),
+            body: JSON.stringify({})
           })
 
           const data = await response.json()
@@ -305,7 +290,7 @@ export default function DashboardPage() {
   }, [customStylesList])
 
   const handleLogout = async () => {
-    localStorage.removeItem('ai_handdrawn_login_session')
+    clearStoredSession()
     router.push('/login')
   }
 
@@ -534,7 +519,7 @@ export default function DashboardPage() {
 
       const response = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({
           userId: profile.id,
           inputContents: genMode === 'text' ? validInputs : [],

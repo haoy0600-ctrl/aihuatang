@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAdminUser } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +10,9 @@ export async function POST(request: NextRequest) {
         error: '系统配置未完成，请稍后重试'
       }, { status: 500 })
     }
+
+    const auth = await requireAdminUser(request)
+    if (auth.response || !auth.user) return auth.response
 
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from('profiles')

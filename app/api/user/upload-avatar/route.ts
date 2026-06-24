@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAuthenticatedUser } from '@/lib/auth'
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024 // 2MB
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
@@ -13,24 +14,19 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
+    const auth = await requireAuthenticatedUser(request)
+    if (auth.response || !auth.user) return auth.response
+
     const formData = await request.formData()
     const file = formData.get('file') as File
-    const userId = formData.get('userId') as string
+    const userId = auth.user.id
 
     // 基础校验
-    if (!file || !userId) {
+    if (!file) {
       return NextResponse.json({
         success: false,
-        error: '文件和用户ID不能为空'
+        error: '文件不能为空'
       }, { status: 400 })
-    }
-
-    // 检查用户是否登录
-    if (!userId || userId.length < 10) {
-      return NextResponse.json({
-        success: false,
-        error: '请先登录后再上传头像'
-      }, { status: 401 })
     }
 
     // 文件大小限制 2MB

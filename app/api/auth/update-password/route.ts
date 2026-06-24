@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAuthenticatedUser } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json()
+    const { password } = await request.json()
 
     if (!supabaseAdmin) {
       return NextResponse.json({
@@ -12,7 +13,17 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    const { error } = await supabaseAdmin.auth.updateUser({
+    const auth = await requireAuthenticatedUser(request)
+    if (auth.response || !auth.user) return auth.response
+
+    if (!password || password.length < 6) {
+      return NextResponse.json({
+        success: false,
+        error: '密码长度至少6位'
+      }, { status: 400 })
+    }
+
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(auth.user.id, {
       password
     })
 

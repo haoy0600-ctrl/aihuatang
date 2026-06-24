@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAdminUser } from '@/lib/auth'
 
 const CARD_TIERS = [
   { id: '10', name: '尝鲜款', price: 10, credits: 100 },
@@ -47,6 +48,9 @@ async function generateUniqueCardCode(): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdminUser(request)
+    if (auth.response || !auth.user) return auth.response
+
     const { tierId, customCredits, count } = await request.json()
 
     const numCount = parseInt(count || '1')
@@ -87,22 +91,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!supabaseAdmin) {
-      const cardCodes = []
-      for (let i = 0; i < numCount; i++) {
-        cardCodes.push({
-          code: generateUniqueCardCode(),
-          credits: credits,
-          status: 'unused',
-          created_at: new Date().toISOString(),
-        })
-      }
-      return NextResponse.json({
-        success: true,
-        cards: cardCodes,
-        tierName: selectedTierName,
-        totalCredits: credits * numCount,
-      })
+    const adminClient = supabaseAdmin
+    if (!adminClient) {
+      return NextResponse.json(
+        { success: false, error: '系统配置未完成，请稍后重试' },
+        { status: 500 }
+      )
     }
 
     const cardCodes = []
@@ -116,7 +110,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await adminClient
       .from('card_codes')
       .insert(cardCodes)
 

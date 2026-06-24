@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
 
 const CARD_TIERS = [
   { id: '100', name: '尝鲜款', price: 10, credits: 100 },
@@ -55,22 +56,8 @@ export default function AdminCardGeneratorPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
-      if (!storedSession) {
-        window.location.href = '/login'
-        return
-      }
-
-      let session: any
-      try {
-        session = JSON.parse(storedSession)
-      } catch {
-        window.location.href = '/login'
-        return
-      }
-
-      const now = Date.now()
-      if (!session.email || session.expiresAt < now) {
+      const session = getStoredSession()
+      if (!session) {
         window.location.href = '/login'
         return
       }
@@ -94,7 +81,7 @@ export default function AdminCardGeneratorPage() {
     try {
       const response = await fetch('/api/admin/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: authHeaders()
       })
 
       const data = await response.json()
@@ -155,7 +142,7 @@ export default function AdminCardGeneratorPage() {
     try {
       const response = await fetch('/api/admin/batch-generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({
           tierId: selectedTier === 'custom' ? null : selectedTier,
           customCredits: selectedTier === 'custom' ? customCredits : null,
@@ -194,6 +181,11 @@ export default function AdminCardGeneratorPage() {
       btn.textContent = originalText
       btn.classList.remove('text-[#10B981]')
     }, 1500)
+  }
+
+  const handleLogout = () => {
+    clearStoredSession()
+    window.location.href = '/login'
   }
 
   // 无权限访问提示
@@ -247,7 +239,7 @@ export default function AdminCardGeneratorPage() {
               </div>
               <div className="relative">
                 <button 
-                  onClick={() => { localStorage.removeItem('ai_handdrawn_login_session'); window.location.href = '/login'; }}
+                  onClick={handleLogout}
                   className="w-8 h-8 sm:w-9 sm:h-9 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] flex items-center justify-center hover:border-red-500 hover:text-red-400 transition-colors rounded-lg"
                 >
                   <span className="text-white font-bold text-sm">

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { TermsModal } from '@/components/TermsModal'
+import { authHeaders, getStoredSession } from '@/lib/session'
 
 interface Card {
   id: string
@@ -30,16 +31,8 @@ export default function CardsAdminPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
-      if (!storedSession) {
-        router.push('/login')
-        return
-      }
-
-      let session: any
-      try {
-        session = JSON.parse(storedSession)
-      } catch {
+      const session = getStoredSession()
+      if (!session) {
         router.push('/login')
         return
       }
@@ -53,7 +46,7 @@ export default function CardsAdminPage() {
       
       try {
         const response = await fetch('/api/admin/cards', {
-          headers: { 'x-admin-email': session.email }
+          headers: authHeaders(false)
         })
         const data = await response.json()
         if (data.success) {
@@ -83,9 +76,8 @@ export default function CardsAdminPage() {
     try {
       const response = await fetch('/api/admin/generate-cards', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({
-          adminEmail: user?.email,
           count: cardCount,
           credits: cardCredits
         })

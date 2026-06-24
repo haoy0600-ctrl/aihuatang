@@ -32,7 +32,12 @@ export async function POST(request: NextRequest) {
         email: data.user?.email,
         createdAt: data.user?.created_at,
         emailConfirmedAt: data.user?.email_confirmed_at
-      }
+      },
+      session: data.session ? {
+        accessToken: data.session.access_token,
+        refreshToken: data.session.refresh_token,
+        expiresAt: data.session.expires_at ? data.session.expires_at * 1000 : Date.now() + 30 * 24 * 60 * 60 * 1000
+      } : null
     })
   } catch (error) {
     console.error('Verify OTP error:', error)

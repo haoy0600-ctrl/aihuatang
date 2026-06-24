@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
+import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
 
 interface UserProfile {
   id: string
@@ -113,22 +114,8 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchUserAndProfile = async () => {
-      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
-      if (!storedSession) {
-        router.push('/login')
-        return
-      }
-
-      let session: any
-      try {
-        session = JSON.parse(storedSession)
-      } catch {
-        router.push('/login')
-        return
-      }
-
-      const now = Date.now()
-      if (!session.email || session.expiresAt < now) {
+      const session = getStoredSession()
+      if (!session) {
         router.push('/login')
         return
       }
@@ -136,8 +123,8 @@ export default function ProfilePage() {
       try {
         const response = await fetch('/api/auth/me', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: session.email })
+          headers: authHeaders(),
+          body: JSON.stringify({})
         })
 
         const data = await response.json()
@@ -159,7 +146,7 @@ export default function ProfilePage() {
   }, [router])
 
   const handleLogout = async () => {
-    localStorage.removeItem('ai_handdrawn_login_session')
+    clearStoredSession()
     router.push('/login')
   }
 
@@ -176,10 +163,10 @@ export default function ProfilePage() {
 
       const formData = new FormData()
       formData.append('file', compressedFile)
-      formData.append('userId', profile?.id || '')
 
       const response = await fetch('/api/user/upload-avatar', {
         method: 'POST',
+        headers: authHeaders(false),
         body: formData
       })
 

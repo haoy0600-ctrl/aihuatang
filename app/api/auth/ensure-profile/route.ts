@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAuthenticatedUser } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, userEmail } = await request.json()
+    const auth = await requireAuthenticatedUser(request)
+    if (auth.response || !auth.user) return auth.response
+
+    const userId = auth.user.id
+    const userEmail = auth.user.email
 
     if (!supabaseAdmin) {
       return NextResponse.json({

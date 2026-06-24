@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { TermsModal } from '@/components/TermsModal'
+import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
 
 interface User {
   id: string
@@ -65,21 +66,13 @@ export default function AdminPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
-      if (!storedSession) {
+      const session = getStoredSession()
+      if (!session) {
         router.push('/login')
         return
       }
 
-      let session: any
-      try {
-        session = JSON.parse(storedSession)
-      } catch {
-        router.push('/login')
-        return
-      }
-
-      if (!session.email || session.email !== '50923561@qq.com') {
+      if (session.email !== '50923561@qq.com') {
         router.push('/')
         return
       }
@@ -90,13 +83,13 @@ export default function AdminPage() {
         const [statsResponse, usersResponse] = await Promise.all([
           fetch('/api/admin/stats', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: session.email })
+            headers: authHeaders(),
+            body: JSON.stringify({})
           }),
           fetch('/api/admin/users', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: session.email })
+            headers: authHeaders(),
+            body: JSON.stringify({})
           })
         ])
 
@@ -135,9 +128,8 @@ export default function AdminPage() {
 
     const response = await fetch('/api/admin/generate-cards', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify({
-        adminEmail: user?.email,
         count: cardCount,
         credits: cardCredits
       })
@@ -167,9 +159,8 @@ export default function AdminPage() {
 
     const response = await fetch('/api/admin/update-user', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify({
-        adminEmail: user?.email,
         userId: selectedUserId,
         action: creditAction === 'add' ? 'add_credits' : 'subtract_credits',
         amount: creditAmount
@@ -192,9 +183,8 @@ export default function AdminPage() {
   const handleToggleStatus = async (userId: string, currentStatus: boolean) => {
     const response = await fetch('/api/admin/update-user', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify({
-        adminEmail: user?.email,
         userId: userId,
         action: 'toggle_status'
       })
@@ -218,6 +208,11 @@ export default function AdminPage() {
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     return `${year}/${month}/${day}`
+  }
+
+  const handleLogout = () => {
+    clearStoredSession()
+    window.location.href = '/login'
   }
 
   if (loading) {
@@ -303,7 +298,7 @@ export default function AdminPage() {
                     </div>
                     <div className="p-2">
                       <button 
-                        onClick={() => { localStorage.removeItem('ai_handdrawn_login_session'); window.location.href = '/login'; }}
+                        onClick={handleLogout}
                         className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#1a2230] transition-colors rounded-lg"
                       >
                         退出登录

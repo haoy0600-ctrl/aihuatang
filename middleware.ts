@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
     }
     
     try {
-      const parsedSession = JSON.parse(session)
+      const parsedSession = JSON.parse(decodeURIComponent(session))
       if (!parsedSession.email || parsedSession.email !== ADMIN_EMAIL) {
         return NextResponse.redirect(new URL('/', request.url))
       }

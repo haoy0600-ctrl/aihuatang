@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
+import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
 
 export default function RechargePage() {
   const [currentTime, setCurrentTime] = useState('')
@@ -34,22 +35,8 @@ export default function RechargePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
-      if (!storedSession) {
-        setProfile({ credits: 3 })
-        return
-      }
-
-      let session: any
-      try {
-        session = JSON.parse(storedSession)
-      } catch {
-        setProfile({ credits: 3 })
-        return
-      }
-
-      const now = Date.now()
-      if (!session.email || session.expiresAt < now) {
+      const session = getStoredSession()
+      if (!session) {
         setProfile({ credits: 3 })
         return
       }
@@ -57,8 +44,8 @@ export default function RechargePage() {
       try {
         const response = await fetch('/api/auth/me', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: session.email })
+          headers: authHeaders(),
+          body: JSON.stringify({})
         })
 
         const data = await response.json()
@@ -101,24 +88,8 @@ export default function RechargePage() {
     setIsRedeeming(true)
 
     try {
-      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
-      if (!storedSession) {
-        showToast('请先登录', 'error')
-        setIsRedeeming(false)
-        return
-      }
-
-      let session: any
-      try {
-        session = JSON.parse(storedSession)
-      } catch {
-        showToast('请先登录', 'error')
-        setIsRedeeming(false)
-        return
-      }
-
-      const now = Date.now()
-      if (!session.email || session.expiresAt < now) {
+      const session = getStoredSession()
+      if (!session) {
         showToast('请先登录', 'error')
         setIsRedeeming(false)
         return
@@ -126,8 +97,8 @@ export default function RechargePage() {
 
       const meResponse = await fetch('/api/auth/me', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: session.email })
+        headers: authHeaders(),
+        body: JSON.stringify({})
       })
 
       const meData = await meResponse.json()
@@ -138,12 +109,10 @@ export default function RechargePage() {
         return
       }
 
-      const userId = meData.user.id
-
       const response = await fetch('/api/user/redeem-card', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardCode: cleanCode, userId }),
+        headers: authHeaders(),
+        body: JSON.stringify({ cardCode: cleanCode }),
       })
 
       const data = await response.json()
@@ -167,6 +136,11 @@ export default function RechargePage() {
   const handleCopyWechat = () => {
     navigator.clipboard.writeText('YH509235')
     showToast('🎉 复制成功！快去微信搜索添加主理人对账吧~', 'success')
+  }
+
+  const handleLogout = () => {
+    clearStoredSession()
+    window.location.href = '/login'
   }
 
   return (
@@ -263,7 +237,7 @@ export default function RechargePage() {
                         个人中心
                       </button>
                       <button 
-                        onClick={() => { localStorage.removeItem('ai_handdrawn_login_session'); window.location.href = '/login'; }}
+                        onClick={handleLogout}
                         className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#142D24] transition-colors rounded-lg"
                       >
                         退出登录

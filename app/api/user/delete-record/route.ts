@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAuthenticatedUser } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const { id, userId } = await request.json()
+    const { id } = await request.json()
 
     if (!supabaseAdmin) {
       return NextResponse.json({
@@ -12,7 +13,10 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    if (!id || !userId) {
+    const auth = await requireAuthenticatedUser(request)
+    if (auth.response || !auth.user) return auth.response
+
+    if (!id) {
       return NextResponse.json({
         success: false,
         error: '参数错误'
@@ -23,7 +27,7 @@ export async function POST(request: NextRequest) {
       .from('generation_records')
       .delete()
       .eq('id', id)
-      .eq('user_id', userId)
+      .eq('user_id', auth.user.id)
 
     if (error) {
       console.error('Delete record error:', error)

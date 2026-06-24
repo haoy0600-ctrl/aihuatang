@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email text NOT NULL,
   credits int NOT NULL DEFAULT 3,
+  avatar_url text,
+  is_active boolean NOT NULL DEFAULT true,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -22,10 +25,16 @@ CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email);
 CREATE TABLE IF NOT EXISTS generation_records (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  input_content jsonb NOT NULL,
+  input_content jsonb,
+  prompt text,
   style_name text NOT NULL,
-  aspect_ratio text NOT NULL,
+  style_prompt text,
+  aspect_ratio text,
+  model text,
+  image_count int NOT NULL DEFAULT 1,
   image_url text,
+  image_urls text,
+  resolution text,
   status text NOT NULL DEFAULT 'processing' CHECK (status IN ('processing', 'success', 'failed')),
   created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -36,7 +45,25 @@ CREATE INDEX IF NOT EXISTS idx_generation_records_status ON generation_records(s
 CREATE INDEX IF NOT EXISTS idx_generation_records_created_at ON generation_records(created_at);
 
 -- ========================================
--- 3. 创建 orders 表 (充值订单表)
+-- 3. 创建 card_codes 表 (卡密兑换表)
+-- ========================================
+CREATE TABLE IF NOT EXISTS card_codes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  code text NOT NULL UNIQUE,
+  credits int NOT NULL CHECK (credits > 0),
+  status text NOT NULL DEFAULT 'unused' CHECK (status IN ('unused', 'used')),
+  used_by uuid REFERENCES profiles(id) ON DELETE SET NULL,
+  used_email text,
+  used_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_card_codes_code ON card_codes(code);
+CREATE INDEX IF NOT EXISTS idx_card_codes_status ON card_codes(status);
+CREATE INDEX IF NOT EXISTS idx_card_codes_created_at ON card_codes(created_at);
+
+-- ========================================
+-- 4. 创建 orders 表 (充值订单表)
 -- ========================================
 CREATE TABLE IF NOT EXISTS orders (
   id text PRIMARY KEY,
@@ -54,7 +81,7 @@ CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
 
 -- ========================================
--- 4. 创建新用户自动激活并赠送 3 积分的触发器
+-- 5. 创建新用户自动激活并赠送 3 积分的触发器
 -- ========================================
 
 -- 创建处理新用户的函数
@@ -74,7 +101,7 @@ FOR EACH ROW
 EXECUTE FUNCTION handle_new_user();
 
 -- ========================================
--- 5. 启用 RLS (行级安全策略)
+-- 6. 启用 RLS (行级安全策略)
 -- ========================================
 
 -- 启用 profiles 表的 RLS
@@ -104,3 +131,5 @@ ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 -- 创建策略：用户只能查看自己的订单
 CREATE POLICY "Orders are viewable by owner" ON orders
 FOR SELECT USING (auth.uid() = user_id);
+
+ALTER TABLE card_codes ENABLE ROW LEVEL SECURITY;

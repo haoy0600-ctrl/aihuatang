@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAuthenticatedUser } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { email } = body
-
     if (!supabaseAdmin) {
       console.error('[Auth/Me] Supabase admin not configured')
       return NextResponse.json({
@@ -14,17 +12,13 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    if (!email) {
-      return NextResponse.json({
-        success: false,
-        error: '请先登录'
-      }, { status: 401 })
-    }
+    const auth = await requireAuthenticatedUser(request)
+    if (auth.response || !auth.user) return auth.response
 
     const { data: profileData, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('*')
-      .eq('email', email)
+      .eq('id', auth.user.id)
       .single()
 
     if (profileError) {
@@ -42,13 +36,13 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
 
-    console.log('[Auth/Me] User found:', email)
+    console.log('[Auth/Me] User found:', auth.user.email)
 
     return NextResponse.json({
       success: true,
       user: {
-        id: profileData.id,
-        email: profileData.email,
+        id: auth.user.id,
+        email: auth.user.email,
         createdAt: profileData.created_at
       },
       profile: profileData

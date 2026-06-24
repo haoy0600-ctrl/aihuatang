@@ -6,6 +6,16 @@ const execAsync = promisify(exec)
 
 export async function POST(request: Request) {
   try {
+    const deploySecret = process.env.DEPLOY_SECRET
+    if (!deploySecret) {
+      return NextResponse.json({ success: false, message: '部署密钥未配置' }, { status: 500 })
+    }
+
+    const headerSecret = request.headers.get('x-deploy-secret')
+    if (headerSecret !== deploySecret) {
+      return NextResponse.json({ success: false, message: '无权部署' }, { status: 401 })
+    }
+
     const { ref } = await request.json()
     
     if (ref !== 'refs/heads/main') {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAuthenticatedUser } from '@/lib/auth'
 
 const errorIpCache = new Map<string, { count: number; lastTime: number }>()
 
@@ -31,24 +32,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const auth = await requireAuthenticatedUser(request)
+    if (auth.response || !auth.user) return auth.response
+
     const body = await request.json()
-    const { cardCode, userId } = body
+    const { cardCode } = body
+    const userId = auth.user.id
 
     if (!cardCode) {
       return NextResponse.json({ success: false, message: "激活码不能为空！" }, { status: 400 })
     }
 
-    if (!userId) {
-      return NextResponse.json({ success: false, message: "请先登录账号！" }, { status: 401 })
-    }
-
     const cleanCode = cardCode.trim().toUpperCase()
     console.log('[RedeemCard] Processing card:', cleanCode.substring(0, 8) + '***')
 
-    let card = null
     const { data: cardData, error: cardError } = await supabaseAdmin
       .from('card_codes')
-      .select('id, code, credits, status, used_email, used_at')
+      .select('id, code, credits, status, used_by, used_email, used_at')
       .eq('code', cleanCode)
       .single()
 
@@ -56,100 +56,21 @@ export async function POST(request: NextRequest) {
       console.error('[RedeemCard] Query card error:', cardError)
     }
 
-    if (cardData) {
-      card = {
-        id: cardData.id,
-        code: cardData.code,
-        points: cardData.credits,
-        isUsed: cardData.status === 'used',
-        usedByEmail: cardData.used_email,
-        usedAt: cardData.used_at,
-      }
-    }
-
-    if (!card && cleanCode.startsWith('AHT-')) {
-      const parts = cleanCode.split('-')
-      if (parts.length >= 4) {
-        const points = parseInt(parts[1], 10)
-        if (!isNaN(points) && points > 0) {
-          try {
-            const { data: newCard, error: insertError } = await supabaseAdmin
-              .from('card_codes')
-              .insert({
-                code: cleanCode,
-                credits: points,
-                status: 'unused',
-                created_at: new Date().toISOString(),
-              })
-              .select()
-              .single()
-
-            if (insertError) {
-              console.warn('[RedeemCard] Insert failed, checking existing:', insertError)
-              const { data: retryCard } = await supabaseAdmin
-                .from('card_codes')
-                .select('id, code, credits, status, used_email, used_at')
-                .eq('code', cleanCode)
-                .single()
-
-              if (retryCard) {
-                card = {
-                  id: retryCard.id,
-                  code: retryCard.code,
-                  points: retryCard.credits,
-                  isUsed: retryCard.status === 'used',
-                  usedByEmail: retryCard.used_email,
-                  usedAt: retryCard.used_at,
-                }
-              }
-            } else if (newCard) {
-              card = {
-                id: newCard.id,
-                code: newCard.code,
-                points: newCard.credits,
-                isUsed: false,
-                usedByEmail: null,
-                usedAt: null,
-              }
-            }
-          } catch (dbErr) {
-            console.error('[RedeemCard] Init card error:', dbErr)
-            const { data: retryCard } = await supabaseAdmin
-              .from('card_codes')
-              .select('id, code, credits, status, used_email, used_at')
-              .eq('code', cleanCode)
-              .single()
-
-            if (retryCard) {
-              card = {
-                id: retryCard.id,
-                code: retryCard.code,
-                points: retryCard.credits,
-                isUsed: retryCard.status === 'used',
-                usedByEmail: retryCard.used_email,
-                usedAt: retryCard.used_at,
-              }
-            }
-          }
-        }
-      }
-    }
-
-    if (!card) {
+    if (!cardData) {
       const currentCount = ipLog ? ipLog.count + 1 : 1
       errorIpCache.set(ip, { count: currentCount, lastTime: now })
       console.warn('[RedeemCard] Invalid card:', cleanCode, 'IP:', ip, 'count:', currentCount)
       return NextResponse.json({ success: false, message: "无效的激活码！" }, { status: 400 })
     }
 
-    if (card.isUsed) {
-      const usedTime = card.usedAt
-        ? new Date(card.usedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+    if (cardData.status === 'used') {
+      const usedTime = cardData.used_at
+        ? new Date(cardData.used_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
         : "未知时间"
-      console.warn('[RedeemCard] Card already used:', cleanCode, 'by:', card.usedByEmail, 'at:', usedTime)
+      console.warn('[RedeemCard] Card already used:', cleanCode, 'by:', cardData.used_email, 'at:', usedTime)
       return NextResponse.json({
         success: false,
-        message: `⚠️ 该卡密已被使用！已于 ${usedTime} 被账号 ${card.usedByEmail || "其他用户"} 兑换走。`
+        message: `⚠️ 该卡密已被使用！已于 ${usedTime} 被账号 ${cardData.used_email || "其他用户"} 兑换走。`
       }, { status: 400 })
     }
 
@@ -164,22 +85,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: "用户不存在！" }, { status: 404 })
     }
 
-    const newCredits = (profile.credits || 0) + card.points
-
-    const { error: updateError } = await supabaseAdmin
-      .from('profiles')
-      .update({
-        credits: newCredits,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId)
-
-    if (updateError) {
-      console.error('[RedeemCard] Credits update failed:', updateError)
-      return NextResponse.json({ success: false, message: "系统对账繁忙，请稍后再试！" }, { status: 500 })
-    }
-
-    const { error: markUsedError } = await supabaseAdmin
+    const { data: usedCard, error: markUsedError } = await supabaseAdmin
       .from('card_codes')
       .update({
         status: 'used',
@@ -187,19 +93,70 @@ export async function POST(request: NextRequest) {
         used_email: profile.email || '未知',
         used_at: new Date().toISOString(),
       })
-      .eq('id', card.id)
+      .eq('id', cardData.id)
+      .eq('status', 'unused')
+      .select('credits')
+      .single()
 
     if (markUsedError) {
       console.error('[RedeemCard] Mark used failed:', markUsedError)
+      return NextResponse.json({ success: false, message: "该卡密已被使用或暂不可兑换，请刷新后重试！" }, { status: 409 })
+    }
+
+    const creditsToAdd = usedCard?.credits || cardData.credits || 0
+    let newCredits = (profile.credits || 0) + creditsToAdd
+    let updateError = null
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data: latestProfile, error: latestProfileError } = await supabaseAdmin
+        .from('profiles')
+        .select('credits')
+        .eq('id', userId)
+        .single()
+
+      if (latestProfileError || !latestProfile) {
+        updateError = latestProfileError
+        break
+      }
+
+      const currentCredits = latestProfile.credits || 0
+      newCredits = currentCredits + creditsToAdd
+
+      const { error } = await supabaseAdmin
+        .from('profiles')
+        .update({
+          credits: newCredits,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId)
+        .eq('credits', currentCredits)
+
+      updateError = error
+      if (!error) break
+    }
+
+    if (updateError) {
+      console.error('[RedeemCard] Credits update failed:', updateError)
+      await supabaseAdmin
+        .from('card_codes')
+        .update({
+          status: 'unused',
+          used_by: null,
+          used_email: null,
+          used_at: null,
+        })
+        .eq('id', cardData.id)
+        .eq('used_by', userId)
+      return NextResponse.json({ success: false, message: "系统对账繁忙，请稍后再试！" }, { status: 500 })
     }
 
     errorIpCache.delete(ip)
-    console.log('[RedeemCard] Success:', card.points, 'credits added to', userId, 'total:', newCredits)
+    console.log('[RedeemCard] Success:', creditsToAdd, 'credits added to', userId, 'total:', newCredits)
 
     return NextResponse.json({
       success: true,
-      message: `🎉 兑换成功！已为您满血注入 ${card.points} 积分。`,
-      credits: card.points,
+      message: `🎉 兑换成功！已为您满血注入 ${creditsToAdd} 积分。`,
+      credits: creditsToAdd,
       totalCredits: newCredits,
     })
 

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAuthenticatedUser } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, oldPassword, newPassword } = await request.json()
+    const { oldPassword, newPassword } = await request.json()
 
     if (!supabaseAdmin) {
       return NextResponse.json({
@@ -12,8 +13,11 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
+    const auth = await requireAuthenticatedUser(request)
+    if (auth.response || !auth.user) return auth.response
+
     const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
-      email,
+      email: auth.user.email,
       password: oldPassword
     })
 
@@ -24,7 +28,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const { error: updateError } = await supabaseAdmin.auth.updateUser({
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(auth.user.id, {
       password: newPassword
     })
 

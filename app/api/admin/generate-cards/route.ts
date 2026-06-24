@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAdminUser } from '@/lib/auth'
 
 const generateRandomCard = (): string => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -22,14 +23,10 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    const { adminEmail, count, credits } = await request.json()
+    const { count, credits } = await request.json()
 
-    if (!adminEmail || adminEmail !== '50923561@qq.com') {
-      return NextResponse.json({
-        success: false,
-        error: '权限不足'
-      }, { status: 403 })
-    }
+    const auth = await requireAdminUser(request)
+    if (auth.response || !auth.user) return auth.response
 
     if (!count || count <= 0 || count > 100) {
       return NextResponse.json({
@@ -59,7 +56,7 @@ export async function POST(request: NextRequest) {
         let attempts = 0
         while (exists && attempts < 10) {
           const { count: existingCount } = await supabaseAdmin
-            .from('cards')
+            .from('card_codes')
             .select('id', { count: 'exact' })
             .eq('code', cardCode)
             .limit(0)
@@ -82,13 +79,13 @@ export async function POST(request: NextRequest) {
         batchCards.push({
           code: cardCode,
           credits: credits,
-          is_used: false,
+          status: 'unused',
           created_at: new Date().toISOString()
         })
       }
 
       const { error } = await supabaseAdmin
-        .from('cards')
+        .from('card_codes')
         .insert(batchCards)
 
       if (error) {

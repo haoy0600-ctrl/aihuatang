@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { HANDDRAWN_STYLES } from '@/config/styles'
+import { requireAuthenticatedUser } from '@/lib/auth'
 
 export const maxDuration = 300
 
@@ -60,7 +61,6 @@ function getResolutionPrice(modelType: string, resolution: string): number {
 }
 
 type GenerateRequest = {
-  userId: string
   inputContents: string[]
   referenceImages: string[]
   styleName: string
@@ -313,8 +313,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: GenerateRequest = await timeoutPromise(request.json(), 10000)
+    const auth = await requireAuthenticatedUser(request)
+    if (auth.response || !auth.user) return auth.response
+
+    const userId = auth.user.id
     const {
-      userId,
       inputContents = [],
       referenceImages = [],
       styleName,
@@ -325,13 +328,6 @@ export async function POST(request: NextRequest) {
       imageSize,
       mode,
     } = body
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required parameter: userId' },
-        { status: 400 }
-      )
-    }
 
     const isTextMode = inputContents.length > 0
     const isImageMode = referenceImages.length > 0

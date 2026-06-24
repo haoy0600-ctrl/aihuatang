@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { authHeaders, getStoredSession } from '@/lib/session'
 
 interface ChangePasswordProps {
   show: boolean
@@ -45,25 +46,16 @@ export function ChangePasswordModal({ show, onClose }: ChangePasswordProps) {
     setIsLoading(true)
 
     try {
-      const storedSession = localStorage.getItem('ai_handdrawn_login_session')
-      if (!storedSession) {
-        setError('请先登录')
-        return
-      }
-
-      let session: any
-      try {
-        session = JSON.parse(storedSession)
-      } catch {
+      const session = getStoredSession()
+      if (!session) {
         setError('请先登录')
         return
       }
 
       const response = await fetch('/api/auth/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ 
-          email: session.email,
           oldPassword,
           newPassword 
         })

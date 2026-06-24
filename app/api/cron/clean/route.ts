@@ -49,7 +49,14 @@ async function handleClean(request: NextRequest) {
   const startTime = Date.now()
 
   try {
-    const cronSecret = process.env.CRON_SECRET || 'aihuatang-clean-2026-default-secret'
+    const cronSecret = process.env.CRON_SECRET
+    if (!cronSecret) {
+      console.error('[CronClean] CRON_SECRET 未配置')
+      return NextResponse.json({
+        success: false,
+        error: 'Cron secret 未配置'
+      }, { status: 500 })
+    }
     const headerSecret = request.headers.get('x-cron-secret')
     const querySecret = request.nextUrl.searchParams.get('secret')
 
