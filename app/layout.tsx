@@ -12,6 +12,7 @@ const maShanZheng = Ma_Shan_Zheng({
 export const metadata: Metadata = {
   title: 'AI画堂 - 自媒体高质感图形设计与智能排版素材工具箱',
   description: '专为自媒体创作者打造的高清卡片渲染、一键智能排版与设计素材无损导出工具。',
+  viewport: 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no',
 }
 
 export default function RootLayout({

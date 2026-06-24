@@ -74,45 +74,49 @@ export default function HomePage() {
       <div className="absolute -top-20 right-1/4 w-[450px] h-[450px] bg-gradient-to-bl from-[#00F2FE]/20 via-[#00F2FE]/5 to-transparent rounded-full blur-[100px] pointer-events-none animate-aurora-glow" style={{animationDelay: '2s'}}></div>
       {/* 极光光晕效果 - 中部紫色 */}
       <div className="absolute top-1/2 left-1/3 w-[400px] h-[400px] bg-gradient-to-r from-[#8B5CF6]/15 via-transparent to-transparent rounded-full blur-[100px] pointer-events-none animate-aurora-glow" style={{animationDelay: '4s'}}></div>
+      {/* 移动端优化的 Header */}
       <header className="flex-shrink-0 border-b border-[#1e293b] sticky top-0 z-[60] bg-[#030712]/95 backdrop-blur-sm">
-        <div className="w-full px-3 sm:px-4 py-2 flex items-center justify-between">
-          <Link href="/" className="flex items-center select-none">
+        <div className="w-full px-3 sm:px-4 py-3 flex items-center justify-between">
+          {/* Logo */}
+          <Link href="/" className="flex-shrink-0">
             <img 
               src="/logo.png?v=8" 
               alt="AI画堂" 
-              className="h-20 w-20 object-contain" 
+              className="h-12 sm:h-20 w-auto object-contain" 
             />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-2">
+          {/* 桌面端导航 */}
+          <nav className="hidden md:flex items-center gap-3 flex-1 justify-center">
             <Link
               href="/dashboard"
-              className="px-3 py-1.5 bg-[#10B981] text-[#0B0D17] rounded-lg text-sm font-semibold shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+              className="px-4 py-2 bg-[#10B981] text-[#0B0D17] rounded-lg text-sm font-semibold shadow-[0_0_10px_rgba(16,185,129,0.3)]"
             >
               创作
             </Link>
             <Link
               href="/records"
-              className="px-3 py-1.5 bg-[#141923] text-white rounded-lg text-sm font-semibold border border-[#202B3A]"
+              className="px-4 py-2 bg-[#141923] text-white rounded-lg text-sm font-semibold border border-[#202B3A] hover:border-[#10B981] transition-colors"
             >
               记录
             </Link>
             <Link
               href="/recharge"
-              className="px-3 py-1.5 bg-[#141923] text-white rounded-lg text-sm font-semibold border border-[#202B3A]"
+              className="px-4 py-2 bg-[#141923] text-white rounded-lg text-sm font-semibold border border-[#202B3A] hover:border-[#10B981] transition-colors"
             >
               卡密兑换
             </Link>
             {isAdmin && (
               <Link
                 href="/admin"
-                className="px-3 py-1.5 bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] text-white rounded-lg text-sm font-semibold shadow-[0_0_10px_rgba(139,92,246,0.3)]"
+                className="px-4 py-2 bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] text-white rounded-lg text-sm font-semibold shadow-[0_0_10px_rgba(139,92,246,0.3)]"
               >
                 后台管理
               </Link>
             )}
           </nav>
 
+          {/* 移动端菜单按钮 */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden w-10 h-10 flex items-center justify-center bg-[#141923] border border-[#202B3A] rounded-lg"
@@ -126,43 +130,47 @@ export default function HomePage() {
             </svg>
           </button>
 
-          <Link
-            href="/dashboard"
-            className="hidden md:flex px-3 py-1.5 bg-[#10B981] text-[#0B0D17] rounded-lg text-sm font-semibold shadow-[0_0_10px_rgba(16,185,129,0.3)]"
-          >
-            开始创作
-          </Link>
+          {/* 桌面端开始创作按钮 */}
+          <div className="hidden md:block">
+            <Link
+              href="/dashboard"
+              className="px-4 py-2 bg-[#10B981] text-[#0B0D17] rounded-lg text-sm font-semibold shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+            >
+              开始创作
+            </Link>
+          </div>
         </div>
 
+        {/* 移动端菜单 */}
         {mobileMenuOpen && (
-          <div className="md:hidden px-3 pb-2 border-t border-[#142D24] pt-2">
-            <div className="flex flex-col gap-1">
+          <div className="md:hidden px-3 pb-3 border-t border-[#1e293b] pt-3 bg-[#030712]">
+            <div className="flex flex-col gap-2">
               <Link
                 href="/dashboard"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2 bg-[#10B981] text-[#0B0D17] rounded-lg text-sm font-bold text-center"
+                className="px-4 py-3 bg-[#10B981] text-[#0B0D17] rounded-lg text-sm font-bold text-center"
               >
                 🎨 立即创作
               </Link>
               <Link
-                href="/recharge"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2 bg-[#141923] text-white rounded-lg text-sm font-semibold text-center border border-[#202B3A]"
-              >
-                🔑 卡密激活
-              </Link>
-              <Link
                 href="/records"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2 bg-[#141923] text-white rounded-lg text-sm font-semibold text-center border border-[#202B3A]"
+                className="px-4 py-3 bg-[#141923] text-white rounded-lg text-sm font-semibold text-center border border-[#202B3A]"
               >
                 📁 生成记录
+              </Link>
+              <Link
+                href="/recharge"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-4 py-3 bg-[#141923] text-white rounded-lg text-sm font-semibold text-center border border-[#202B3A]"
+              >
+                🔑 卡密激活
               </Link>
               {isAdmin && (
                 <Link
                   href="/admin"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="px-3 py-2 bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] text-white rounded-lg text-sm font-semibold text-center"
+                  className="px-4 py-3 bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] text-white rounded-lg text-sm font-semibold text-center"
                 >
                   ⚙️ 后台管理
                 </Link>
