@@ -76,7 +76,7 @@ function getStyleByName(styleName: string) {
   return HANDDRAWN_STYLES.find(s => s.name === styleName)
 }
 
-function buildFinalPrompt(inputText: string, styleName: string, customStyle?: string): string {
+function buildFinalPrompt(inputText: string, styleName: string, customStyle?: string, isImageMode: boolean = false): string {
   const userText = inputText.trim()
 
   let activeStyle = ''
@@ -87,6 +87,31 @@ function buildFinalPrompt(inputText: string, styleName: string, customStyle?: st
     activeStyle = style
       ? `${style.styleKeywords || ''}, ${style.layoutDirectives || ''}`
       : 'cartoon hand-drawn style, cute illustration, vibrant pastel colors, clean thick line art, neat infographic layout'
+  }
+
+  if (isImageMode) {
+    const imagePrompt = `
+[CORE TASK: STYLE TRANSFER & RECONSTRUCTION]
+You are given a reference image. Your task is to perform style transfer while reconstructing the content:
+1. Analyze the reference image's composition, colors, and structural elements
+2. Apply the target artistic style while preserving the core content and layout
+3. Enhance and refine the visual quality
+4. Maintain the original aspect ratio
+
+[TARGET ARTISTIC STYLE]
+${activeStyle}
+
+[GUIDELINES]
+- Preserve the original image's subject and composition
+- Apply the style consistently throughout
+- Ensure high quality rendering
+- Maintain good visual balance
+- Make the result visually appealing and professional
+
+[NEGATIVE REINFORCEMENT]
+low resolution, blurry, distorted subject, mismatched colors, poor composition, text artifacts, watermarks, overly compressed
+`;
+    return imagePrompt
   }
 
   const finalPromptForAI = `
@@ -470,8 +495,8 @@ export async function POST(request: NextRequest) {
           finalPrompts.push(buildFinalPrompt(sentence, styleName, customStyle))
         }
       } else if (isImageMode) {
-        const imgPrompt = buildFinalPrompt('参考图片风格转换与内容重构', styleName, customStyle)
-        finalPrompts.push(imgPrompt)
+          const imgPrompt = buildFinalPrompt('参考图片风格转换与内容重构', styleName, customStyle, true)
+          finalPrompts.push(imgPrompt)
 
         const firstReferenceImage = referenceImages[0]
         const taskId = await submitGrsTask(imgPrompt, targetImageSize, modelType, firstReferenceImage)
