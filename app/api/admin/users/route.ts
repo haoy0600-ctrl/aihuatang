@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, credits, created_at')
+      .select('id, email, credits, created_at, banned')
       .order('created_at', { ascending: false })
 
     if (profilesError || !profiles) {
@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
       id: profile.id,
       email: profile.email || '未知邮箱',
       credits: profile.credits || 0,
-      created_at: profile.created_at
+      created_at: profile.created_at,
+      banned: profile.banned || false
     }))
 
     return NextResponse.json({

@@ -11,7 +11,7 @@ interface User {
   email: string
   credits: number
   created_at: string
-  is_active?: boolean
+  banned?: boolean
 }
 
 interface QueueItem {
@@ -194,11 +194,35 @@ export default function AdminPage() {
 
     if (data.success) {
       setUsers(users.map(u => 
-        u.id === userId ? { ...u, is_active: data.isActive } : u
+        u.id === userId ? { ...u, banned: data.banned } : u
       ))
       alert(data.message)
     } else {
       alert(data.error || '操作失败')
+    }
+  }
+
+  const handleDeleteUser = async (userId: string, email: string) => {
+    if (!confirm(`确定要删除用户 "${email}" 吗？此操作无法撤销！`)) {
+      return
+    }
+
+    const response = await fetch('/api/admin/update-user', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        userId: userId,
+        action: 'delete'
+      })
+    })
+
+    const data = await response.json()
+
+    if (data.success) {
+      setUsers(users.filter(u => u.id !== userId))
+      alert(data.message)
+    } else {
+      alert(data.error || '删除失败')
     }
   }
 
@@ -412,11 +436,11 @@ export default function AdminPage() {
                         <td className="px-4 py-3 text-sm text-[#94A3B8]">{formatDate(user.created_at)}</td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 rounded text-xs font-bold ${
-                            user.is_active === false 
+                            user.banned === true 
                               ? 'bg-red-500/20 text-red-400' 
                               : 'bg-[#10B981]/20 text-[#10B981]'
                           }`}>
-                            {user.is_active === false ? '已禁用' : '正常'}
+                            {user.banned === true ? '已禁用' : '正常'}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -444,14 +468,20 @@ export default function AdminPage() {
                               -积分
                             </button>
                             <button
-                              onClick={() => handleToggleStatus(user.id, user.is_active !== false)}
+                              onClick={() => handleToggleStatus(user.id, user.banned !== true)}
                               className={`px-2 py-1 text-xs font-bold border transition-all rounded ${
-                                user.is_active === false
+                                user.banned === true
                                   ? 'bg-[#10B981]/20 text-[#10B981] border-[#10B981]/50'
                                   : 'bg-red-500/20 text-red-400 border-red-500/50'
                               }`}
                             >
-                              {user.is_active === false ? '解禁' : '禁用'}
+                              {user.banned === true ? '解禁' : '禁用'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id, user.email)}
+                              className="px-2 py-1 bg-red-600/20 text-red-500 text-xs font-bold border border-red-600/50 hover:bg-red-600/30 transition-all rounded"
+                            >
+                              删除
                             </button>
                           </div>
                         </td>

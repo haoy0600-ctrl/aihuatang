@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { HANDDRAWN_STYLES } from '@/config/styles'
-import { requireAuthenticatedUser } from '@/lib/auth'
+import { requireAuthenticatedUser, ADMIN_EMAIL } from '@/lib/auth'
 
 export const maxDuration = 300
 
@@ -487,7 +487,7 @@ async function checkVipPermission(userId: string): Promise<boolean> {
   try {
     const { data: profileData, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('vip_level')
+      .select('vip_level, credits, email')
       .eq('id', userId)
       .single()
 
@@ -496,10 +496,22 @@ async function checkVipPermission(userId: string): Promise<boolean> {
       return false
     }
 
-    const vipLevel = profileData.vip_level || 0
-    const isVip = vipLevel >= 1
-    console.log('[VIP] User VIP check:', { userId, vipLevel, isVip })
-    return isVip
+    // 管理员直接放行
+    if (profileData.email === ADMIN_EMAIL) {
+      console.log('[VIP] Admin user detected, granting VIP access')
+      return true
+    }
+
+    // 如果存在 vip_level 字段且 >= 1，视为VIP
+    if (profileData.vip_level && profileData.vip_level >= 1) {
+      console.log('[VIP] User has vip_level >= 1, granting VIP access')
+      return true
+    }
+
+    // 兼容模式：没有 vip_level 字段时，积分 >= 12 即可使用4K（足够支付一次4K生成）
+    const hasEnoughCredits = (profileData.credits || 0) >= 12
+    console.log('[VIP] User VIP check (fallback):', { userId, credits: profileData.credits, hasEnoughCredits })
+    return hasEnoughCredits
   } catch (error) {
     console.error('[VIP] VIP check failed:', error)
     return false

@@ -55,13 +55,20 @@ export async function POST(request: NextRequest) {
         let exists = true
         let attempts = 0
         while (exists && attempts < 10) {
-          const { count: existingCount } = await supabaseAdmin
+          const { data: existingCards, error: checkError } = await supabaseAdmin
             .from('card_codes')
-            .select('id', { count: 'exact' })
+            .select('id')
             .eq('code', cardCode)
-            .limit(0)
+            .limit(1)
           
-          if (existingCount === 0) {
+          if (checkError) {
+            console.error('[GenerateCards] Check duplicate error:', checkError)
+            attempts++
+            cardCode = generateRandomCard()
+            continue
+          }
+          
+          if (!existingCards || existingCards.length === 0) {
             exists = false
           } else {
             cardCode = generateRandomCard()

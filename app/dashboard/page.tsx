@@ -632,12 +632,12 @@ export default function DashboardPage() {
     }
   }
 
-  // 分辨率积分定价：1K=2分 / 2K=4分 / 4K=8分
+  // 分辨率积分定价：1K=2分 / 2K=4分 / 4K=12分(VIP专属)
   const getResolutionPrice = (model: string, res: string) => {
     switch (res) {
       case '1K': return 2
       case '2K': return 4
-      case '4K': return 8
+      case '4K': return 12
       default: return 2
     }
   }

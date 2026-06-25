@@ -167,6 +167,9 @@ export default function CardsAdminPage() {
                 <option value={20}>20 积分</option>
                 <option value={50}>50 积分</option>
                 <option value={100}>100 积分</option>
+                <option value={200}>200 积分</option>
+                <option value={500}>500 积分</option>
+                <option value={1000}>1000 积分</option>
               </select>
             </div>
             

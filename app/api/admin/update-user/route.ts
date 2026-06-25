@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     } else if (action === 'toggle_status') {
       const { data: profile, error: fetchError } = await supabaseAdmin
         .from('profiles')
-        .select('is_active')
+        .select('banned')
         .eq('id', userId)
         .single()
 
@@ -105,11 +105,11 @@ export async function POST(request: NextRequest) {
         }, { status: 404 })
       }
 
-      const newStatus = !(profile.is_active ?? true)
+      const newStatus = !(profile.banned ?? false)
 
       const { error: updateError } = await supabaseAdmin
         .from('profiles')
-        .update({ is_active: newStatus })
+        .update({ banned: newStatus })
         .eq('id', userId)
 
       if (updateError) {
@@ -122,8 +122,39 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: newStatus ? '用户已解禁' : '用户已禁用',
-        isActive: newStatus
+        message: newStatus ? '用户已禁用' : '用户已解禁',
+        banned: newStatus
+      })
+    } else if (action === 'delete') {
+      const { data: profile, error: fetchError } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .single()
+
+      if (fetchError || !profile) {
+        return NextResponse.json({
+          success: false,
+          error: '用户不存在'
+        }, { status: 404 })
+      }
+
+      const { error: deleteError } = await supabaseAdmin
+        .from('profiles')
+        .delete()
+        .eq('id', userId)
+
+      if (deleteError) {
+        console.error('Delete user error:', deleteError)
+        return NextResponse.json({
+          success: false,
+          error: '删除用户失败'
+        }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: '用户已成功删除'
       })
     } else {
       return NextResponse.json({
