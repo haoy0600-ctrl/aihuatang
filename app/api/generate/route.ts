@@ -8,6 +8,27 @@ export const maxDuration = 300
 const GRS_API_KEY = process.env.GRSAI_API_KEY || ''
 const GRS_API_BASE_URL = (process.env.GRS_API_BASE_URL || 'https://grsapiapi.com').replace(/\/+$/, '')
 
+const BASE_SENSITIVE_WORDS = [
+  '习近平', '李克强', '胡锦涛', '温家宝', '江泽民', '毛泽东', '邓小平',
+  '中南海', '天安门', '人民大会堂', '国务院', '中央军委', '台湾独立', '台独',
+  '香港独立', '港独', '西藏独立', '疆独', '法轮功', '邪教', '反共',
+  '反华', '辱华', '敏感词', '违禁', '色情', '裸体', '露骨', '性暗示',
+  '三级片', 'AV', '成人', '卖淫', '嫖娼', '强奸', '乱伦', '自慰',
+  '暴力', '血腥', '杀人', '自杀', '恐怖', '炸弹', '枪支', '毒品',
+  '翻墙', 'VPN', '梯子', '代理', '加速器', '暗网', '黑客', '攻击',
+  '赌博', '六合彩', '毒品', '走私', '诈骗', '传销', '洗钱',
+  '反动', '煽动', '谣言', '诽谤', '污蔑', '造谣', '虚假',
+  '病毒', '木马', '勒索', '钓鱼', '刷单', '跑分', '洗钱',
+  '卖淫', '嫖娼', '色情', '裸体', '露阴', '性交易', '艳照',
+  '赌博', '博彩', '棋牌', '彩票', '老虎机', '百家乐',
+  '违法', '犯罪', '偷窃', '抢劫', '绑架', '拐卖', '诈骗',
+  '恐怖主义', '极端主义', 'ISIS', '基地组织', '圣战',
+  '毒品', '大麻', '海洛因', '冰毒', '鸦片', '可卡因',
+  '政治敏感', '国家安全', '机密', '内部文件', '泄露',
+  '反动言论', '颠覆', '分裂', '破坏', '危害', '动乱',
+  '辱骂', '侮辱', '歧视', '仇恨', '暴力威胁', '人肉搜索'
+]
+
 function timeoutPromise<T>(promise: Promise<T>, ms: number, label: string = '请求'): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -54,7 +75,7 @@ function getResolutionPrice(resolution: string): number {
   switch (resolution) {
     case '1K': return 2
     case '2K': return 4
-    case '4K': return 8
+    case '4K': return 12
     default: return 2
   }
 }
@@ -171,6 +192,117 @@ low resolution, blurry text, chaotic layout, compressed artifact, deformed chara
 `;
 
   return finalPromptForAI
+}
+
+function detectSensitiveWords(prompt: string): boolean {
+  if (!prompt || !prompt.trim()) return false
+  
+  const cleanedPrompt = prompt
+    .replace(/[\s\t\n\r\-\_\~\!\@\#\$\%\^\&\*\(\)\[\]\{\}\|\;\'\:\"\,\.\<\>\?\/\\]/g, '')
+    .toLowerCase()
+  
+  for (const word of BASE_SENSITIVE_WORDS) {
+    const cleanedWord = word.toLowerCase().replace(/\s/g, '')
+    if (cleanedPrompt.includes(cleanedWord)) {
+      console.warn('[Security] Sensitive word detected:', word)
+      return true
+    }
+  }
+  
+  return false
+}
+
+async function logMaliciousRequest(userId: string, ip: string, prompt: string): Promise<void> {
+  if (!supabaseAdmin) return
+  
+  try {
+    await supabaseAdmin
+      .from('security_logs')
+      .insert({
+        user_id: userId,
+        ip_address: ip,
+        prompt: prompt.substring(0, 500),
+        type: 'sensitive_word',
+        created_at: new Date().toISOString(),
+      })
+  } catch (error) {
+    console.error('[Security] Failed to log malicious request:', error)
+  }
+}
+
+async function checkAndRecordViolation(userId: string, ip: string): Promise<boolean> {
+  if (!supabaseAdmin) return false
+  
+  const now = new Date()
+  const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000)
+  
+  try {
+    const { data: userViolations } = await supabaseAdmin
+      .from('security_logs')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('type', 'sensitive_word')
+      .gte('created_at', fiveMinutesAgo.toISOString())
+    
+    const { data: ipViolations } = await supabaseAdmin
+      .from('security_logs')
+      .select('id')
+      .eq('ip_address', ip)
+      .eq('type', 'sensitive_word')
+      .gte('created_at', fiveMinutesAgo.toISOString())
+    
+    const userCount = userViolations?.length || 0
+    const ipCount = ipViolations?.length || 0
+    
+    if (userCount >= 3 || ipCount >= 3) {
+      await supabaseAdmin
+        .from('profiles')
+        .update({ 
+          banned: true, 
+          banned_until: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+          banned_reason: '恶意刷词触发安全锁'
+        })
+        .eq('id', userId)
+      
+      console.error('[Security] User banned:', userId, 'IP:', ip, 'violations:', userCount, '/', ipCount)
+      return true
+    }
+    
+    return false
+  } catch (error) {
+    console.error('[Security] Failed to check violations:', error)
+    return false
+  }
+}
+
+async function isUserBanned(userId: string): Promise<boolean> {
+  if (!supabaseAdmin) return false
+  
+  try {
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('banned, banned_until')
+      .eq('id', userId)
+      .single()
+    
+    if (!profile || !profile.banned) return false
+    
+    if (profile.banned_until) {
+      const banEnd = new Date(profile.banned_until)
+      if (new Date() > banEnd) {
+        await supabaseAdmin
+          .from('profiles')
+          .update({ banned: false, banned_until: null })
+          .eq('id', userId)
+        return false
+      }
+    }
+    
+    return true
+  } catch (error) {
+    console.error('[Security] Failed to check ban status:', error)
+    return false
+  }
 }
 
 async function submitGrsTask(
@@ -319,54 +451,6 @@ async function pollGrsResult(taskId: string): Promise<string> {
   throw new Error('GrsAI 任务超时，请点击二次生成')
 }
 
-async function downloadAndUploadToSupabase(imageUrl: string, userId: string, index: number): Promise<string> {
-  try {
-    const imageResponse = await timeoutPromise(fetch(imageUrl), 30000)
-
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to download image: ${imageResponse.status}`)
-    }
-
-    const arrayBuffer = await timeoutPromise(imageResponse.arrayBuffer(), 30000)
-    const buffer = Buffer.from(arrayBuffer as ArrayBuffer)
-
-    const timestamp = Date.now()
-    const fileName = `${userId}/${timestamp}-${index}.png`
-
-    if (!supabaseAdmin) {
-      console.warn('[Supabase] Supabase admin not configured, skipping upload. Returning original URL.')
-      return imageUrl
-    }
-
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from('handdrawn-images')
-      .upload(fileName, buffer, {
-        contentType: 'image/png',
-        cacheControl: '31536000',
-        upsert: false,
-      })
-
-    if (uploadError) {
-      console.error('[Supabase] Storage upload failed:', uploadError)
-      return imageUrl
-    }
-
-    const { data: urlData } = supabaseAdmin.storage
-      .from('handdrawn-images')
-      .getPublicUrl(fileName)
-
-    if (!urlData?.publicUrl) {
-      console.warn('[Supabase] Failed to get public URL, returning original URL')
-      return imageUrl
-    }
-
-    return urlData.publicUrl
-  } catch (error: any) {
-    console.error('[Supabase] downloadAndUploadToSupabase error:', error.message)
-    return imageUrl
-  }
-}
-
 async function generateSingleImage(
   sentence: string,
   styleName: string,
@@ -375,7 +459,6 @@ async function generateSingleImage(
   modelName: string,
   modelType: string,
   resolution: string,
-  userId: string,
   index: number,
   referenceImage?: string
 ): Promise<string> {
@@ -389,13 +472,10 @@ async function generateSingleImage(
   const taskId = await submitGrsTask(finalPrompt, imageSize, modelName, modelType, resolution, referenceImage)
   console.log(`[Generate] Sentence ${index} task submitted: ${taskId}`)
 
-  const originImageUrl = await pollGrsResult(taskId)
-  console.log(`[Generate] Sentence ${index} image generated: ${originImageUrl}`)
+  const imageUrl = await pollGrsResult(taskId)
+  console.log(`[Generate] Sentence ${index} image generated: ${imageUrl}`)
 
-  const permanentUrl = await downloadAndUploadToSupabase(originImageUrl, userId, index)
-  console.log(`[Generate] Sentence ${index} image uploaded: ${permanentUrl}`)
-
-  return permanentUrl
+  return imageUrl
 }
 
 async function checkVipPermission(userId: string): Promise<boolean> {
@@ -518,6 +598,10 @@ export async function POST(request: NextRequest) {
     if (auth.response || !auth.user) return auth.response
 
     const userId = auth.user.id
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    
+    console.log('[Security] Request received:', { userId, ip, timestamp: Date.now() })
+
     const {
       inputContents = [],
       referenceImages = [],
@@ -547,6 +631,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const allPrompts = isTextMode ? inputContents.join('\n') : '[Image Mode]'
+
+    // ===== 第一层：核心防御层 - 防恶意刷词安全锁 =====
+    const isBanned = await isUserBanned(userId)
+    if (isBanned) {
+      return NextResponse.json(
+        { success: false, error: '账号因恶意刷词已触发安全锁，限制访问 24 小时' },
+        { status: 403 }
+      )
+    }
+
+    if (detectSensitiveWords(allPrompts)) {
+      await logMaliciousRequest(userId, ip, allPrompts)
+      
+      await deductCredits(userId, 2)
+      
+      const shouldBan = await checkAndRecordViolation(userId, ip)
+      
+      const errorMsg = shouldBan 
+        ? '检测到违禁词汇，生成失败。恶意刷词系统将自动封禁账号'
+        : '检测到违禁词汇，生成失败。恶意刷词系统将自动封禁账号'
+      
+      return NextResponse.json(
+        { success: false, error: errorMsg },
+        { status: 400 }
+      )
+    }
+
+    // ===== 第二层：商业账本层 - 动态权限校验与精准计费 =====
     const is4K = resolution === '4K'
     const isVipModel = modelType.toLowerCase().includes('vip') || is4K
 
@@ -554,7 +667,7 @@ export async function POST(request: NextRequest) {
       const isVip = await checkVipPermission(userId)
       if (!isVip) {
         return NextResponse.json(
-          { success: false, error: '无权使用 VIP 4K 功能，请充值高级卡密' },
+          { success: false, error: '无权使用 VIP 4K 极清功能，请充值高级卡密解锁' },
           { status: 403 }
         )
       }
@@ -581,6 +694,7 @@ export async function POST(request: NextRequest) {
     console.log('[Generate] AspectRatio:', aspectRatio, '→ ImageSize:', targetImageSize)
     console.log('[Generate] Model:', modelName)
 
+    // 先扣费，再发请求
     const deductResult = await deductCredits(userId, totalCost)
     if (!deductResult.success) {
       return NextResponse.json(
@@ -597,6 +711,7 @@ export async function POST(request: NextRequest) {
     profileId = deductResult.profileId
     creditsDeducted = true
 
+    // ===== 第三层：高并发层 - 直接返回中转站外链 =====
     const imageUrls: string[] = []
     const finalPrompts: string[] = []
     let firstError: string | null = null
@@ -604,7 +719,7 @@ export async function POST(request: NextRequest) {
     try {
       if (isTextMode && sentences.length > 0) {
         const generationPromises = sentences.map((sentence, index) =>
-          generateSingleImage(sentence, styleName, customStyle, targetImageSize, modelName, modelType, resolution, userId, index)
+          generateSingleImage(sentence, styleName, customStyle, targetImageSize, modelName, modelType, resolution, index)
             .then(url => ({ url, index, error: null as Error | null }))
             .catch(error => {
               console.error(`[Generate] Failed to generate image for sentence ${index}:`, error)
@@ -631,9 +746,8 @@ export async function POST(request: NextRequest) {
 
         const firstReferenceImage = referenceImages[0]
         const taskId = await submitGrsTask(imgPrompt, targetImageSize, modelName, modelType, resolution, firstReferenceImage)
-        const originUrl = await pollGrsResult(taskId)
-        const permanentUrl = await downloadAndUploadToSupabase(originUrl, userId, 0)
-        imageUrls.push(permanentUrl)
+        const imageUrl = await pollGrsResult(taskId)
+        imageUrls.push(imageUrl)
       }
 
       if (imageUrls.length === 0) {
