@@ -99,7 +99,11 @@ export function TermsModal({ show, onClose }: TermsModalProps) {
             <ul className="space-y-2 text-sm text-gray-300 pl-4">
               <li className="flex gap-2">
                 <span className="text-[#10B981]">•</span>
-                <span>新用户注册即赠送 6 积分（价值约 6 元），可免费体验 3 张图片生成。</span>
+                <span>新用户注册即赠送 10 积分，可免费体验多张图片生成。</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-[#10B981]">•</span>
+                <span>积分档位：1K高清 2积分/张，2K超清 4积分/张，4K极清 8积分/张（VIP专属）。</span>
               </li>
               <li className="flex gap-2">
                 <span className="text-[#10B981]">•</span>

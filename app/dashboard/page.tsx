@@ -560,6 +560,9 @@ export default function DashboardPage() {
       setGeneratedImages(data.imageUrls || [data.imageUrl])
       setGenerationStatus('success')
 
+      // 通知记录页面刷新
+      window.dispatchEvent(new Event('ai-huatang-generation-complete'))
+
       if (profile && data.creditsRemaining !== undefined) {
         setProfile({ ...profile, credits: data.creditsRemaining })
       }

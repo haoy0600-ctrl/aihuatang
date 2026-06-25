@@ -154,8 +154,19 @@ export default function RecordsPage() {
     setLoading(true)
     fetchRecords(1, true)
 
-    const interval = setInterval(() => fetchRecords(1, true), 30000)
-    return () => clearInterval(interval)
+    // 每5秒自动刷新记录
+    const interval = setInterval(() => fetchRecords(1, true), 5000)
+    
+    // 监听生成完成事件
+    const handleGenerationComplete = () => {
+      fetchRecords(1, true)
+    }
+    window.addEventListener('ai-huatang-generation-complete', handleGenerationComplete)
+    
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('ai-huatang-generation-complete', handleGenerationComplete)
+    }
   }, [filterStatus])
 
   useEffect(() => {
