@@ -50,14 +50,57 @@ function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number, 
     })
 }
 
-// 分辨率积分定价：1K=2分 / 2K=4分 / 4K=8分
-function getResolutionPrice(modelType: string, resolution: string): number {
+function getResolutionPrice(resolution: string): number {
   switch (resolution) {
     case '1K': return 2
     case '2K': return 4
     case '4K': return 8
     default: return 2
   }
+}
+
+const ASPECT_RATIO_PIXELS: Record<string, Record<string, string>> = {
+  '1K': {
+    '16:9': '16:9',
+    '9:16': '9:16',
+    '4:3': '4:3',
+    '3:4': '3:4',
+    '1:1': '1:1',
+  },
+  '2K': {
+    '16:9': '2048x1152',
+    '9:16': '1152x2048',
+    '4:3': '1536x1152',
+    '3:4': '1152x1536',
+    '1:1': '1536x1536',
+  },
+  '4K': {
+    '16:9': '3840x2160',
+    '9:16': '2160x3840',
+    '4:3': '3072x2304',
+    '3:4': '2304x3072',
+    '1:1': '3072x3072',
+  },
+}
+
+function getImageSizeByResolution(resolution: string, aspectRatio: string): string {
+  return ASPECT_RATIO_PIXELS[resolution]?.[aspectRatio] || aspectRatio
+}
+
+function getModelName(modelType: string, resolution: string): string {
+  const is4K = resolution === '4K'
+  
+  if (modelType.toLowerCase().includes('banana')) {
+    if (is4K) {
+      return modelType === 'NanoBanana2' ? 'nano-banana-pro-4k-vip' : 'nano-banana-pro-4k-vip'
+    }
+    return 'nano-banana-pro'
+  }
+  
+  if (is4K) {
+    return 'gpt-image-2-vip'
+  }
+  return 'gpt-image-2'
 }
 
 type GenerateRequest = {
@@ -133,27 +176,44 @@ low resolution, blurry text, chaotic layout, compressed artifact, deformed chara
 async function submitGrsTask(
   prompt: string,
   imageSize: string,
+  modelName: string,
   modelType: string,
+  resolution: string,
   referenceImage?: string
 ): Promise<string> {
   const isImageMode = !!referenceImage
-  const model = modelType === 'NanoBanana2' ? 'nano-banana-pro' : 'gpt-image-2'
-  const drawUrl = modelType === 'NanoBanana2'
+  const is4K = resolution === '4K'
+  const isBanana = modelType.toLowerCase().includes('banana')
+  
+  const drawUrl = isBanana
     ? `${GRS_API_BASE_URL}/v1/draw/nano-banana`
     : `${GRS_API_BASE_URL}/v1/draw/completions`
 
   const payload: any = {
-    model: model,
+    model: modelName,
     prompt: prompt,
     imageSize: imageSize,
     webHook: '-1',
+  }
+
+  if (isBanana && is4K) {
+    payload.imageSize = '4K'
   }
 
   if (isImageMode && referenceImage) {
     payload.images = [referenceImage]
   }
 
-  console.log('[GrsAI] API request:', { url: drawUrl, model, imageSize, isImageMode, timestamp: Date.now() })
+  console.log('[GrsAI] API request:', { 
+    url: drawUrl, 
+    model: modelName, 
+    imageSize: payload.imageSize, 
+    resolution,
+    is4K,
+    isBanana,
+    isImageMode, 
+    timestamp: Date.now() 
+  })
 
   if (!GRS_API_KEY) {
     console.error('[GrsAI] GRS_API_KEY 未配置')
@@ -173,6 +233,9 @@ async function submitGrsTask(
     if (!response.ok) {
       const errorText = await response.text()
       console.error(`[GrsAI] API request failed: status=${response.status}, body=${errorText}`)
+      if (response.status === 429 || response.status >= 500) {
+        throw new Error(`GrsAI API 异常(${response.status})，将执行积分回滚: ${errorText.substring(0, 200)}`)
+      }
       throw new Error(`GrsAI API 请求失败: ${response.status} - ${errorText.substring(0, 200)}`)
     }
 
@@ -219,6 +282,9 @@ async function pollGrsResult(taskId: string): Promise<string> {
       if (!checkRes.ok) {
         const errorText = await checkRes.text()
         console.error(`[GrsAI] Poll failed: status=${checkRes.status}, body=${errorText.substring(0, 200)}`)
+        if (checkRes.status === 429 || checkRes.status >= 500) {
+          throw new Error(`GrsAI 轮询异常(${checkRes.status})`)
+        }
         await new Promise(resolve => setTimeout(resolve, retryDelay))
         continue
       }
@@ -306,7 +372,9 @@ async function generateSingleImage(
   styleName: string,
   customStyle: string | undefined,
   imageSize: string,
+  modelName: string,
   modelType: string,
+  resolution: string,
   userId: string,
   index: number,
   referenceImage?: string
@@ -314,10 +382,11 @@ async function generateSingleImage(
   const translatedText = sentence
   console.log(`[Generate] Sentence ${index}: ${translatedText}`)
 
-  const finalPrompt = buildFinalPrompt(translatedText, styleName, customStyle)
+  const isImageMode = !!referenceImage
+  const finalPrompt = buildFinalPrompt(translatedText, styleName, customStyle, isImageMode)
   console.log(`[Generate] Sentence ${index} final prompt: ${finalPrompt.substring(0, 100)}...`)
 
-  const taskId = await submitGrsTask(finalPrompt, imageSize, modelType, referenceImage)
+  const taskId = await submitGrsTask(finalPrompt, imageSize, modelName, modelType, resolution, referenceImage)
   console.log(`[Generate] Sentence ${index} task submitted: ${taskId}`)
 
   const originImageUrl = await pollGrsResult(taskId)
@@ -329,10 +398,117 @@ async function generateSingleImage(
   return permanentUrl
 }
 
+async function checkVipPermission(userId: string): Promise<boolean> {
+  if (!supabaseAdmin) {
+    console.warn('[VIP] Supabase admin not configured, allowing VIP access in demo mode')
+    return true
+  }
+
+  try {
+    const { data: profileData, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('vip_level')
+      .eq('id', userId)
+      .single()
+
+    if (profileError || !profileData) {
+      console.warn('[VIP] Profile not found or no VIP info, treating as non-VIP')
+      return false
+    }
+
+    const vipLevel = profileData.vip_level || 0
+    const isVip = vipLevel >= 1
+    console.log('[VIP] User VIP check:', { userId, vipLevel, isVip })
+    return isVip
+  } catch (error) {
+    console.error('[VIP] VIP check failed:', error)
+    return false
+  }
+}
+
+async function deductCredits(userId: string, amount: number): Promise<{ success: boolean; currentCredits: number; profileId: string }> {
+  if (!supabaseAdmin) {
+    console.warn('[Deduct] Supabase admin not configured, skipping deduction in demo mode')
+    return { success: true, currentCredits: 9999, profileId: userId }
+  }
+
+  try {
+    const { data: profileData, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, credits')
+      .eq('id', userId)
+      .single()
+
+    if (profileError || !profileData) {
+      console.error('[Deduct] Profile not found')
+      return { success: false, currentCredits: 0, profileId: '' }
+    }
+
+    const profileId = profileData.id
+    const currentCredits = profileData.credits || 0
+
+    if (currentCredits < amount) {
+      console.error('[Deduct] Insufficient credits:', { currentCredits, required: amount })
+      return { success: false, currentCredits, profileId }
+    }
+
+    const newCredits = currentCredits - amount
+    const { error: deductError } = await supabaseAdmin
+      .from('profiles')
+      .update({ credits: newCredits })
+      .eq('id', profileId)
+      .eq('credits', currentCredits)
+
+    if (deductError) {
+      console.error('[Deduct] Deduct failed:', deductError)
+      return { success: false, currentCredits, profileId }
+    }
+
+    console.log('[Deduct] Credits deducted:', { userId, amount, remaining: newCredits })
+    return { success: true, currentCredits: newCredits, profileId }
+  } catch (error) {
+    console.error('[Deduct] Database error:', error)
+    return { success: false, currentCredits: 0, profileId: '' }
+  }
+}
+
+async function rollbackCredits(profileId: string, amount: number): Promise<void> {
+  if (!supabaseAdmin || !profileId) {
+    console.warn('[Rollback] Supabase admin not configured or no profileId, skipping rollback')
+    return
+  }
+
+  try {
+    const { data: currentProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('credits')
+      .eq('id', profileId)
+      .single()
+
+    if (!currentProfile) {
+      console.error('[Rollback] Profile not found for rollback')
+      return
+    }
+
+    const rollbackCredits = (currentProfile.credits || 0) + amount
+    const { error: rollbackError } = await supabaseAdmin
+      .from('profiles')
+      .update({ credits: rollbackCredits })
+      .eq('id', profileId)
+
+    if (rollbackError) {
+      console.error('[Rollback] Failed to rollback:', rollbackError)
+    } else {
+      console.log('[Rollback] Credits rolled back successfully:', { profileId, amount, restoredTo: rollbackCredits })
+    }
+  } catch (error) {
+    console.error('[Rollback] Database error:', error)
+  }
+}
+
 export async function POST(request: NextRequest) {
   let currentCredits = 0
   let profileId = ''
-  let profile: any = null
   let totalCost = 0
   let creditsDeducted = false
 
@@ -371,8 +547,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const costPerImage = getResolutionPrice(modelType, resolution)
-    const targetImageSize = imageSize || '1440x2560'
+    const is4K = resolution === '4K'
+    const isVipModel = modelType.toLowerCase().includes('vip') || is4K
+
+    if (isVipModel) {
+      const isVip = await checkVipPermission(userId)
+      if (!isVip) {
+        return NextResponse.json(
+          { success: false, error: '无权使用 VIP 4K 功能，请充值高级卡密' },
+          { status: 403 }
+        )
+      }
+    }
+
+    const costPerImage = getResolutionPrice(resolution)
+    const targetImageSize = getImageSizeByResolution(resolution, aspectRatio)
+    const modelName = getModelName(modelType, resolution)
 
     let sentences: string[] = []
 
@@ -387,84 +577,25 @@ export async function POST(request: NextRequest) {
     console.log('[Generate] Total images to generate:', totalImageCount)
     console.log('[Generate] Cost per image:', costPerImage)
     console.log('[Generate] Total cost:', totalCost)
-    console.log('[Generate] Resolution:', resolution, 'ImageSize:', targetImageSize)
+    console.log('[Generate] Resolution:', resolution)
+    console.log('[Generate] AspectRatio:', aspectRatio, '→ ImageSize:', targetImageSize)
+    console.log('[Generate] Model:', modelName)
 
-    if (!supabaseAdmin) {
-      console.warn('[Generate] Supabase admin not configured, skipping credit check in demo mode')
-      currentCredits = 9999
-    } else {
-      try {
-        const { data: profileData, error: profileError } = await supabaseAdmin
-          .from('profiles')
-          .select('id, credits')
-          .eq('id', userId)
-          .single()
-
-        if (profileError || !profileData) {
-          console.warn('[Generate] Profile not found, creating new profile')
-          const { data: newProfileData, error: newProfileError } = await supabaseAdmin
-            .from('profiles')
-            .insert({
-              id: userId,
-              credits: 3,
-            })
-            .select()
-            .single()
-
-          if (newProfileError || !newProfileData) {
-            console.error('[Generate] Failed to create profile:', newProfileError)
-            return NextResponse.json(
-              { success: false, error: 'Failed to initialize profile' },
-              { status: 500 }
-            )
-          }
-          profile = newProfileData
-          profileId = newProfileData.id
-        } else {
-          profile = profileData
-          profileId = profileData.id
-        }
-
-        currentCredits = profile.credits
-        console.log('[Generate] User credits:', currentCredits, 'Required:', totalCost)
-
-        if (profile.credits < totalCost) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: `余额不足！需要 ${totalCost} 积分，当前 ${profile.credits} 积分，请充值后重试`,
-              creditsRemaining: profile.credits,
-            },
-            { status: 400 }
-          )
-        }
-
-        const newCredits = currentCredits - totalCost
-        const { error: deductError } = await supabaseAdmin
-          .from('profiles')
-          .update({ credits: newCredits })
-          .eq('id', profileId)
-          .eq('credits', currentCredits)
-
-        if (deductError) {
-          console.error('[Generate] Failed to deduct credits:', deductError)
-          return NextResponse.json(
-            { success: false, error: '积分扣费失败，请稍后重试' },
-            { status: 500 }
-          )
-        }
-
-        creditsDeducted = true
-        console.log('[Generate] Credits deducted:', totalCost, 'remaining:', newCredits)
-
-      } catch (dbError) {
-        console.error('[Generate] Database error:', dbError)
-        return NextResponse.json(
-          { success: false, error: 'Database error' },
-          { status: 500 }
-        )
-      }
+    const deductResult = await deductCredits(userId, totalCost)
+    if (!deductResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `余额不足！需要 ${totalCost} 积分，当前 ${deductResult.currentCredits} 积分，请充值后重试`,
+          creditsRemaining: deductResult.currentCredits,
+        },
+        { status: 400 }
+      )
     }
+
+    currentCredits = deductResult.currentCredits
+    profileId = deductResult.profileId
+    creditsDeducted = true
 
     const imageUrls: string[] = []
     const finalPrompts: string[] = []
@@ -473,7 +604,7 @@ export async function POST(request: NextRequest) {
     try {
       if (isTextMode && sentences.length > 0) {
         const generationPromises = sentences.map((sentence, index) =>
-          generateSingleImage(sentence, styleName, customStyle, targetImageSize, modelType, userId, index)
+          generateSingleImage(sentence, styleName, customStyle, targetImageSize, modelName, modelType, resolution, userId, index)
             .then(url => ({ url, index, error: null as Error | null }))
             .catch(error => {
               console.error(`[Generate] Failed to generate image for sentence ${index}:`, error)
@@ -495,11 +626,11 @@ export async function POST(request: NextRequest) {
           finalPrompts.push(buildFinalPrompt(sentence, styleName, customStyle))
         }
       } else if (isImageMode) {
-          const imgPrompt = buildFinalPrompt('参考图片风格转换与内容重构', styleName, customStyle, true)
-          finalPrompts.push(imgPrompt)
+        const imgPrompt = buildFinalPrompt('参考图片风格转换与内容重构', styleName, customStyle, true)
+        finalPrompts.push(imgPrompt)
 
         const firstReferenceImage = referenceImages[0]
-        const taskId = await submitGrsTask(imgPrompt, targetImageSize, modelType, firstReferenceImage)
+        const taskId = await submitGrsTask(imgPrompt, targetImageSize, modelName, modelType, resolution, firstReferenceImage)
         const originUrl = await pollGrsResult(taskId)
         const permanentUrl = await downloadAndUploadToSupabase(originUrl, userId, 0)
         imageUrls.push(permanentUrl)
@@ -512,38 +643,19 @@ export async function POST(request: NextRequest) {
     } catch (generationError: any) {
       console.error('[Generate] Image generation failed:', generationError.message)
 
-      if (creditsDeducted && supabaseAdmin) {
-        try {
-          const { data: currentProfile } = await supabaseAdmin
-            .from('profiles')
-            .select('credits')
-            .eq('id', profileId)
-            .single()
-
-          if (currentProfile) {
-            const rollbackCredits = (currentProfile.credits || 0) + totalCost
-            await supabaseAdmin
-              .from('profiles')
-              .update({ credits: rollbackCredits })
-              .eq('id', profileId)
-            console.log('[Generate] Credits rolled back:', totalCost, 'restored to:', rollbackCredits)
-          }
-        } catch (rollbackError) {
-          console.error('[Generate] Failed to rollback credits:', rollbackError)
-        }
+      if (creditsDeducted) {
+        await rollbackCredits(profileId, totalCost)
       }
 
       return NextResponse.json(
         {
           success: false,
           error: generationError.message || '图片生成失败，积分已退回',
-          creditsRemaining: currentCredits,
+          creditsRemaining: currentCredits + totalCost,
         },
         { status: 500 }
       )
     }
-
-    const newCredits = currentCredits - totalCost
 
     if (supabaseAdmin) {
       const { error: recordError } = await supabaseAdmin
@@ -553,7 +665,7 @@ export async function POST(request: NextRequest) {
           prompt: isTextMode ? inputContents.join('\n') : '[Image Mode]',
           style_name: styleName,
           style_prompt: finalPrompts.join('\n---\n'),
-          model: modelType || 'GPT-Image-2',
+          model: modelName,
           image_count: imageUrls.length,
           image_urls: JSON.stringify(imageUrls),
           status: 'success',
@@ -571,38 +683,21 @@ export async function POST(request: NextRequest) {
       success: true,
       imageUrls: imageUrls,
       imageUrl: imageUrls[0],
-      creditsRemaining: newCredits,
+      creditsRemaining: currentCredits,
     })
 
   } catch (error: any) {
     console.error('[Generate] API error:', error.message, error.stack)
 
-    if (creditsDeducted && supabaseAdmin && profileId) {
-      try {
-        const { data: currentProfile } = await supabaseAdmin
-          .from('profiles')
-          .select('credits')
-          .eq('id', profileId)
-          .single()
-
-        if (currentProfile) {
-          const rollbackCredits = (currentProfile.credits || 0) + totalCost
-          await supabaseAdmin
-            .from('profiles')
-            .update({ credits: rollbackCredits })
-            .eq('id', profileId)
-          console.log('[Generate] Error handler: Credits rolled back:', totalCost)
-        }
-      } catch (rollbackError) {
-        console.error('[Generate] Failed to rollback credits:', rollbackError)
-      }
+    if (creditsDeducted && profileId) {
+      await rollbackCredits(profileId, totalCost)
     }
 
     return NextResponse.json(
       {
         success: false,
         error: error.message || '服务端错误，请稍后重试',
-        creditsRemaining: currentCredits,
+        creditsRemaining: creditsDeducted ? currentCredits + totalCost : currentCredits,
       },
       { status: 500 }
     )
