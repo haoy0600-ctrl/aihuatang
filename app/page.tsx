@@ -57,7 +57,7 @@ export default function HomePage() {
   ]
 
   return (
-    <div className="min-h-screen w-full max-w-[100vw] bg-[#030712] text-white flex flex-col relative overflow-hidden">
+    <div className="min-h-screen w-full bg-[#030712] text-white flex flex-col relative overflow-x-hidden">
       {/* 背景层 */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#030712] via-[#0a0f1a] to-[#030712] pointer-events-none"></div>
       <div className="absolute inset-0 bg-gradient-to-b from-[#10B981]/10 via-transparent to-transparent pointer-events-none"></div>
@@ -131,14 +131,14 @@ export default function HomePage() {
         )}
       </header>
 
-      <main className="flex-1 flex flex-col items-center px-3 py-6 sm:py-10 relative z-10 pt-20 pb-20">
+      <main className="flex-1 flex flex-col items-center px-3 py-6 sm:py-10 relative z-10 pt-20 pb-24">
         {/* Hero区域 */}
         <div className="text-center mb-8 sm:mb-12">
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold mb-3 sm:mb-4">
-            <span className="bg-gradient-to-r from-[#03F09C] via-[#00F2FE] to-[#10B981] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#03F09C] via-[#00F2FE] to-[#10B981] bg-clip-text text-transparent animate-gradient-shine bg-[length:200%_auto]">
               AI画堂
             </span>
-            <span className="text-white"> · 自媒体全自动知识图卡生产线</span>
+            <span className="text-white animate-title-fade"> · 自媒体全自动知识图卡生产线</span>
           </h1>
           <p className="text-sm sm:text-base text-gray-400 max-w-2xl mx-auto mb-4 sm:mb-6 leading-relaxed">
             告别生硬AI感，拒绝繁琐排版。内置智能排版引擎，一句话秒级重构为高密度爆款知识卡片。
@@ -216,7 +216,7 @@ export default function HomePage() {
                   <span className="text-[#10B981] text-sm mt-0.5">✅</span>
                   <div>
                     <p className="text-sm text-[#10B981] font-semibold">价格屠夫</p>
-                    <p className="text-xs sm:text-sm text-[#10B981]/70">单张低至 1毛4分，29元生 160 张。</p>
+                    <p className="text-xs sm:text-sm text-[#10B981]/70">1K高清2点/张，2K超清4点/张，4K极清8点/张。</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">

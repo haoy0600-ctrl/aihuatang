@@ -1,1 +1,0 @@
-{"version":1,"functions":{"/api/admin/cards":{},"/api/cron/clean":{"maxDuration":300},"/api/generate":{"maxDuration":300}}}

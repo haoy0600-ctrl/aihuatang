@@ -129,3 +129,34 @@ select::-ms-expand {
 .animate-aurora-glow {
   animation: aurora-glow 8s ease-in-out infinite;
 }
+
+@keyframes title-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-title-fade {
+  animation: title-fade 1.2s ease-out forwards;
+}
+
+@keyframes gradient-shine {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.animate-gradient-shine {
+  animation: gradient-shine 3s ease-in-out infinite;
+}
