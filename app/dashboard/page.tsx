@@ -541,7 +541,16 @@ export default function DashboardPage() {
         clearInterval(progressTimer)
         const errorMsg = data.error || data.message || '生成失败，请重试'
         console.error('Generation API error:', errorMsg)
-        alert(errorMsg)
+        
+        if (errorMsg.includes('无权使用 VIP 4K')) {
+          const confirmed = confirm('当前账号未开通VIP权限，无法使用4K极清功能。\n\n如需使用4K极清，请前往"卡密兑换"页面充值高级卡密。\n\n是否立即前往充值？')
+          if (confirmed) {
+            router.push('/recharge')
+          }
+        } else {
+          alert(errorMsg)
+        }
+        
         setGenerationStatus('idle')
         return
       }

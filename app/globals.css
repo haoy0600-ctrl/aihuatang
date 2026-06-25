@@ -130,13 +130,44 @@ select::-ms-expand {
   animation: aurora-glow 8s ease-in-out infinite;
 }
 
-@keyframes title-fade {
-  0% {
-    opacity: 0;
-    transform: translateY(-10px);
+@keyframes gradient-flow {
+  0%, 100% {
+    background-position: 0% 50%;
   }
   50% {
-    opacity: 0.5;
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient-flow {
+  animation: gradient-flow 4s ease-in-out infinite;
+}
+
+@keyframes title-reveal {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+    filter: blur(4px);
+  }
+  50% {
+    opacity: 0.7;
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+  }
+}
+
+.animate-title-reveal {
+  animation: title-reveal 1s ease-out forwards;
+}
+
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
   }
   100% {
     opacity: 1;
@@ -144,19 +175,6 @@ select::-ms-expand {
   }
 }
 
-.animate-title-fade {
-  animation: title-fade 1.2s ease-out forwards;
-}
-
-@keyframes gradient-shine {
-  0% {
-    background-position: -200% center;
-  }
-  100% {
-    background-position: 200% center;
-  }
-}
-
-.animate-gradient-shine {
-  animation: gradient-shine 3s ease-in-out infinite;
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
 }
