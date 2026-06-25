@@ -162,14 +162,10 @@ export default function CardsAdminPage() {
                 onChange={(e) => setCardCredits(parseInt(e.target.value))}
                 className="w-full px-4 py-3 bg-[#1e293b] border border-[#334155] text-white rounded-lg focus:border-[#10B981] focus:outline-none"
               >
-                <option value={6}>6 积分</option>
-                <option value={10}>10 积分</option>
-                <option value={20}>20 积分</option>
-                <option value={50}>50 积分</option>
-                <option value={100}>100 积分</option>
-                <option value={200}>200 积分</option>
-                <option value={500}>500 积分</option>
-                <option value={1000}>1000 积分</option>
+                <option value={100}>100 积分 (10元)</option>
+                <option value={320}>320 积分 (29元)</option>
+                <option value={700}>700 积分 (59元)</option>
+                <option value={1300}>1300 积分 (99元)</option>
               </select>
             </div>
             
