@@ -28,11 +28,9 @@ export const supabase = isValidUrl(supabaseUrl) && supabaseAnonKey && !supabaseA
     })
   : createClient('http://localhost', 'fake-key')
 
-export const supabaseAdmin = isValidUrl(supabaseUrl) && supabaseServiceRoleKey && !supabaseServiceRoleKey.startsWith('your_')
-  ? createClient(supabaseUrl, supabaseServiceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
-  : null
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+})
