@@ -23,6 +23,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 button, input, select, textarea {
@@ -46,6 +47,70 @@ header {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* ========================================
+   Header 特效颗粒背景
+   ======================================== */
+
+.header-particles {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(16, 185, 129, 0.15) 1px, transparent 1px),
+    radial-gradient(circle at 80% 30%, rgba(0, 242, 254, 0.12) 1px, transparent 1px),
+    radial-gradient(circle at 40% 80%, rgba(139, 92, 246, 0.1) 1px, transparent 1px),
+    radial-gradient(circle at 60% 20%, rgba(16, 185, 129, 0.08) 1px, transparent 1px);
+  background-size: 100px 100px, 80px 80px, 120px 120px, 60px 60px;
+  animation: particles-drift 20s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes particles-drift {
+  0% {
+    background-position: 0 0, 80px 80px, 120px 120px, 60px 60px;
+  }
+  100% {
+    background-position: 100px 100px, 160px 0, 0 0, 120px 120px;
+  }
+}
+
+/* 微光粒子效果 */
+.header-glow-particles {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 15% 25%, rgba(16, 185, 129, 0.3) 0px, transparent 2px),
+    radial-gradient(circle at 85% 75%, rgba(0, 242, 254, 0.25) 0px, transparent 2px),
+    radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.2) 0px, transparent 3px);
+  background-size: 200px 200px;
+  animation: glow-drift 15s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes glow-drift {
+  0% {
+    opacity: 0.4;
+    background-position: 0 0;
+  }
+  100% {
+    opacity: 0.7;
+    background-position: 50px 50px;
+  }
+}
+
+/* 避免滚动条 */
+.no-scrollbar-page {
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* 页面紧凑布局 */
+.compact-page {
+  padding-top: 0.5rem;
+  padding-bottom: 1rem;
 }
 
 .brutal-shadow {

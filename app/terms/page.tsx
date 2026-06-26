@@ -68,15 +68,31 @@ export default function TermsPage() {
           </div>
           
           <div className="mb-8">
-            <h2 className="text-lg font-bold text-blue-400 mb-4">📊 【积分与退款政策】：</h2>
+            <h2 className="text-lg font-bold text-blue-400 mb-4">📊 【积分消耗】：</h2>
             <ul className="space-y-3 text-sm text-gray-300 pl-5">
               <li className="flex gap-3">
                 <span className="text-[#10B981] mt-0.5">•</span>
-                <span>新用户注册即赠送 6 积分（价值约 6 元），可免费体验 3 张图片生成。</span>
+                <span>本站采用 Image 模型分级消耗机制。标准 1K 分辨率生成消耗 2 积分/次；2K 高清生成消耗 4 积分/次；4K 至臻超清生成消耗 8 积分/次。</span>
               </li>
+            </ul>
+          </div>
+          
+          <div className="mb-8">
+            <h2 className="text-lg font-bold text-green-400 mb-4">🎁 【体验福利】：</h2>
+            <ul className="space-y-3 text-sm text-gray-300 pl-5">
               <li className="flex gap-3">
                 <span className="text-[#10B981] mt-0.5">•</span>
-                <span>积分充值后不予退款，请根据自身需求合理购买。</span>
+                <span>新用户通过邮箱首次注册成功，系统赠送 8 个免费 Image 模型体验积分（可用于自由体验 4张1K生成、2张2K生成 或 1张4K至臻超清生成）。</span>
+              </li>
+            </ul>
+          </div>
+          
+          <div className="mb-8">
+            <h2 className="text-lg font-bold text-red-400 mb-4">🔄 【退款政策】：</h2>
+            <ul className="space-y-3 text-sm text-gray-300 pl-5">
+              <li className="flex gap-3">
+                <span className="text-[#10B981] mt-0.5">•</span>
+                <span>鉴于 AI 图像生成与多阶段超清模型服务属于即时消耗的数字算力产品，一旦积分充值成功或已产生模型消耗，本站一律不支持任何形式的无理由退款。</span>
               </li>
               <li className="flex gap-3">
                 <span className="text-[#10B981] mt-0.5">•</span>

@@ -17,34 +17,52 @@ export async function POST(request: NextRequest) {
     if (!email || !password) {
       return NextResponse.json({
         success: false,
-        error: '邮箱和密码不能为空'
+        error: '邮箱/用户名和密码不能为空'
       }, { status: 400 })
     }
 
-    console.log('[Auth/Login] Attempting login for:', email)
+    // 判断输入是邮箱还是用户名
+    const isEmail = email.includes('@')
+    let loginEmail = email
+
+    // 如果是用户名，先查询对应的邮箱
+    if (!isEmail) {
+      console.log('[Auth/Login] Username detected, looking up email for:', email)
+
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select('email')
+        .eq('username', email)
+        .single()
+
+      if (profileError || !profile) {
+        console.error('[Auth/Login] Username not found:', email)
+        return NextResponse.json({
+          success: false,
+          error: '用户名不存在'
+        }, { status: 401 })
+      }
+
+      loginEmail = profile.email
+      console.log('[Auth/Login] Found email for username:', loginEmail)
+    }
+
+    console.log('[Auth/Login] Attempting login for:', loginEmail)
 
     const { data, error } = await supabaseAdmin.auth.signInWithPassword({
-      email,
+      email: loginEmail,
       password
     })
 
-    if (error) {
-      console.error('[Auth/Login] Auth error:', error.message)
+    if (error || !data.user) {
+      console.error('[Auth/Login] Auth failed:', error?.message || 'No user returned')
       return NextResponse.json({
         success: false,
-        error: error.message
+        error: '该账号未注册或密码错误，请先前往注册'
       }, { status: 401 })
     }
 
-    if (!data.user) {
-      console.error('[Auth/Login] No user returned')
-      return NextResponse.json({
-        success: false,
-        error: '登录失败'
-      }, { status: 401 })
-    }
-
-    console.log('[Auth/Login] Success:', email)
+    console.log('[Auth/Login] Success:', loginEmail)
 
     return NextResponse.json({
       success: true,

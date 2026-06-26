@@ -59,7 +59,8 @@ export async function POST(request: NextRequest) {
     let outputUrl = null
 
     while (status !== 'succeeded' && status !== 'failed') {
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // 用户要求 3 秒延迟
+      await new Promise(resolve => setTimeout(resolve, 3000))
 
       const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
         headers: {
@@ -69,6 +70,8 @@ export async function POST(request: NextRequest) {
 
       const statusData = await statusResponse.json()
       status = statusData.status
+
+      console.log('[Upscale] Polling status:', status)
 
       if (status === 'succeeded') {
         outputUrl = statusData.output

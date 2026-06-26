@@ -12,6 +12,11 @@ interface User {
   credits: number
   created_at: string
   banned?: boolean
+  vip_level?: number
+  username?: string
+  generationCount?: number
+  totalImages?: number
+  usedModels?: Record<string, number>
 }
 
 interface QueueItem {
@@ -29,6 +34,23 @@ interface Stats {
   successRate: string
   queueCount: number
   queue: QueueItem[]
+  modelStats: Record<string, { count: number; totalImages: number }>
+  resolutionStats: Record<string, { count: number; totalImages: number }>
+  recentGenerations: GenerationRecord[]
+  topUsers: User[]
+  activeUsers: number
+}
+
+interface GenerationRecord {
+  id: string
+  user_id: string
+  model: string
+  resolution: string
+  image_count: number
+  status: string
+  created_at: string
+  userEmail?: string
+  username?: string
 }
 
 export default function AdminPage() {
@@ -273,7 +295,8 @@ export default function AdminPage() {
               {[
                 { key: 'dashboard', label: '数据看板' },
                 { key: 'users', label: '用户管理' },
-                { key: 'cards', label: '🔑 卡密管理', href: '/admin/cards' }
+                { key: 'cards', label: '🔑 卡密管理', href: '/admin/cards' },
+                { key: 'announcements', label: '📢 公告管理', href: '/admin/announcements' }
               ].map(tab => {
                 if (tab.href) {
                   return (
@@ -340,7 +363,7 @@ export default function AdminPage() {
         <div className="max-w-7xl mx-auto">
           {activeTab === 'dashboard' && (
             <>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
                 <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs text-[#94A3B8]">总用户数</span>
@@ -369,9 +392,157 @@ export default function AdminPage() {
                   </div>
                   <p className="text-3xl font-bold text-[#10B981]">{stats?.successRate}%</p>
                 </div>
+                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs text-[#94A3B8]">处理中任务</span>
+                    <span className="text-2xl">⏳</span>
+                  </div>
+                  <p className="text-3xl font-bold text-yellow-400">{stats?.queueCount || 0}</p>
+                </div>
+                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs text-[#94A3B8]">活跃用户(近7天)</span>
+                    <span className="text-2xl">🔥</span>
+                  </div>
+                  <p className="text-3xl font-bold text-amber-500">{stats?.activeUsers || 0}</p>
+                </div>
               </div>
 
-              <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl mb-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
+                  <h3 className="text-lg font-bold text-white mb-4">🤖 模型使用统计</h3>
+                  <div className="space-y-3">
+                    {Object.entries(stats?.modelStats || {}).map(([model, data]) => (
+                      <div key={model}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-[#00F2FE] font-medium">{model}</span>
+                          <span className="text-white">{data.count}次 / {data.totalImages}张</span>
+                        </div>
+                        <div className="h-2 bg-[#0B0D17] rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-[#00F2FE] to-[#10B981] transition-all duration-500"
+                            style={{ width: `${(data.count / (stats?.totalGenerations || 1)) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    {Object.keys(stats?.modelStats || {}).length === 0 && (
+                      <div className="text-center py-4 text-[#94A3B8]">暂无数据</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
+                  <h3 className="text-lg font-bold text-white mb-4">📐 分辨率分布</h3>
+                  <div className="space-y-3">
+                    {Object.entries(stats?.resolutionStats || {}).map(([resolution, data]) => {
+                      const colors: Record<string, string> = {
+                        '1K': 'from-blue-500 to-blue-400',
+                        '2K': 'from-purple-500 to-purple-400',
+                        '4K': 'from-amber-500 to-amber-400',
+                      }
+                      return (
+                        <div key={resolution}>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-white font-medium">{resolution}</span>
+                            <span className="text-[#94A3B8]">{data.count}次 / {data.totalImages}张</span>
+                          </div>
+                          <div className="h-2 bg-[#0B0D17] rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full bg-gradient-to-r ${colors[resolution] || 'from-gray-500'} transition-all duration-500`}
+                              style={{ width: `${(data.count / (stats?.totalGenerations || 1)) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {Object.keys(stats?.resolutionStats || {}).length === 0 && (
+                      <div className="text-center py-4 text-[#94A3B8]">暂无数据</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
+                  <h3 className="text-lg font-bold text-white mb-4">📝 最近生成记录</h3>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {stats?.recentGenerations && stats.recentGenerations.length > 0 ? (
+                      stats.recentGenerations.map((item) => (
+                        <div key={item.id} className="bg-[#0B0D17] border border-[#202B3A] p-3 rounded-lg">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-[#00F2FE] font-medium">{item.model}</span>
+                            <span className={`text-xs font-bold ${
+                              item.status === 'success' ? 'text-[#10B981]' : 
+                              item.status === 'failed' ? 'text-red-400' : 'text-yellow-400'
+                            }`}>
+                              {item.status === 'success' ? '✓ 成功' : item.status === 'failed' ? '✗ 失败' : '⏳ 处理中'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-[#94A3B8] mb-1">
+                            <span>{item.resolution} / {item.image_count}张</span>
+                            <span>{formatDate(item.created_at)}</span>
+                          </div>
+                          <div className="text-xs text-amber-400 truncate">
+                            用户: {item.username || item.userEmail || '未知'}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-[#94A3B8]">暂无数据</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
+                  <h3 className="text-lg font-bold text-white mb-4">🏆 活跃用户排行（TOP 10）</h3>
+                  <div className="space-y-2">
+                    {stats?.topUsers && stats.topUsers.length > 0 ? (
+                      stats.topUsers.map((user, index) => (
+                        <div key={user.id} className="flex items-center gap-3 bg-[#0B0D17] border border-[#202B3A] p-3 rounded-lg">
+                          <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${
+                            index === 0 ? 'bg-amber-500 text-black' :
+                            index === 1 ? 'bg-gray-400 text-black' :
+                            index === 2 ? 'bg-amber-700 text-white' :
+                            'bg-[#202B3A] text-white'
+                          }`}>
+                            {index + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white truncate">{user.username || user.email}</p>
+                            <div className="flex items-center gap-2 text-xs text-[#94A3B8]">
+                              <span>{formatDate(user.created_at)}注册</span>
+                              <span className="text-[#10B981]">|</span>
+                              <span className="text-[#00F2FE]">生成 {user.generationCount || 0} 次</span>
+                              <span className="text-[#10B981]">|</span>
+                              <span className="text-amber-400">{user.totalImages || 0} 张</span>
+                            </div>
+                            {user.usedModels && Object.keys(user.usedModels).length > 0 && (
+                              <div className="flex gap-1 mt-1">
+                                {Object.entries(user.usedModels).slice(0, 3).map(([model, count]) => (
+                                  <span key={model} className="px-1.5 py-0.5 bg-[#202B3A] text-[10px] text-[#00F2FE] rounded">
+                                    {model} x{count}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm font-bold text-[#00F2FE]">{user.credits} 积分</span>
+                            {user.vip_level && user.vip_level > 0 && (
+                              <div className="text-[10px] text-amber-400">VIP Lv.{user.vip_level}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-[#94A3B8]">暂无数据</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-white">📊 实时生成队列监控</h3>
                   <span className={`px-3 py-1 rounded-full text-sm font-bold ${
@@ -383,7 +554,7 @@ export default function AdminPage() {
                   </span>
                 </div>
                 {stats?.queue && stats.queue.length > 0 ? (
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
                     {stats.queue.map((item) => (
                       <div key={item.id} className="bg-[#0B0D17] border border-[#202B3A] p-3 rounded-lg">
                         <div className="flex items-center justify-between mb-1">
@@ -416,8 +587,11 @@ export default function AdminPage() {
                   <thead>
                     <tr className="bg-[#0B0D17]">
                       <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">用户ID</th>
-                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">邮箱</th>
+                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">用户名/邮箱</th>
                       <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">积分</th>
+                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">生成次数</th>
+                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">使用模型</th>
+                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">VIP等级</th>
                       <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">注册时间</th>
                       <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">状态</th>
                       <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">操作</th>
@@ -429,9 +603,42 @@ export default function AdminPage() {
                         <td className="px-4 py-3 text-sm text-[#94A3B8] font-mono">
                           {user.id.substring(0, 12)}...
                         </td>
-                        <td className="px-4 py-3 text-sm text-white">{user.email}</td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm text-white">{user.username || user.email}</p>
+                          {user.username && user.email && (
+                            <p className="text-xs text-[#94A3B8]">{user.email}</p>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           <span className="text-sm font-bold text-[#00F2FE]">{user.credits}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm text-[#10B981]">{user.generationCount || 0} 次</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {user.usedModels && Object.keys(user.usedModels).length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {Object.entries(user.usedModels).slice(0, 2).map(([model, count]) => (
+                                <span key={model} className="px-1.5 py-0.5 bg-[#202B3A] text-[10px] text-[#00F2FE] rounded">
+                                  {model} x{count}
+                                </span>
+                              ))}
+                              {Object.keys(user.usedModels).length > 2 && (
+                                <span className="text-[10px] text-[#94A3B8]">+{Object.keys(user.usedModels).length - 2}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-[#64748B]">未使用</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {user.vip_level && user.vip_level > 0 ? (
+                            <span className="px-2 py-1 bg-amber-500/20 text-amber-400 text-xs font-bold rounded">
+                              VIP Lv.{user.vip_level}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-[#64748B]">普通</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm text-[#94A3B8]">{formatDate(user.created_at)}</td>
                         <td className="px-4 py-3">

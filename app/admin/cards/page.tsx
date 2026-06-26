@@ -105,6 +105,16 @@ export default function CardsAdminPage() {
     alert('卡密列表已复制到剪贴板！')
   }
 
+  const handleCopySingleCard = async (code: string) => {
+    await navigator.clipboard.writeText(code)
+    // 简短提示
+    const toast = document.createElement('div')
+    toast.textContent = '已复制'
+    toast.className = 'fixed top-4 right-4 bg-[#10B981] text-[#030712] px-4 py-2 rounded-lg font-bold z-[9999] animate-pulse'
+    document.body.appendChild(toast)
+    setTimeout(() => toast.remove(), 1500)
+  }
+
   const filteredCards = cards.filter(card => {
     if (filterStatus === 'unused') return !card.is_used
     if (filterStatus === 'used') return card.is_used
@@ -238,6 +248,7 @@ export default function CardsAdminPage() {
                     <th className="py-3 px-2 text-gray-400 font-medium">状态</th>
                     <th className="py-3 px-2 text-gray-400 font-medium">创建时间</th>
                     <th className="py-3 px-2 text-gray-400 font-medium">使用信息</th>
+                    <th className="py-3 px-2 text-gray-400 font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -259,6 +270,14 @@ export default function CardsAdminPage() {
                       </td>
                       <td className="py-3 px-2 text-gray-400 text-xs">
                         {card.used_by ? `by ${card.used_by}` : '-'}
+                      </td>
+                      <td className="py-3 px-2">
+                        <button
+                          onClick={() => handleCopySingleCard(card.code)}
+                          className="px-2 py-1 text-xs bg-[#10B981]/20 text-[#10B981] hover:bg-[#10B981]/30 rounded transition-colors"
+                        >
+                          复制
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -297,7 +316,15 @@ export default function CardsAdminPage() {
                 {generatedCards.map((card, index) => (
                   <div key={index} className="flex items-center justify-between bg-[#0f172a] px-3 py-2 rounded">
                     <span className="font-mono text-[#10B981]">{card.code}</span>
-                    <span className="text-white text-sm">{card.credits}积分</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white text-sm">{card.credits}积分</span>
+                      <button
+                        onClick={() => handleCopySingleCard(card.code)}
+                        className="px-2 py-0.5 text-xs bg-[#10B981]/20 text-[#10B981] hover:bg-[#10B981]/30 rounded transition-colors"
+                      >
+                        复制
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

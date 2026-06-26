@@ -82,12 +82,12 @@ export default function LoginPage() {
     saveStoredSession(session)
   }
 
-  const ensureProfileExists = async (userId: string, userEmail: string) => {
+  const ensureProfileExists = async (userId: string, userEmail: string, username?: string) => {
     try {
       const response = await fetch('/api/auth/ensure-profile', {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ userId, userEmail })
+        body: JSON.stringify({ userId, userEmail, username })
       })
 
       const data = await response.json()
@@ -304,7 +304,7 @@ export default function LoginPage() {
           console.error('记录注册IP失败:', recordError)
         }
         
-        await ensureProfileExists(verifyData.user.id, verifyData.user.email || email)
+        await ensureProfileExists(verifyData.user.id, verifyData.user.email || email, username)
 
         setTimeout(() => {
           router.push('/dashboard')
@@ -487,12 +487,12 @@ export default function LoginPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-[#94A3B8] font-medium mb-2">邮箱</label>
+                  <label className="block text-sm text-[#94A3B8] font-medium mb-2">邮箱/用户名</label>
                   <input
-                    type="email"
+                    type="text"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="请输入邮箱..."
+                    placeholder="请输入邮箱或用户名..."
                     className="w-full px-4 py-3 bg-[#0D111A] border border-[#334155] text-white focus:border-[#00E676] focus:outline-none placeholder-[#475569] transition-all"
                     disabled={isSubmitting}
                   />

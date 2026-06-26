@@ -8,6 +8,10 @@ export const maxDuration = 300
 const GRS_API_KEY = process.env.GRSAI_API_KEY || ''
 const GRS_API_BASE_URL = (process.env.GRS_API_BASE_URL || 'https://grsapiapi.com').replace(/\/+$/, '')
 
+// Replicate 超分辨率放大配置（使用官方 Real-ESRGAN 模型）
+const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN || ''
+const REPLICATE_MODEL_VERSION = '5035f3f00af141105492fe913bab5ec9e9b0821815b67cd13d31d1461cc452fe'
+
 const BASE_SENSITIVE_WORDS = [
   '习近平', '李克强', '胡锦涛', '温家宝', '江泽民', '毛泽东', '邓小平',
   '中南海', '天安门', '人民大会堂', '国务院', '中央军委', '台湾独立', '台独',
@@ -75,7 +79,7 @@ function getResolutionPrice(resolution: string): number {
   switch (resolution) {
     case '1K': return 2
     case '2K': return 4
-    case '4K': return 12
+    case '4K': return 8
     default: return 2
   }
 }
@@ -109,18 +113,9 @@ function getImageSizeByResolution(resolution: string, aspectRatio: string): stri
 }
 
 function getModelName(modelType: string, resolution: string): string {
-  const is4K = resolution === '4K'
-  
-  if (modelType.toLowerCase().includes('banana')) {
-    if (is4K) {
-      return modelType === 'NanoBanana2' ? 'nano-banana-pro-4k-vip' : 'nano-banana-pro-4k-vip'
-    }
-    return 'nano-banana-pro'
-  }
-  
-  if (is4K) {
-    return 'gpt-image-2-vip'
-  }
+  // 无论分辨率如何，统一使用 gpt-image-2 基础模型
+  // 确保单次中转成本永远锁死在 600 积分/约6分钱
+  // 高分辨率通过后置 Replicate 放大实现
   return 'gpt-image-2'
 }
 
@@ -451,6 +446,75 @@ async function pollGrsResult(taskId: string): Promise<string> {
   throw new Error('GrsAI 任务超时，请点击二次生成')
 }
 
+// 超分辨率放大函数（使用 Replicate Real-ESRGAN，支持 2x 和 4x 缩放）
+async function upscaleImage(imageUrl: string, scale: number): Promise<string> {
+  if (!REPLICATE_API_TOKEN) {
+    console.error('[Upscale] REPLICATE_API_TOKEN not configured, skipping upscale')
+    return imageUrl
+  }
+
+  console.log(`[Upscale] Starting ${scale}x upscale for:`, imageUrl.substring(0, 100))
+
+  try {
+    const createResponse = await fetch('https://api.replicate.com/v1/predictions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Token ${REPLICATE_API_TOKEN}`
+      },
+      body: JSON.stringify({
+        version: REPLICATE_MODEL_VERSION,
+        input: {
+          image: imageUrl,
+          scale: scale,
+          face_enhance: true
+        }
+      })
+    })
+
+    const createData = await createResponse.json()
+
+    if (!createData.id) {
+      console.error('[Upscale] Failed to create prediction:', createData)
+      return imageUrl
+    }
+
+    const predictionId = createData.id
+    console.log('[Upscale] Prediction created:', predictionId)
+
+    let status = createData.status
+    let outputUrl = null
+
+    while (status !== 'succeeded' && status !== 'failed') {
+      await new Promise(resolve => setTimeout(resolve, 3000))
+
+      const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+        headers: {
+          'Authorization': `Token ${REPLICATE_API_TOKEN}`
+        }
+      })
+
+      const statusData = await statusResponse.json()
+      status = statusData.status
+
+      console.log('[Upscale] Polling status:', status)
+
+      if (status === 'succeeded') {
+        outputUrl = statusData.output
+        console.log('[Upscale] Upscale succeeded:', outputUrl?.substring(0, 100))
+      } else if (status === 'failed') {
+        console.error('[Upscale] Upscale failed:', statusData.error)
+        return imageUrl
+      }
+    }
+
+    return outputUrl || imageUrl
+  } catch (error: any) {
+    console.error('[Upscale] Upscale error:', error.message)
+    return imageUrl
+  }
+}
+
 async function generateSingleImage(
   sentence: string,
   styleName: string,
@@ -496,20 +560,17 @@ async function checkVipPermission(userId: string): Promise<boolean> {
       return false
     }
 
-    // 管理员直接放行
     if (profileData.email === ADMIN_EMAIL) {
       console.log('[VIP] Admin user detected, granting VIP access')
       return true
     }
 
-    // 如果存在 vip_level 字段且 >= 1，视为VIP
     if (profileData.vip_level && profileData.vip_level >= 1) {
       console.log('[VIP] User has vip_level >= 1, granting VIP access')
       return true
     }
 
-    // 兼容模式：没有 vip_level 字段时，积分 >= 12 即可使用4K（足够支付一次4K生成）
-    const hasEnoughCredits = (profileData.credits || 0) >= 12
+    const hasEnoughCredits = (profileData.credits || 0) >= 8
     console.log('[VIP] User VIP check (fallback):', { userId, credits: profileData.credits, hasEnoughCredits })
     return hasEnoughCredits
   } catch (error) {
@@ -766,6 +827,35 @@ export async function POST(request: NextRequest) {
         throw new Error(firstError || '所有图片生成均失败')
       }
 
+      // ===== 第四层：超分辨率放大层 =====
+      // 如果是 2K 或 4K 分辨率，自动调用 Replicate Real-ESRGAN 进行后置放大
+      if ((resolution === '2K' || resolution === '4K') && REPLICATE_API_TOKEN) {
+        const scale = resolution === '2K' ? 2 : 4
+        console.log(`[Generate] Starting ${resolution} upscale (${scale}x) for all images...`)
+
+        const upscalePromises = imageUrls.map((url, index) =>
+          upscaleImage(url, scale)
+            .then(upscaledUrl => {
+              console.log(`[Generate] Image ${index} upscaled to ${resolution}:`, upscaledUrl?.substring(0, 100))
+              return upscaledUrl
+            })
+            .catch(error => {
+              console.error(`[Generate] Upscale failed for image ${index}:`, error.message)
+              return url
+            })
+        )
+
+        const upscaledUrls = await Promise.all(upscalePromises)
+
+        for (let i = 0; i < upscaledUrls.length; i++) {
+          if (upscaledUrls[i] && upscaledUrls[i] !== imageUrls[i]) {
+            imageUrls[i] = upscaledUrls[i]
+          }
+        }
+
+        console.log(`[Generate] All images upscaled to ${resolution}`)
+      }
+
     } catch (generationError: any) {
       console.error('[Generate] Image generation failed:', generationError.message)
 
@@ -783,34 +873,68 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // #region debug-point DB-INSERT
+    console.error('[DEBUG-API-GEN-DB-INSERT] Attempting to save record:', {
+      userId,
+      imageCount: imageUrls.length,
+      firstImageUrl: imageUrls[0]?.substring(0, 100),
+      resolution,
+      modelName,
+      supabaseAdminExists: !!supabaseAdmin
+    })
+    // #endregion
+
     if (supabaseAdmin) {
-      const { error: recordError } = await supabaseAdmin
+      const recordData = {
+        user_id: userId,
+        prompt: isTextMode ? inputContents.join('\n') : '[Image Mode]',
+        style_name: styleName,
+        style_prompt: finalPrompts.join('\n---\n'),
+        model: modelName,
+        image_count: imageUrls.length,
+        image_urls: JSON.stringify(imageUrls),
+        status: 'success',
+        resolution: resolution,
+      }
+
+      // #region debug-point DB-INSERT-DATA
+      console.error('[DEBUG-API-GEN-DB-INSERT-DATA] Record data:', JSON.stringify(recordData).substring(0, 500))
+      // #endregion
+
+      const { error: recordError, data: recordDataResult } = await supabaseAdmin
         .from('generation_records')
-        .insert({
-          user_id: userId,
-          prompt: isTextMode ? inputContents.join('\n') : '[Image Mode]',
-          style_name: styleName,
-          style_prompt: finalPrompts.join('\n---\n'),
-          model: modelName,
-          image_count: imageUrls.length,
-          image_urls: JSON.stringify(imageUrls),
-          status: 'success',
-          resolution: resolution,
-        })
+        .insert(recordData)
+        .select()
 
       if (recordError) {
-        console.error('[Generate] Failed to create generation record:', recordError)
+        console.error('[DEBUG-API-GEN-DB-ERROR] Failed to create generation record:', {
+          error: recordError,
+          errorMessage: recordError.message,
+          errorCode: recordError.code,
+          errorDetails: recordError.details
+        })
+      } else {
+        console.error('[DEBUG-API-GEN-DB-SUCCESS] Record saved successfully:', {
+          recordId: recordDataResult?.[0]?.id
+        })
       }
+    } else {
+      console.error('[DEBUG-API-GEN-DB-NO-ADMIN] supabaseAdmin is not initialized!')
     }
 
     console.log('[Generate] Generation complete:', imageUrls.length, 'images,', totalCost, 'credits deducted')
 
-    return NextResponse.json({
+    // #region debug-point RESPONSE
+    const responsePayload = {
       success: true,
       imageUrls: imageUrls,
       imageUrl: imageUrls[0],
       creditsRemaining: currentCredits,
-    })
+    }
+    console.error('[DEBUG-API-GEN-RESPONSE] Returning to frontend:', JSON.stringify(responsePayload).substring(0, 500))
+    // #endregion
+
+    return NextResponse.json(responsePayload)
 
   } catch (error: any) {
     console.error('[Generate] API error:', error.message, error.stack)

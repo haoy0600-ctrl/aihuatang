@@ -89,7 +89,7 @@ CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO profiles (id, email, credits)
-  VALUES (NEW.id, NEW.email, 3);
+  VALUES (NEW.id, NEW.email, 8);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

@@ -535,7 +535,41 @@ export default function DashboardPage() {
         signal: abortController.current.signal,
       })
 
-      const data = await response.json()
+      // #region debug-point FRONTEND-RESPONSE
+      console.error('[DEBUG-FRONTEND-RESPONSE] Response received:', {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers.get('content-type')
+      })
+      // #endregion
+
+      const responseText = await response.text()
+
+      // #region debug-point FRONTEND-RAW-TEXT
+      console.error('[DEBUG-FRONTEND-RAW-TEXT] Raw response text:', responseText.substring(0, 500))
+      // #endregion
+
+      let data
+      try {
+        data = JSON.parse(responseText)
+        // #region debug-point FRONTEND-PARSE-SUCCESS
+        console.error('[DEBUG-FRONTEND-PARSE-SUCCESS] JSON parsed successfully:', {
+          success: data.success,
+          hasImageUrls: !!data.imageUrls,
+          imageUrlCount: data.imageUrls?.length,
+          creditsRemaining: data.creditsRemaining
+        })
+        // #endregion
+      } catch (parseError: any) {
+        // #region debug-point FRONTEND-PARSE-ERROR
+        console.error('[DEBUG-FRONTEND-PARSE-ERROR] JSON parse failed:', {
+          error: parseError.message,
+          rawText: responseText.substring(0, 500)
+        })
+        // #endregion
+        throw new Error('响应格式错误: ' + parseError.message)
+      }
 
       if (!response.ok || !data.success) {
         clearInterval(progressTimer)
@@ -632,12 +666,12 @@ export default function DashboardPage() {
     }
   }
 
-  // 分辨率积分定价：1K=2分 / 2K=4分 / 4K=12分(VIP专属)
+  // 分辨率积分定价：1K=2分 / 2K=4分 / 4K=8分
   const getResolutionPrice = (model: string, res: string) => {
     switch (res) {
       case '1K': return 2
       case '2K': return 4
-      case '4K': return 12
+      case '4K': return 8
       default: return 2
     }
   }

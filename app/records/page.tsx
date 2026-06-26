@@ -601,7 +601,7 @@ export default function RecordsPage() {
                                     e.stopPropagation()
                                     handleUpscale(record.id, imageUrls?.[0] || '')
                                   }}
-                                  disabled={upscalingIds.has(record.id) || image4kUrls[record.id]}
+                                  disabled={upscalingIds.has(record.id) || !!image4kUrls[record.id]}
                                   className={`w-full px-2 py-1.5 text-xs font-bold transition-all backdrop-blur-sm border flex items-center justify-center gap-1 rounded ${
                                     image4kUrls[record.id]
                                       ? 'bg-[#10B981] text-[#0A0F1D] border-[#10B981]'
@@ -814,39 +814,41 @@ export default function RecordsPage() {
                   关闭
                 </button>
                 {selectedRecord.image_urls && (
-                  <button
-                          onClick={() => {
-                            const urls = JSON.parse(selectedRecord.image_urls)
-                            downloadAllImages(urls)
-                          }}
-                          className="flex-1 py-3 bg-[#00F2FE] text-[#0A0F1D] font-bold text-sm border border-[#00F2FE] shadow-[0_0_15px_rgba(0,242,254,0.4)] hover:shadow-[0_0_20px_rgba(0,242,254,0.6)] transition-all"
-                        >
-                          📥 一键批量下载全部图片
-                        </button>
-                        <button
-                          onClick={() => {
-                            const urls = JSON.parse(selectedRecord.image_urls)
-                            if (urls && urls[0]) {
-                              handleUpscale(selectedRecord.id, urls[0])
-                            }
-                          }}
-                          disabled={upscalingIds.has(selectedRecord.id) || image4kUrls[selectedRecord.id]}
-                          className={`flex-1 py-3 font-bold text-sm border transition-all ${
-                            image4kUrls[selectedRecord.id]
-                              ? 'bg-[#10B981] text-[#0A0F1D] border-[#10B981]'
-                              : upscalingIds.has(selectedRecord.id)
-                                ? 'bg-gray-500/50 text-gray-400 border-gray-500/50 cursor-not-allowed'
-                                : 'bg-[#F59E0B] text-[#0A0F1D] border-[#F59E0B] hover:bg-[#fbbf24]'
-                          }`}
-                        >
-                          {image4kUrls[selectedRecord.id] ? (
-                            '✅ 已 4K'
-                          ) : upscalingIds.has(selectedRecord.id) ? (
-                            '⏳ 处理中...'
-                          ) : (
-                            '📐 一键 4K 超清'
-                          )}
-                        </button>
+                  <>
+                    <button
+                      onClick={() => {
+                        const urls = JSON.parse(selectedRecord.image_urls)
+                        downloadAllImages(urls)
+                      }}
+                      className="flex-1 py-3 bg-[#00F2FE] text-[#0A0F1D] font-bold text-sm border border-[#00F2FE] shadow-[0_0_15px_rgba(0,242,254,0.4)] hover:shadow-[0_0_20px_rgba(0,242,254,0.6)] transition-all"
+                    >
+                      📥 一键批量下载全部图片
+                    </button>
+                    <button
+                      onClick={() => {
+                        const urls = JSON.parse(selectedRecord.image_urls)
+                        if (urls && urls[0]) {
+                          handleUpscale(selectedRecord.id, urls[0])
+                        }
+                      }}
+                      disabled={upscalingIds.has(selectedRecord.id) || !!image4kUrls[selectedRecord.id]}
+                      className={`flex-1 py-3 font-bold text-sm border transition-all ${
+                        image4kUrls[selectedRecord.id]
+                          ? 'bg-[#10B981] text-[#0A0F1D] border-[#10B981]'
+                          : upscalingIds.has(selectedRecord.id)
+                            ? 'bg-gray-500/50 text-gray-400 border-gray-500/50 cursor-not-allowed'
+                            : 'bg-[#F59E0B] text-[#0A0F1D] border-[#F59E0B] hover:bg-[#fbbf24]'
+                      }`}
+                    >
+                      {image4kUrls[selectedRecord.id] ? (
+                        '✅ 已 4K'
+                      ) : upscalingIds.has(selectedRecord.id) ? (
+                        '⏳ 处理中...'
+                      ) : (
+                        '📐 一键 4K 超清'
+                      )}
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={() => {
