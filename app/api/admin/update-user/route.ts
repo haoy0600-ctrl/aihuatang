@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     if (!supabaseAdmin) {
       return NextResponse.json({
         success: false,
-        error: '系统配置未完成，请稍后重试',
+        error: '系统配置未完成，请稍后重试。',
       }, { status: 500 })
     }
 
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({
         success: false,
-        error: '用户 ID 不能为空',
+        error: '用户 ID 不能为空。',
       }, { status: 400 })
     }
 
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       if (fetchError || !profile) {
         return NextResponse.json({
           success: false,
-          error: '用户不存在',
+          error: '用户不存在。',
         }, { status: 404 })
       }
 
@@ -54,13 +54,13 @@ export async function POST(request: NextRequest) {
         console.error('Update credits error:', updateError)
         return NextResponse.json({
           success: false,
-          error: '更新积分失败',
+          error: '更新积分失败。',
         }, { status: 500 })
       }
 
       return NextResponse.json({
         success: true,
-        message: action === 'add_credits' ? `已增加 ${delta} 积分` : `已扣除 ${delta} 积分`,
+        message: action === 'add_credits' ? `已增加 ${delta} 积分。` : `已扣除 ${delta} 积分。`,
         newCredits: nextCredits,
       })
     }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       if (fetchError || !profile) {
         return NextResponse.json({
           success: false,
-          error: '用户不存在',
+          error: '用户不存在。',
         }, { status: 404 })
       }
 
@@ -90,13 +90,13 @@ export async function POST(request: NextRequest) {
         console.error('Update status error:', updateError)
         return NextResponse.json({
           success: false,
-          error: '更新状态失败',
+          error: '更新状态失败。',
         }, { status: 500 })
       }
 
       return NextResponse.json({
         success: true,
-        message: banned ? '用户已被禁用' : '用户已恢复正常',
+        message: banned ? '用户已被禁用。' : '用户已恢复正常。',
         banned,
       })
     }
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       if (fetchError || !profile) {
         return NextResponse.json({
           success: false,
-          error: '用户不存在',
+          error: '用户不存在。',
         }, { status: 404 })
       }
 
@@ -124,25 +124,25 @@ export async function POST(request: NextRequest) {
         console.error('Delete user error:', deleteError)
         return NextResponse.json({
           success: false,
-          error: '删除用户失败',
+          error: '删除用户失败。',
         }, { status: 500 })
       }
 
       return NextResponse.json({
         success: true,
-        message: '用户已成功删除',
+        message: '用户已成功删除。',
       })
     }
 
     return NextResponse.json({
       success: false,
-      error: '无效操作',
+      error: '无效操作。',
     }, { status: 400 })
   } catch (error) {
     console.error('Admin update user error:', error)
     return NextResponse.json({
       success: false,
-      error: '操作失败，请稍后重试',
+      error: '操作失败，请稍后重试。',
     }, { status: 500 })
   }
 }

@@ -11,11 +11,11 @@ type AuthUser = {
   email: string
 }
 
-export function unauthorized(message = '请先登录') {
+export function unauthorized(message = '请先登录。') {
   return NextResponse.json({ success: false, error: message }, { status: 401 })
 }
 
-export function forbidden(message = '权限不足') {
+export function forbidden(message = '权限不足。') {
   return NextResponse.json({ success: false, error: message }, { status: 403 })
 }
 

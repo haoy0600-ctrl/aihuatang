@@ -9,37 +9,63 @@ export const maxDuration = 300
 const GRS_API_KEY = process.env.GRSAI_API_KEY || ''
 const GRS_API_BASE_URL = (process.env.GRS_API_BASE_URL || 'https://grsapiapi.com').replace(/\/+$/, '')
 
-// Replicate 超分辨率放大配置（使用官方 Real-ESRGAN 模型）
+// Replicate 超分辨率放大配置，使用官方 Real-ESRGAN 模型
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN || ''
 const REPLICATE_MODEL_VERSION = '5035f3f00af141105492fe913bab5ec9e9b0821815b67cd13d31d1461cc452fe'
 
 const BASE_SENSITIVE_WORDS = [
-  '习近平', '李克强', '胡锦涛', '温家宝', '江泽民', '毛泽东', '邓小平',
-  '中南海', '天安门', '人民大会堂', '国务院', '中央军委', '台湾独立', '台独',
-  '香港独立', '港独', '西藏独立', '疆独', '法轮功', '邪教', '反共',
-  '反华', '辱华', '敏感词', '违禁', '色情', '裸体', '露骨', '性暗示',
-  '三级片', 'AV', '成人', '卖淫', '嫖娼', '强奸', '乱伦', '自慰',
-  '暴力', '血腥', '杀人', '自杀', '恐怖', '炸弹', '枪支', '毒品',
-  '翻墙', 'VPN', '梯子', '代理', '加速器', '暗网', '黑客', '攻击',
-  '赌博', '六合彩', '毒品', '走私', '诈骗', '传销', '洗钱',
-  '反动', '煽动', '谣言', '诽谤', '污蔑', '造谣', '虚假',
-  '病毒', '木马', '勒索', '钓鱼', '刷单', '跑分', '洗钱',
-  '卖淫', '嫖娼', '色情', '裸体', '露阴', '性交易', '艳照',
-  '赌博', '博彩', '棋牌', '彩票', '老虎机', '百家乐',
-  '违法', '犯罪', '偷窃', '抢劫', '绑架', '拐卖', '诈骗',
-  '恐怖主义', '极端主义', 'ISIS', '基地组织', '圣战',
-  '毒品', '大麻', '海洛因', '冰毒', '鸦片', '可卡因',
-  '政治敏感', '国家安全', '机密', '内部文件', '泄露',
-  '反动言论', '颠覆', '分裂', '破坏', '危害', '动乱',
-  '辱骂', '侮辱', '歧视', '仇恨', '暴力威胁', '人肉搜索'
+  '台独',
+  '港独',
+  '藏独',
+  '疆独',
+  '法轮功',
+  '邪教',
+  '恐怖主义',
+  '极端主义',
+  'isis',
+  '色情',
+  '裸照',
+  '裸体',
+  '性行为',
+  '成人内容',
+  '援交',
+  '强奸',
+  '乱伦',
+  '自残',
+  '自杀',
+  '爆炸',
+  '炸弹',
+  '枪支',
+  '毒品',
+  '大麻',
+  '海洛因',
+  '冰毒',
+  '暗网',
+  'vpn',
+  '翻墙',
+  '黑客',
+  '木马',
+  '病毒',
+  '钓鱼',
+  '勒索',
+  '赌博',
+  '百家乐',
+  '六合彩',
+  '诈骗',
+  '洗钱',
+  '人肉搜索',
+  '仇恨言论',
+  '国家机密',
+  '泄密',
 ]
 
-function timeoutPromise<T>(promise: Promise<T>, ms: number, label: string = '请求'): Promise<T> {
+function timeoutPromise<T>(promise: Promise<T>, ms: number, label = '请求'): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       console.error(`[${label}] 超时，超过 ${ms}ms`)
-      reject(new Error(`请求超时，超过 ${ms}ms`))
+      reject(new Error(`${label}超时，超过 ${ms}ms`))
     }, ms)
+
     promise.then(
       (result) => {
         clearTimeout(timer)
@@ -56,7 +82,7 @@ function timeoutPromise<T>(promise: Promise<T>, ms: number, label: string = '请
 function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number, label: string): Promise<Response> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-  
+
   return fetch(url, {
     ...options,
     signal: controller.signal,
@@ -68,20 +94,25 @@ function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number, 
     .catch((error) => {
       clearTimeout(timeoutId)
       if (error.name === 'AbortError') {
-        console.error(`[${label}] 请求被中止 (超时 ${timeoutMs}ms)`)
+        console.error(`[${label}] 请求被中止（超时 ${timeoutMs}ms）`)
         throw new Error(`${label}请求超时，请稍后重试`)
       }
-      console.error(`[${label}] fetch错误:`, error.message, 'URL:', url)
+
+      console.error(`[${label}] fetch 错误:`, error.message, 'URL:', url)
       throw error
     })
 }
 
 function getResolutionPrice(resolution: string): number {
   switch (resolution) {
-    case '1K': return 2
-    case '2K': return 4
-    case '4K': return 8
-    default: return 2
+    case '1K':
+      return 2
+    case '2K':
+      return 4
+    case '4K':
+      return 8
+    default:
+      return 2
   }
 }
 
@@ -113,10 +144,9 @@ function getImageSizeByResolution(resolution: string, aspectRatio: string): stri
   return ASPECT_RATIO_PIXELS[resolution]?.[aspectRatio] || aspectRatio
 }
 
-function getModelName(modelType: string, resolution: string): string {
-  // 无论分辨率如何，统一使用 gpt-image-2 基础模型
-  // 确保单次中转成本永远锁死在 600 积分/约6分钱
-  // 高分辨率通过后置 Replicate 放大实现
+function getModelName(_modelType: string, _resolution: string): string {
+  // 统一使用 gpt-image-2 作为基础模型，
+  // 高分辨率通过后置 Replicate 放大实现。
   return 'gpt-image-2'
 }
 
@@ -133,10 +163,10 @@ type GenerateRequest = {
 }
 
 function getStyleByName(styleName: string) {
-  return HANDDRAWN_STYLES.find(s => s.name === styleName)
+  return HANDDRAWN_STYLES.find((style) => style.name === styleName)
 }
 
-function buildFinalPrompt(inputText: string, styleName: string, customStyle?: string, isImageMode: boolean = false): string {
+function buildFinalPrompt(inputText: string, styleName: string, customStyle?: string, isImageMode = false): string {
   const userText = inputText.trim()
 
   let activeStyle = ''
@@ -150,7 +180,7 @@ function buildFinalPrompt(inputText: string, styleName: string, customStyle?: st
   }
 
   if (isImageMode) {
-    const imagePrompt = `
+    return `
 [CORE TASK: STYLE TRANSFER & RECONSTRUCTION]
 You are given a reference image. Your task is to perform style transfer while reconstructing the content:
 1. Analyze the reference image's composition, colors, and structural elements
@@ -170,11 +200,10 @@ ${activeStyle}
 
 [NEGATIVE REINFORCEMENT]
 low resolution, blurry, distorted subject, mismatched colors, poor composition, text artifacts, watermarks, overly compressed
-`;
-    return imagePrompt
+`.trim()
   }
 
-  const finalPromptForAI = `
+  return `
 [CORE SUBJECT & TEXT COMPLIANCE]
 You must strictly render and layout the following explicit text content. The text clarity is the highest priority of this image. Do not distort, do not omit, do not hallucinate any characters:
 "${userText}"
@@ -185,18 +214,16 @@ ${activeStyle}
 
 [NEGATIVE REINFORCEMENT]
 low resolution, blurry text, chaotic layout, compressed artifact, deformed characters, text bleeding into background color.
-`;
-
-  return finalPromptForAI
+`.trim()
 }
 
 function detectSensitiveWords(prompt: string): boolean {
   if (!prompt || !prompt.trim()) return false
-  
+
   const cleanedPrompt = prompt
-    .replace(/[\s\t\n\r\-\_\~\!\@\#\$\%\^\&\*\(\)\[\]\{\}\|\;\'\:\"\,\.\<\>\?\/\\]/g, '')
+    .replace(/[\s\t\n\r\-_~!@#$%^&*()[\]{}|;':",.<>?/\\]/g, '')
     .toLowerCase()
-  
+
   for (const word of BASE_SENSITIVE_WORDS) {
     const cleanedWord = word.toLowerCase().replace(/\s/g, '')
     if (cleanedPrompt.includes(cleanedWord)) {
@@ -204,7 +231,7 @@ function detectSensitiveWords(prompt: string): boolean {
       return true
     }
   }
-  
+
   return false
 }
 
@@ -216,18 +243,18 @@ async function submitGrsTask(
   resolution: string,
   referenceImage?: string
 ): Promise<string> {
-  const isImageMode = !!referenceImage
+  const isImageMode = Boolean(referenceImage)
   const is4K = resolution === '4K'
   const isBanana = modelType.toLowerCase().includes('banana')
-  
+
   const drawUrl = isBanana
     ? `${GRS_API_BASE_URL}/v1/draw/nano-banana`
     : `${GRS_API_BASE_URL}/v1/draw/completions`
 
-  const payload: any = {
+  const payload: Record<string, any> = {
     model: modelName,
-    prompt: prompt,
-    imageSize: imageSize,
+    prompt,
+    imageSize,
     webHook: '-1',
   }
 
@@ -239,15 +266,15 @@ async function submitGrsTask(
     payload.images = [referenceImage]
   }
 
-  console.log('[GrsAI] API request:', { 
-    url: drawUrl, 
-    model: modelName, 
-    imageSize: payload.imageSize, 
+  console.log('[GrsAI] API request:', {
+    url: drawUrl,
+    model: modelName,
+    imageSize: payload.imageSize,
     resolution,
     is4K,
     isBanana,
-    isImageMode, 
-    timestamp: Date.now() 
+    isImageMode,
+    timestamp: Date.now(),
   })
 
   if (!GRS_API_KEY) {
@@ -256,14 +283,19 @@ async function submitGrsTask(
   }
 
   try {
-    const response = await fetchWithTimeout(drawUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GRS_API_KEY}`,
-        'Content-Type': 'application/json',
+    const response = await fetchWithTimeout(
+      drawUrl,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${GRS_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       },
-      body: JSON.stringify(payload),
-    }, 60000, 'GrsAI提交任务')
+      60000,
+      'GrsAI 提交任务'
+    )
 
     if (!response.ok) {
       const errorText = await response.text()
@@ -271,23 +303,31 @@ async function submitGrsTask(
       if (response.status === 429 || response.status >= 500) {
         throw new Error(`GrsAI API 异常(${response.status})，将执行积分回滚: ${errorText.substring(0, 200)}`)
       }
+
       throw new Error(`GrsAI API 请求失败: ${response.status} - ${errorText.substring(0, 200)}`)
     }
 
-    const responseText = await timeoutPromise(response.text().then(t => { console.log('[GrsAI] raw response:', t.substring(0, 500)); return t }), 30000, 'GrsAI读取响应')
-    
-    let taskJson
+    const responseText = await timeoutPromise(
+      response.text().then((text) => {
+        console.log('[GrsAI] raw response:', text.substring(0, 500))
+        return text
+      }),
+      30000,
+      'GrsAI 读取响应'
+    )
+
+    let taskJson: any
     try {
       taskJson = JSON.parse(responseText)
     } catch {
-      console.error('[GrsAI] JSON解析失败, raw:', responseText.substring(0, 500))
-      throw new Error('GrsAI 返回了无效的JSON响应')
+      console.error('[GrsAI] JSON 解析失败, raw:', responseText.substring(0, 500))
+      throw new Error('GrsAI 返回了无效的 JSON 响应')
     }
 
     if (!taskJson.data || !taskJson.data.id) {
-      const msg = taskJson.message || taskJson.error || 'GrsAI 任务创建失败(无taskId)'
-      console.error('[GrsAI] 任务创建失败:', msg, '完整响应:', JSON.stringify(taskJson).substring(0, 500))
-      throw new Error(msg)
+      const message = taskJson.message || taskJson.error || 'GrsAI 任务创建失败（缺少 taskId）'
+      console.error('[GrsAI] 任务创建失败:', message, '完整响应:', JSON.stringify(taskJson).substring(0, 500))
+      throw new Error(message)
     }
 
     console.log('[GrsAI] 任务创建成功, taskId:', taskJson.data.id)
@@ -303,16 +343,21 @@ async function pollGrsResult(taskId: string): Promise<string> {
   const retryDelay = 4000
   const pollUrl = `${GRS_API_BASE_URL}/v1/draw/result`
 
-  for (let i = 0; i < maxRetries; i++) {
+  for (let i = 0; i < maxRetries; i += 1) {
     try {
-      const checkRes = await fetchWithTimeout(pollUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${GRS_API_KEY}`,
-          'Content-Type': 'application/json',
+      const checkRes = await fetchWithTimeout(
+        pollUrl,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${GRS_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ id: taskId }),
         },
-        body: JSON.stringify({ id: taskId }),
-      }, 30000, `GrsAI轮询${i + 1}/${maxRetries}`)
+        30000,
+        `GrsAI 轮询 ${i + 1}/${maxRetries}`
+      )
 
       if (!checkRes.ok) {
         const errorText = await checkRes.text()
@@ -320,18 +365,19 @@ async function pollGrsResult(taskId: string): Promise<string> {
         if (checkRes.status === 429 || checkRes.status >= 500) {
           throw new Error(`GrsAI 轮询异常(${checkRes.status})`)
         }
-        await new Promise(resolve => setTimeout(resolve, retryDelay))
+
+        await new Promise((resolve) => setTimeout(resolve, retryDelay))
         continue
       }
 
-      const checkJson = await timeoutPromise(checkRes.json(), 15000, 'GrsAI解析轮询响应')
+      const checkJson = await timeoutPromise(checkRes.json(), 15000, 'GrsAI 解析轮询响应')
       console.log(`[GrsAI] poll ${i + 1}/${maxRetries}: status=${checkJson.status || checkJson.data?.status}`)
 
       const results = checkJson.results || checkJson.data?.results
       const status = checkJson.status || checkJson.data?.status
 
-      if (status === 'succeeded' && results && results[0]) {
-        console.log('[GrsAI] 生成成功, 图片URL:', results[0].url ? results[0].url.substring(0, 100) + '...' : '无URL')
+      if (status === 'succeeded' && results && results[0]?.url) {
+        console.log('[GrsAI] 生成成功, 图片 URL:', results[0].url.substring(0, 100) + '...')
         return results[0].url
       }
 
@@ -341,20 +387,21 @@ async function pollGrsResult(taskId: string): Promise<string> {
         throw new Error(`GrsAI 官方节点提示生成失败(${failReason})，已执行免扣费退款`)
       }
 
-      await new Promise(resolve => setTimeout(resolve, retryDelay))
+      await new Promise((resolve) => setTimeout(resolve, retryDelay))
     } catch (error: any) {
       console.error(`[GrsAI] Poll attempt ${i + 1} error:`, error.message)
       if (i === maxRetries - 1) {
         throw new Error(`GrsAI 任务超时(${maxRetries}次轮询均失败): ${error.message}`)
       }
-      await new Promise(resolve => setTimeout(resolve, retryDelay))
+
+      await new Promise((resolve) => setTimeout(resolve, retryDelay))
     }
   }
 
   throw new Error('GrsAI 任务超时，请点击二次生成')
 }
 
-// 超分辨率放大函数（使用 Replicate Real-ESRGAN，支持 2x 和 4x 缩放）
+// 超分辨率放大函数，支持 2x 和 4x 缩放
 async function upscaleImage(imageUrl: string, scale: number): Promise<string> {
   if (!REPLICATE_API_TOKEN) {
     console.error('[Upscale] REPLICATE_API_TOKEN not configured, skipping upscale')
@@ -368,20 +415,19 @@ async function upscaleImage(imageUrl: string, scale: number): Promise<string> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Token ${REPLICATE_API_TOKEN}`
+        Authorization: `Token ${REPLICATE_API_TOKEN}`,
       },
       body: JSON.stringify({
         version: REPLICATE_MODEL_VERSION,
         input: {
           image: imageUrl,
-          scale: scale,
-          face_enhance: true
-        }
-      })
+          scale,
+          face_enhance: true,
+        },
+      }),
     })
 
     const createData = await createResponse.json()
-
     if (!createData.id) {
       console.error('[Upscale] Failed to create prediction:', createData)
       return imageUrl
@@ -394,12 +440,12 @@ async function upscaleImage(imageUrl: string, scale: number): Promise<string> {
     let outputUrl = null
 
     while (status !== 'succeeded' && status !== 'failed') {
-      await new Promise(resolve => setTimeout(resolve, 3000))
+      await new Promise((resolve) => setTimeout(resolve, 3000))
 
       const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
         headers: {
-          'Authorization': `Token ${REPLICATE_API_TOKEN}`
-        }
+          Authorization: `Token ${REPLICATE_API_TOKEN}`,
+        },
       })
 
       const statusData = await statusResponse.json()
@@ -434,11 +480,10 @@ async function generateSingleImage(
   index: number,
   referenceImage?: string
 ): Promise<string> {
-  const translatedText = sentence
-  console.log(`[Generate] Sentence ${index}: ${translatedText}`)
+  console.log(`[Generate] Sentence ${index}: ${sentence}`)
 
-  const isImageMode = !!referenceImage
-  const finalPrompt = buildFinalPrompt(translatedText, styleName, customStyle, isImageMode)
+  const isImageMode = Boolean(referenceImage)
+  const finalPrompt = buildFinalPrompt(sentence, styleName, customStyle, isImageMode)
   console.log(`[Generate] Sentence ${index} final prompt: ${finalPrompt.substring(0, 100)}...`)
 
   const taskId = await submitGrsTask(finalPrompt, imageSize, modelName, modelType, resolution, referenceImage)
@@ -551,16 +596,16 @@ async function rollbackCredits(profileId: string, amount: number): Promise<void>
       return
     }
 
-    const rollbackCredits = (currentProfile.credits || 0) + amount
+    const rollbackAmount = (currentProfile.credits || 0) + amount
     const { error: rollbackError } = await supabaseAdmin
       .from('profiles')
-      .update({ credits: rollbackCredits })
+      .update({ credits: rollbackAmount })
       .eq('id', profileId)
 
     if (rollbackError) {
       console.error('[Rollback] Failed to rollback:', rollbackError)
     } else {
-      console.log('[Rollback] Credits rolled back successfully:', { profileId, amount, restoredTo: rollbackCredits })
+      console.log('[Rollback] Credits rolled back successfully:', { profileId, amount, restoredTo: rollbackAmount })
     }
   } catch (error) {
     console.error('[Rollback] Database error:', error)
@@ -580,7 +625,7 @@ export async function POST(request: NextRequest) {
 
     const userId = auth.user.id
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
-    
+
     console.log('[Security] Request received:', { userId, ip, timestamp: Date.now() })
 
     const {
@@ -591,8 +636,6 @@ export async function POST(request: NextRequest) {
       aspectRatio,
       modelType,
       resolution,
-      imageSize,
-      mode,
     } = body
 
     const isTextMode = inputContents.length > 0
@@ -614,7 +657,7 @@ export async function POST(request: NextRequest) {
 
     const allPrompts = isTextMode ? inputContents.join('\n') : '[Image Mode]'
 
-    // ===== 第一层：核心防御层 - 防恶意刷词安全锁 =====
+    // 第一层：基础安全校验
     const isBanned = await isUserCurrentlyBanned(userId)
     if (isBanned) {
       return NextResponse.json(
@@ -632,17 +675,14 @@ export async function POST(request: NextRequest) {
 
       await deductCredits(userId, 2)
 
-      const errorMsg = shouldBan 
-        ? '检测到违禁词汇，生成失败。恶意刷词系统将自动封禁账号'
-        : '检测到违禁词汇，生成失败。恶意刷词系统将自动封禁账号'
-      
-      return NextResponse.json(
-        { success: false, error: errorMsg },
-        { status: 400 }
-      )
+      const errorMessage = shouldBan
+        ? '检测到违禁词汇，生成失败。账号已因多次违规被临时封禁。'
+        : '检测到违禁词汇，生成失败。请调整内容后重试。'
+
+      return NextResponse.json({ success: false, error: errorMessage }, { status: 400 })
     }
 
-    // ===== 第二层：商业账本层 - 动态权限校验与精准计费 =====
+    // 第二层：权限与计费校验
     const is4K = resolution === '4K'
     const isVipModel = modelType.toLowerCase().includes('vip') || is4K
 
@@ -661,29 +701,27 @@ export async function POST(request: NextRequest) {
     const modelName = getModelName(modelType, resolution)
 
     let sentences: string[] = []
-
     if (isTextMode) {
-      sentences = inputContents.filter(s => s && s.trim().length > 0)
+      sentences = inputContents.filter((item) => item && item.trim().length > 0)
       console.log('[Generate] Valid text segments:', sentences.length)
     }
 
-    const totalImageCount = isTextMode ? sentences.length : (isImageMode ? 1 : 1)
+    const totalImageCount = isTextMode ? sentences.length : 1
     totalCost = totalImageCount * costPerImage
 
     console.log('[Generate] Total images to generate:', totalImageCount)
     console.log('[Generate] Cost per image:', costPerImage)
     console.log('[Generate] Total cost:', totalCost)
     console.log('[Generate] Resolution:', resolution)
-    console.log('[Generate] AspectRatio:', aspectRatio, '→ ImageSize:', targetImageSize)
+    console.log('[Generate] AspectRatio:', aspectRatio, '-> ImageSize:', targetImageSize)
     console.log('[Generate] Model:', modelName)
 
-    // 先扣费，再发请求
     const deductResult = await deductCredits(userId, totalCost)
     if (!deductResult.success) {
       return NextResponse.json(
         {
           success: false,
-          error: `余额不足！需要 ${totalCost} 积分，当前 ${deductResult.currentCredits} 积分，请充值后重试`,
+          error: `余额不足，需要 ${totalCost} 积分，当前仅剩 ${deductResult.currentCredits} 积分，请充值后重试`,
           creditsRemaining: deductResult.currentCredits,
         },
         { status: 400 }
@@ -694,7 +732,6 @@ export async function POST(request: NextRequest) {
     profileId = deductResult.profileId
     creditsDeducted = true
 
-    // ===== 第三层：高并发层 - 直接返回中转站外链 =====
     const imageUrls: string[] = []
     const finalPrompts: string[] = []
     let firstError: string | null = null
@@ -703,15 +740,14 @@ export async function POST(request: NextRequest) {
       if (isTextMode && sentences.length > 0) {
         const generationPromises = sentences.map((sentence, index) =>
           generateSingleImage(sentence, styleName, customStyle, targetImageSize, modelName, modelType, resolution, index)
-            .then(url => ({ url, index, error: null as Error | null }))
-            .catch(error => {
+            .then((url) => ({ url, error: null as Error | null }))
+            .catch((error) => {
               console.error(`[Generate] Failed to generate image for sentence ${index}:`, error)
-              return { url: null, index, error: error as Error }
+              return { url: null, error: error as Error }
             })
         )
 
         const results = await Promise.all(generationPromises)
-
         for (const result of results) {
           if (result.url) {
             imageUrls.push(result.url)
@@ -724,11 +760,11 @@ export async function POST(request: NextRequest) {
           finalPrompts.push(buildFinalPrompt(sentence, styleName, customStyle))
         }
       } else if (isImageMode) {
-        const imgPrompt = buildFinalPrompt('参考图片风格转换与内容重构', styleName, customStyle, true)
-        finalPrompts.push(imgPrompt)
+        const imagePrompt = buildFinalPrompt('参考图片风格转换与内容重构', styleName, customStyle, true)
+        finalPrompts.push(imagePrompt)
 
         const firstReferenceImage = referenceImages[0]
-        const taskId = await submitGrsTask(imgPrompt, targetImageSize, modelName, modelType, resolution, firstReferenceImage)
+        const taskId = await submitGrsTask(imagePrompt, targetImageSize, modelName, modelType, resolution, firstReferenceImage)
         const imageUrl = await pollGrsResult(taskId)
         imageUrls.push(imageUrl)
       }
@@ -737,27 +773,26 @@ export async function POST(request: NextRequest) {
         throw new Error(firstError || '所有图片生成均失败')
       }
 
-      // ===== 第四层：超分辨率放大层 =====
-      // 如果是 2K 或 4K 分辨率，自动调用 Replicate Real-ESRGAN 进行后置放大
+      // 第三层：高分辨率时执行后置放大
       if ((resolution === '2K' || resolution === '4K') && REPLICATE_API_TOKEN) {
         const scale = resolution === '2K' ? 2 : 4
         console.log(`[Generate] Starting ${resolution} upscale (${scale}x) for all images...`)
 
-        const upscalePromises = imageUrls.map((url, index) =>
-          upscaleImage(url, scale)
-            .then(upscaledUrl => {
-              console.log(`[Generate] Image ${index} upscaled to ${resolution}:`, upscaledUrl?.substring(0, 100))
-              return upscaledUrl
-            })
-            .catch(error => {
-              console.error(`[Generate] Upscale failed for image ${index}:`, error.message)
-              return url
-            })
+        const upscaledUrls = await Promise.all(
+          imageUrls.map((url, index) =>
+            upscaleImage(url, scale)
+              .then((upscaledUrl) => {
+                console.log(`[Generate] Image ${index} upscaled to ${resolution}:`, upscaledUrl?.substring(0, 100))
+                return upscaledUrl
+              })
+              .catch((error) => {
+                console.error(`[Generate] Upscale failed for image ${index}:`, error.message)
+                return url
+              })
+          )
         )
 
-        const upscaledUrls = await Promise.all(upscalePromises)
-
-        for (let i = 0; i < upscaledUrls.length; i++) {
+        for (let i = 0; i < upscaledUrls.length; i += 1) {
           if (upscaledUrls[i] && upscaledUrls[i] !== imageUrls[i]) {
             imageUrls[i] = upscaledUrls[i]
           }
@@ -765,7 +800,6 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Generate] All images upscaled to ${resolution}`)
       }
-
     } catch (generationError: any) {
       console.error('[Generate] Image generation failed:', generationError.message)
 
@@ -783,16 +817,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // #region debug-point DB-INSERT
     console.error('[DEBUG-API-GEN-DB-INSERT] Attempting to save record:', {
       userId,
       imageCount: imageUrls.length,
       firstImageUrl: imageUrls[0]?.substring(0, 100),
       resolution,
       modelName,
-      supabaseAdminExists: !!supabaseAdmin
+      supabaseAdminExists: !!supabaseAdmin,
     })
-    // #endregion
 
     if (supabaseAdmin) {
       const recordData = {
@@ -804,12 +836,10 @@ export async function POST(request: NextRequest) {
         image_count: imageUrls.length,
         image_urls: JSON.stringify(imageUrls),
         status: 'success',
-        resolution: resolution,
+        resolution,
       }
 
-      // #region debug-point DB-INSERT-DATA
       console.error('[DEBUG-API-GEN-DB-INSERT-DATA] Record data:', JSON.stringify(recordData).substring(0, 500))
-      // #endregion
 
       const { error: recordError, data: recordDataResult } = await supabaseAdmin
         .from('generation_records')
@@ -821,11 +851,11 @@ export async function POST(request: NextRequest) {
           error: recordError,
           errorMessage: recordError.message,
           errorCode: recordError.code,
-          errorDetails: recordError.details
+          errorDetails: recordError.details,
         })
       } else {
         console.error('[DEBUG-API-GEN-DB-SUCCESS] Record saved successfully:', {
-          recordId: recordDataResult?.[0]?.id
+          recordId: recordDataResult?.[0]?.id,
         })
       }
     } else {
@@ -834,18 +864,15 @@ export async function POST(request: NextRequest) {
 
     console.log('[Generate] Generation complete:', imageUrls.length, 'images,', totalCost, 'credits deducted')
 
-    // #region debug-point RESPONSE
     const responsePayload = {
       success: true,
-      imageUrls: imageUrls,
+      imageUrls,
       imageUrl: imageUrls[0],
       creditsRemaining: currentCredits,
     }
     console.error('[DEBUG-API-GEN-RESPONSE] Returning to frontend:', JSON.stringify(responsePayload).substring(0, 500))
-    // #endregion
 
     return NextResponse.json(responsePayload)
-
   } catch (error: any) {
     console.error('[Generate] API error:', error.message, error.stack)
 

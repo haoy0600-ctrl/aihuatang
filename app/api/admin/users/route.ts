@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     if (!supabaseAdmin) {
       return NextResponse.json({
         success: false,
-        error: '系统配置未完成，请稍后重试',
+        error: '系统配置未完成，请稍后重试。',
       }, { status: 500 })
     }
 
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     if (profilesError || !profiles) {
       return NextResponse.json({
         success: false,
-        error: '获取用户失败',
+        error: '获取用户失败。',
       }, { status: 500 })
     }
 
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     console.error('Admin users error:', error)
     return NextResponse.json({
       success: false,
-      error: '获取用户失败，请稍后重试',
+      error: '获取用户失败，请稍后重试。',
     }, { status: 500 })
   }
 }

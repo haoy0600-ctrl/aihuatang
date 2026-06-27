@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { LoginSession, authHeaders, getStoredSession, saveStoredSession } from '@/lib/session'
 
 const QQ_EMAIL_REGEX = /^[^\s@]+@qq\.com$/
@@ -332,11 +332,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-2 bg-[#0D111A]">
-      <div className="hidden md:flex flex-col justify-center items-center p-8 lg:p-12 bg-[#0D111A] relative overflow-hidden">
+    <div className="grid min-h-screen w-full grid-cols-1 bg-[#0D111A] md:grid-cols-2">
+      <div className="relative hidden items-center justify-center overflow-hidden bg-[#0D111A] p-8 lg:p-12 md:flex">
         <div className="absolute inset-0 opacity-20">
           <div
-            className="w-full h-full"
+            className="h-full w-full"
             style={{
               backgroundImage:
                 'linear-gradient(rgba(0,230,118,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,230,118,0.1) 1px, transparent 1px)',
@@ -346,64 +346,66 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 text-center">
-          <div className="w-24 h-24 sm:w-28 sm:h-28 mx-auto mb-6">
-            <img src="/logo.png?v=6" alt="AI画堂" className="w-full h-full object-contain rounded-xl" />
+          <div className="mx-auto mb-6 h-24 w-24 sm:h-28 sm:w-28">
+            <img src="/logo.png?v=6" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
           </div>
 
-          <h1 className="text-3xl font-bold text-white mb-4">AI画堂</h1>
-          <p className="text-lg text-[#64748B] mb-8 max-w-md">
+          <h1 className="mb-4 text-3xl font-bold text-white">AI画堂</h1>
+          <p className="mx-auto mb-8 max-w-md text-lg text-[#64748B]">
             面向自媒体创作者的高质感图文生成与智能排版工具。
           </p>
 
-          <div className="space-y-4 text-left max-w-sm mx-auto">
+          <div className="mx-auto max-w-sm space-y-4 text-left">
             <FeatureCard
               icon="AI"
               title="高效生成"
-              description="输入主题与要点，快速生成可直接发布的知识卡片。"
+              description="输入主题与要点，快速生成可直接发布的知识图卡。"
             />
             <FeatureCard
               icon="风格"
               title="多种视觉风格"
-              description="覆盖简约、商业、知识科普等常用内容模板。"
+              description="覆盖简约、商业、科普、课程封面等常用内容模版。"
             />
             <FeatureCard
               icon="同步"
               title="多端协同"
-              description="支持手机、平板、电脑连续创作，不必来回切换。"
+              description="支持手机、平板和电脑连续创作，不必反复切换设备。"
             />
           </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-[#1E293B]">
+      <div className="flex items-center justify-center bg-[#1E293B] p-4 sm:p-6 lg:p-8">
         <div className="w-full max-w-md">
-          <div className="md:hidden text-center mb-6">
-            <div className="w-36 h-36 mx-auto mb-3">
-              <img src="/logo.png?v=6" alt="AI画堂" className="w-full h-full object-contain rounded-xl" />
+          <div className="mb-6 text-center md:hidden">
+            <div className="mx-auto mb-3 h-36 w-36">
+              <img src="/logo.png?v=6" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
             </div>
             <p className="text-sm text-[#64748B]">自媒体知识图卡与视觉排版工作台</p>
           </div>
 
           {!isRegister ? (
-            <div className="bg-[#1E293B] p-4 sm:p-6 border border-[#334155]">
-              <div className="text-center mb-6">
+            <div className="border border-[#334155] bg-[#1E293B] p-4 sm:p-6">
+              <div className="mb-6 text-center">
                 <h2 className="text-xl font-bold text-white">欢迎回来</h2>
-                <p className="text-sm text-[#64748B] mt-1">登录后继续你的创作</p>
+                <p className="mt-1 text-sm text-[#64748B]">登录后继续你的创作</p>
               </div>
 
               {error && <MessageBox tone="error">{error}</MessageBox>}
               {sendSuccess && <MessageBox tone="success">{sendSuccess}</MessageBox>}
 
               <div className="space-y-4">
-                <FieldLabel>邮箱 / 用户名</FieldLabel>
-                <input
-                  type="text"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="请输入邮箱或用户名"
-                  className="w-full px-4 py-3 bg-[#0D111A] border border-[#334155] text-white focus:border-[#00E676] focus:outline-none placeholder-[#475569] transition-all"
-                  disabled={isSubmitting}
-                />
+                <div>
+                  <FieldLabel>邮箱 / 用户名</FieldLabel>
+                  <input
+                    type="text"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="请输入邮箱或用户名"
+                    className="w-full border border-[#334155] bg-[#0D111A] px-4 py-3 text-white outline-none transition-all placeholder:text-[#475569] focus:border-[#00E676]"
+                    disabled={isSubmitting}
+                  />
+                </div>
 
                 <div>
                   <FieldLabel>密码</FieldLabel>
@@ -420,15 +422,15 @@ export default function LoginPage() {
                 <button
                   onClick={handlePasswordLogin}
                   disabled={isSubmitting}
-                  className={`w-full mt-6 py-3.5 bg-[#00E676] text-[#0D111A] font-bold text-base shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all ${
-                    isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-[0_0_25px_rgba(0,230,118,0.6)]'
+                  className={`mt-6 w-full bg-[#00E676] py-3.5 text-base font-bold text-[#0D111A] shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all ${
+                    isSubmitting ? 'cursor-not-allowed opacity-50' : 'hover:shadow-[0_0_25px_rgba(0,230,118,0.6)]'
                   }`}
                 >
                   {isSubmitting ? '登录中...' : '登录'}
                 </button>
               </div>
 
-              <p className="text-center text-sm text-[#64748B] mt-6">
+              <p className="mt-6 text-center text-sm text-[#64748B]">
                 还没有账号？
                 <button
                   type="button"
@@ -443,8 +445,8 @@ export default function LoginPage() {
                 </button>
               </p>
 
-              <p className="text-center text-xs text-[#475569] mt-2">
-                <button onClick={openForgotPassword} className="text-[#00E676] hover:underline transition-colors">
+              <p className="mt-2 text-center text-xs text-[#475569]">
+                <button onClick={openForgotPassword} className="text-[#00E676] transition-colors hover:underline">
                   忘记密码？
                 </button>
               </p>
@@ -461,10 +463,10 @@ export default function LoginPage() {
               </div>
             </div>
           ) : (
-            <div className="bg-[#1E293B] p-4 sm:p-6 border border-[#334155]">
-              <div className="text-center mb-6">
+            <div className="border border-[#334155] bg-[#1E293B] p-4 sm:p-6">
+              <div className="mb-6 text-center">
                 <h2 className="text-xl font-bold text-white">创建账号</h2>
-                <p className="text-sm text-[#64748B] mt-1">注册后即可开始体验 AI 画堂</p>
+                <p className="mt-1 text-sm text-[#64748B]">注册后即可开始体验 AI画堂</p>
               </div>
 
               {error && <MessageBox tone="error">{error}</MessageBox>}
@@ -478,7 +480,7 @@ export default function LoginPage() {
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
                     placeholder="请输入用户名"
-                    className="w-full px-4 py-3 bg-[#0D111A] border border-[#334155] text-white focus:border-[#00E676] focus:outline-none placeholder-[#475569] transition-all"
+                    className="w-full border border-[#334155] bg-[#0D111A] px-4 py-3 text-white outline-none transition-all placeholder:text-[#475569] focus:border-[#00E676]"
                     disabled={isSubmitting}
                   />
                 </div>
@@ -490,7 +492,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="请输入 QQ 邮箱"
-                    className="w-full px-4 py-3 bg-[#0D111A] border border-[#334155] text-white focus:border-[#00E676] focus:outline-none placeholder-[#475569] transition-all"
+                    className="w-full border border-[#334155] bg-[#0D111A] px-4 py-3 text-white outline-none transition-all placeholder:text-[#475569] focus:border-[#00E676]"
                     disabled={isSubmitting}
                   />
                 </div>
@@ -503,15 +505,15 @@ export default function LoginPage() {
                       value={token}
                       onChange={(event) => setToken(event.target.value.slice(0, 6))}
                       placeholder="请输入邮箱验证码"
-                      className="flex-1 px-4 py-3 bg-[#0D111A] border border-[#334155] text-white focus:border-[#00E676] focus:outline-none placeholder-[#475569] transition-all"
+                      className="flex-1 border border-[#334155] bg-[#0D111A] px-4 py-3 text-white outline-none transition-all placeholder:text-[#475569] focus:border-[#00E676]"
                       disabled={isSubmitting}
                     />
                     <button
                       onClick={handleSendCode}
                       disabled={isSending || countdown > 0 || isSubmitting}
-                      className={`px-3 sm:px-4 py-3 text-sm font-medium transition-all ${
+                      className={`px-3 py-3 text-sm font-medium transition-all sm:px-4 ${
                         isSending || countdown > 0 || isSubmitting
-                          ? 'bg-[#334155] text-[#64748B] cursor-not-allowed'
+                          ? 'cursor-not-allowed bg-[#334155] text-[#64748B]'
                           : 'bg-[#00E676] text-[#0D111A] hover:shadow-[0_0_15px_rgba(0,230,118,0.5)]'
                       }`}
                     >
@@ -547,15 +549,15 @@ export default function LoginPage() {
                 <button
                   onClick={handleRegister}
                   disabled={isSubmitting}
-                  className={`w-full mt-6 py-3.5 bg-[#00E676] text-[#0D111A] font-bold text-base shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all ${
-                    isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-[0_0_25px_rgba(0,230,118,0.6)]'
+                  className={`mt-6 w-full bg-[#00E676] py-3.5 text-base font-bold text-[#0D111A] shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all ${
+                    isSubmitting ? 'cursor-not-allowed opacity-50' : 'hover:shadow-[0_0_25px_rgba(0,230,118,0.6)]'
                   }`}
                 >
                   {isSubmitting ? '注册中...' : '注册'}
                 </button>
               </div>
 
-              <p className="text-center text-sm text-[#64748B] mt-6">
+              <p className="mt-6 text-center text-sm text-[#64748B]">
                 已有账号？
                 <button
                   type="button"
@@ -575,23 +577,23 @@ export default function LoginPage() {
       </div>
 
       {showForgotPassword && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1E293B] border border-[#334155] p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold text-white mb-4">找回密码</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md border border-[#334155] bg-[#1E293B] p-6">
+            <h3 className="mb-4 text-xl font-bold text-white">找回密码</h3>
 
             {forgotError && <MessageBox tone="error">{forgotError}</MessageBox>}
 
             {resetSent ? (
               <div className="text-center">
-                <div className="text-5xl mb-4">✉</div>
-                <p className="text-[#00E676] mb-4">重置密码邮件已发送，请前往邮箱查收。</p>
-                <p className="text-[#64748B] text-sm mb-4">打开邮件中的链接后即可重新设置密码。</p>
+                <div className="mb-4 text-5xl">✓</div>
+                <p className="mb-4 text-[#00E676]">重置密码邮件已发送，请前往邮箱查收。</p>
+                <p className="mb-4 text-sm text-[#64748B]">打开邮件中的链接后即可重新设置密码。</p>
                 <button
                   onClick={() => {
                     setShowForgotPassword(false)
                     setResetSent(false)
                   }}
-                  className="w-full py-3 bg-[#00E676] text-[#0D111A] font-bold"
+                  className="w-full bg-[#00E676] py-3 font-bold text-[#0D111A]"
                 >
                   我知道了
                 </button>
@@ -605,13 +607,13 @@ export default function LoginPage() {
                     value={forgotEmail}
                     onChange={(event) => setForgotEmail(event.target.value)}
                     placeholder="请输入注册时使用的 QQ 邮箱"
-                    className="w-full px-4 py-3 bg-[#0D111A] border border-[#334155] text-white focus:border-[#00E676] focus:outline-none placeholder-[#475569]"
+                    className="w-full border border-[#334155] bg-[#0D111A] px-4 py-3 text-white outline-none placeholder:text-[#475569] focus:border-[#00E676]"
                   />
                 </div>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowForgotPassword(false)}
-                    className="flex-1 py-3 bg-[#334155] text-white font-medium"
+                    className="flex-1 bg-[#334155] py-3 font-medium text-white"
                   >
                     取消
                   </button>
@@ -636,18 +638,18 @@ export default function LoginPage() {
 
 function FeatureCard({ icon, title, description }: { icon: string; title: string; description: string }) {
   return (
-    <div className="flex items-center gap-3 p-3 bg-[#1E293B]/50 border border-[#334155]">
-      <span className="text-xs text-[#00E676] font-bold min-w-[36px]">{icon}</span>
+    <div className="flex items-center gap-3 border border-[#334155] bg-[#1E293B]/50 p-3">
+      <span className="min-w-[36px] text-xs font-bold text-[#00E676]">{icon}</span>
       <div>
-        <h3 className="text-white font-bold text-sm">{title}</h3>
-        <p className="text-[#64748B] text-xs">{description}</p>
+        <h3 className="text-sm font-bold text-white">{title}</h3>
+        <p className="text-xs text-[#64748B]">{description}</p>
       </div>
     </div>
   )
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="block text-sm text-[#94A3B8] font-medium mb-2">{children}</label>
+  return <label className="mb-2 block text-sm font-medium text-[#94A3B8]">{children}</label>
 }
 
 function MessageBox({
@@ -687,16 +689,16 @@ function PasswordInput({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full px-4 py-3 bg-[#0D111A] border border-[#334155] text-white focus:border-[#00E676] focus:outline-none placeholder-[#475569] transition-all pr-10"
+        className="w-full border border-[#334155] bg-[#0D111A] px-4 py-3 pr-10 text-white outline-none transition-all placeholder:text-[#475569] focus:border-[#00E676]"
         disabled={disabled}
       />
       <button
         type="button"
         onClick={onToggleVisible}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#00E676] transition-colors"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] transition-colors hover:text-[#00E676]"
       >
         {visible ? (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -705,7 +707,7 @@ function PasswordInput({
             />
           </svg>
         ) : (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             <path
               strokeLinecap="round"

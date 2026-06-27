@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
           success: false,
           error: '系统配置未完成，请稍后重试。',
         },
-        { status: 500 }
+        { status: 500 },
       )
     }
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
           success: false,
           error: '获取卡密列表失败。',
         },
-        { status: 500 }
+        { status: 500 },
       )
     }
 
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         success: false,
         error: '服务器错误。',
       },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }

@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
@@ -20,7 +20,12 @@ interface GenerationRecord {
   image_urls: string
   status: string
   created_at: string
+  image_url_4k?: string | null
 }
+
+type FilterStatus = 'all' | 'success' | 'failed'
+
+const COLUMN_COUNT = 5
 
 export default function RecordsPage() {
   const router = useRouter()
@@ -29,147 +34,138 @@ export default function RecordsPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [currentTime, setCurrentTime] = useState('')
   const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState<{ credits: number } | null>(null)
+  const [profile, setProfile] = useState<{ credits: number; avatar_url?: string } | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
-  const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null)
+  const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null)
   const [selectedRecord, setSelectedRecord] = useState<GenerationRecord | null>(null)
-  const [showDetailModal, setShowDetailModal] = useState(false)
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
-  const [showImagePreview, setShowImagePreview] = useState(false)
   const [upscalingIds, setUpscalingIds] = useState<Set<string>>(new Set())
   const [image4kUrls, setImage4kUrls] = useState<Record<string, string>>({})
-  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [totalRecords, setTotalRecords] = useState(0)
-  const [columns, setColumns] = useState<GenerationRecord[][]>([[], [], [], [], []])
   const observerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const updateTime = () => {
       const now = new Date()
-      const hours = String(now.getHours()).padStart(2, '0')
-      const minutes = String(now.getMinutes()).padStart(2, '0')
-      const seconds = String(now.getSeconds()).padStart(2, '0')
-      setCurrentTime(`${hours}:${minutes}:${seconds}`)
+      setCurrentTime(now.toLocaleTimeString('zh-CN', { hour12: false }))
     }
+
     updateTime()
-    const interval = setInterval(updateTime, 1000)
-    return () => clearInterval(interval)
+    const timer = setInterval(updateTime, 1000)
+    return () => clearInterval(timer)
   }, [])
 
-  const fetchRecords = useCallback(async (pageNum: number = 1, reset: boolean = false) => {
-    const session = getStoredSession()
-    if (!session) {
-      if (reset) {
-        setRecords([])
-        setColumns([[], [], [], [], []])
-        setProfile({ credits: 3 })
-        setLoading(false)
-      }
-      return
-    }
+  const distributeRecordsToColumns = useCallback((list: GenerationRecord[]) => {
+    const columns: GenerationRecord[][] = Array.from({ length: COLUMN_COUNT }, () => [])
+    list.forEach((record, index) => {
+      columns[index % COLUMN_COUNT].push(record)
+    })
+    return columns
+  }, [])
 
-    try {
-      if (reset) {
-        const meResponse = await fetch('/api/auth/me', {
-          method: 'POST',
-          headers: authHeaders(),
-          body: JSON.stringify({})
-        })
-
-        const meData = await meResponse.json()
-
-        if (!meData.success || !meData.user) {
+  const fetchRecords = useCallback(
+    async (pageNum = 1, reset = false) => {
+      const session = getStoredSession()
+      if (!session) {
+        if (reset) {
           setRecords([])
-          setColumns([[], [], [], [], []])
           setProfile({ credits: 3 })
           setLoading(false)
+        }
+        return
+      }
+
+      try {
+        if (reset) {
+          const meResponse = await fetch('/api/auth/me', {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({}),
+          })
+
+          const meData = await meResponse.json()
+          if (!meData.success || !meData.user) {
+            setRecords([])
+            setProfile({ credits: 3 })
+            setLoading(false)
+            return
+          }
+
+          setUser(meData.user)
+          if (meData.profile) {
+            setProfile({
+              credits: meData.profile.credits,
+              avatar_url: meData.profile.avatar_url,
+            })
+          }
+        }
+
+        const recordsResponse = await fetch('/api/user/records', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({
+            status: filterStatus,
+            page: pageNum,
+            limit: 20,
+          }),
+        })
+
+        const recordsData = await recordsResponse.json()
+
+        if (!recordsData.success) {
+          if (reset) {
+            setRecords([])
+          }
           return
         }
 
-        setUser(meData.user)
+        const nextRecords = reset ? recordsData.records || [] : [...records, ...(recordsData.records || [])]
 
-        if (meData.profile) {
-          setProfile({ credits: meData.profile.credits })
-        }
-      }
-
-      const recordsResponse = await fetch('/api/user/records', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ 
-          status: filterStatus,
-          page: pageNum,
-          limit: 20
-        })
-      })
-
-      const recordsData = await recordsResponse.json()
-
-      if (recordsData.success) {
+        setRecords(nextRecords)
         setTotalRecords(recordsData.total || 0)
         setHasMore(recordsData.hasMore || false)
-        
-        if (reset) {
-          setRecords(recordsData.records || [])
-          distributeRecordsToColumns(recordsData.records || [])
-        } else {
-          const newRecords = [...records, ...(recordsData.records || [])]
-          setRecords(newRecords)
-          distributeRecordsToColumns(newRecords)
-        }
-      } else {
+
+        const next4k: Record<string, string> = {}
+        nextRecords.forEach((item: GenerationRecord) => {
+          if (item.image_url_4k) {
+            next4k[item.id] = item.image_url_4k
+          }
+        })
+        setImage4kUrls((prev) => ({ ...prev, ...next4k }))
+      } catch (fetchError) {
+        console.error('Fetch records error:', fetchError)
         if (reset) {
           setRecords([])
-          setColumns([[], [], []])
+          setProfile({ credits: 3 })
         }
+      } finally {
+        setLoading(false)
+        setLoadingMore(false)
       }
-    } catch (error) {
-      console.error('Fetch records error:', error)
-      if (reset) {
-        setRecords([])
-        setColumns([[], [], []])
-        setProfile({ credits: 3 })
-      }
-    }
-
-    setLoading(false)
-    setLoadingMore(false)
-  }, [user?.id, filterStatus, records])
-
-  const distributeRecordsToColumns = (recordsList: GenerationRecord[]) => {
-    const COLUMN_COUNT = 5
-    const newColumns: GenerationRecord[][] = Array.from({ length: COLUMN_COUNT }, () => [])
-    recordsList.forEach((record, index) => {
-      const colIndex = index % COLUMN_COUNT
-      newColumns[colIndex].push(record)
-    })
-    setColumns(newColumns)
-  }
+    },
+    [filterStatus, records],
+  )
 
   useEffect(() => {
     setCurrentPage(1)
     setLoading(true)
-    fetchRecords(1, true)
+    void fetchRecords(1, true)
 
-    // 每5秒自动刷新记录
-    const interval = setInterval(() => fetchRecords(1, true), 5000)
-    
-    // 监听生成完成事件
-    const handleGenerationComplete = () => {
-      fetchRecords(1, true)
-    }
+    const timer = setInterval(() => void fetchRecords(1, true), 5000)
+    const handleGenerationComplete = () => void fetchRecords(1, true)
     window.addEventListener('ai-huatang-generation-complete', handleGenerationComplete)
-    
+
     return () => {
-      clearInterval(interval)
+      clearInterval(timer)
       window.removeEventListener('ai-huatang-generation-complete', handleGenerationComplete)
     }
-  }, [filterStatus])
+  }, [fetchRecords])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -177,11 +173,10 @@ export default function RecordsPage() {
         const [entry] = entries
         if (entry.isIntersecting && !loadingMore && hasMore && !loading) {
           setLoadingMore(true)
-          setCurrentPage(prev => prev + 1)
-          fetchRecords(currentPage + 1, false)
+          setCurrentPage((prev) => prev + 1)
         }
       },
-      { rootMargin: '200px' }
+      { rootMargin: '200px' },
     )
 
     if (observerRef.current) {
@@ -189,10 +184,31 @@ export default function RecordsPage() {
     }
 
     return () => observer.disconnect()
-  }, [loadingMore, hasMore, loading, currentPage, fetchRecords])
+  }, [loadingMore, hasMore, loading])
 
-  const getModelPrice = (model: string): number => {
-    return 3
+  useEffect(() => {
+    if (currentPage > 1) {
+      void fetchRecords(currentPage, false)
+    }
+  }, [currentPage, fetchRecords])
+
+  const statusCounts = useMemo(
+    () => ({
+      all: records.length,
+      success: records.filter((record) => record.status === 'success' || record.status === 'completed').length,
+      failed: records.filter((record) => record.status === 'failed' || record.status === 'error').length,
+    }),
+    [records],
+  )
+
+  const getModelPrice = () => 3
+
+  const parseImageUrls = (value: string) => {
+    try {
+      return JSON.parse(value) as string[]
+    } catch {
+      return []
+    }
   }
 
   const handleDownload = async (url: string, index: number) => {
@@ -207,8 +223,8 @@ export default function RecordsPage() {
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(blobUrl)
-    } catch (error) {
-      console.error('Download failed:', error)
+    } catch (downloadError) {
+      console.error('Download failed:', downloadError)
       const link = document.createElement('a')
       link.href = url
       link.download = `AI画堂_${Date.now()}_${index + 1}.png`
@@ -222,46 +238,46 @@ export default function RecordsPage() {
   const handleCopyLink = async (url: string) => {
     try {
       await navigator.clipboard.writeText(url)
-      alert('图片链接已复制到剪贴板！')
+      alert('图片链接已复制到剪贴板')
     } catch {
-      prompt('请复制图片链接:', url)
+      prompt('请手动复制图片链接：', url)
     }
   }
 
   const handleUpscale = async (recordId: string, imageUrl: string) => {
     if (upscalingIds.has(recordId)) return
 
-    setUpscalingIds(prev => new Set([...prev, recordId]))
+    setUpscalingIds((prev) => new Set([...prev, recordId]))
 
     try {
       const response = await fetch('/api/upscale', {
         method: 'POST',
         headers: {
+          ...authHeaders(),
           'Content-Type': 'application/json',
-          ...authHeaders()
         },
-        body: JSON.stringify({ imageUrl, recordId })
+        body: JSON.stringify({ imageUrl, recordId }),
       })
 
       const data = await response.json()
 
       if (data.success && data.url) {
-        setImage4kUrls(prev => ({
+        setImage4kUrls((prev) => ({
           ...prev,
-          [recordId]: data.url
+          [recordId]: data.url,
         }))
-        alert('4K 超清转换成功！')
+        alert('4K 放大完成')
       } else {
-        alert(data.error || '4K 转换失败，请稍后重试')
+        alert(data.error || '4K 放大失败，请稍后重试')
       }
-    } catch (error) {
-      console.error('Upscale error:', error)
-      alert('4K 转换失败，请稍后重试')
+    } catch (upscaleError) {
+      console.error('Upscale error:', upscaleError)
+      alert('4K 放大失败，请稍后重试')
     } finally {
-      setUpscalingIds(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(recordId)
-        return newSet
+      setUpscalingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(recordId)
+        return next
       })
     }
   }
@@ -269,8 +285,8 @@ export default function RecordsPage() {
   const handleCopyPrompt = async (prompt: string, id: string) => {
     try {
       await navigator.clipboard.writeText(prompt)
-      setCopiedPrompt(id)
-      setTimeout(() => setCopiedPrompt(null), 2000)
+      setCopiedPromptId(id)
+      setTimeout(() => setCopiedPromptId(null), 2000)
     } catch {
       alert('复制失败，请手动复制提示词')
     }
@@ -280,169 +296,136 @@ export default function RecordsPage() {
     const response = await fetch('/api/user/delete-record', {
       method: 'POST',
       headers: authHeaders(),
-      body: JSON.stringify({ id: recordId })
+      body: JSON.stringify({ id: recordId }),
     })
 
     const data = await response.json()
     if (data.success) {
-      setRecords(records.filter(r => r.id !== recordId))
-      distributeRecordsToColumns(records.filter(r => r.id !== recordId))
-      setTotalRecords(prev => prev - 1)
+      const nextRecords = records.filter((item) => item.id !== recordId)
+      setRecords(nextRecords)
+      setTotalRecords((prev) => Math.max(0, prev - 1))
+    } else {
+      alert(data.error || '删除失败')
     }
   }
 
   const handleDeleteAll = async () => {
-    const deletePromises = records.map(record =>
-      fetch('/api/user/delete-record', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ id: record.id })
-      })
+    await Promise.all(
+      records.map((record) =>
+        fetch('/api/user/delete-record', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ id: record.id }),
+        }),
+      ),
     )
 
-    await Promise.all(deletePromises)
     setRecords([])
-    setColumns([[], [], []])
     setTotalRecords(0)
     setShowDeleteAllModal(false)
   }
 
   const downloadAllImages = async (urls: string[]) => {
-    for (let i = 0; i < urls.length; i++) {
-      try {
-        const response = await fetch(urls[i], { mode: 'cors' })
-        const blob = await response.blob()
-        const a = document.createElement('a')
-        a.href = URL.createObjectURL(blob)
-        a.download = `AI画堂_卡片_${i + 1}.png`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        await new Promise(resolve => setTimeout(resolve, 300))
-      } catch (error) {
-        console.error(`下载第 ${i + 1} 张图片失败:`, error)
+    if (urls.length <= 1) {
+      if (urls[0]) {
+        await handleDownload(urls[0], 0)
+      }
+      return
+    }
+
+    try {
+      const zip = new JSZip()
+      await Promise.all(
+        urls.map(async (url, index) => {
+          const response = await fetch(url)
+          const blob = await response.blob()
+          zip.file(`AI画堂_图片_${index + 1}.png`, blob)
+        }),
+      )
+      const content = await zip.generateAsync({ type: 'blob' })
+      saveAs(content, `AI画堂_记录_${Date.now()}.zip`)
+    } catch (zipError) {
+      console.error('Batch download failed:', zipError)
+      for (let index = 0; index < urls.length; index += 1) {
+        await handleDownload(urls[index], index)
       }
     }
   }
 
-  const formatDate = (dateStr: string): string => {
-    const date = new Date(dateStr)
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}/${month}/${day}`
-  }
+  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('zh-CN')
 
-  const getFirstSentence = (text: string): string => {
-    const sentences = text.split(/[。！？；\n]/).filter(s => s.trim())
+  const getFirstSentence = (text: string) => {
+    const sentences = text.split(/[。！？；\n]/).filter((item) => item.trim())
     return sentences[0]?.trim() || text.substring(0, 30)
   }
 
-  const openDetailModal = (record: GenerationRecord) => {
-    setSelectedRecord(record)
-    setShowDetailModal(true)
-  }
+  const openDetailModal = (record: GenerationRecord) => setSelectedRecord(record)
 
   const handleLogout = () => {
     clearStoredSession()
     window.location.href = '/login'
   }
 
-  const filteredRecords = records.filter(record => {
-    if (filterStatus === 'all') return true
-    if (filterStatus === 'success') return record.status === 'success' || record.status === 'completed'
-    if (filterStatus === 'failed') return record.status === 'failed' || record.status === 'error'
-    return true
-  })
+  const filteredRecords = useMemo(() => {
+    if (filterStatus === 'all') return records
+    if (filterStatus === 'success') {
+      return records.filter((record) => record.status === 'success' || record.status === 'completed')
+    }
+    return records.filter((record) => record.status === 'failed' || record.status === 'error')
+  }, [filterStatus, records])
 
-  const statusCounts = {
-    all: records.length,
-    success: records.filter(r => r.status === 'success' || r.status === 'completed').length,
-    failed: records.filter(r => r.status === 'failed' || r.status === 'error').length
-  }
+  const filteredColumns = useMemo(() => distributeRecordsToColumns(filteredRecords), [distributeRecordsToColumns, filteredRecords])
 
   return (
     <div className="min-h-screen bg-[#0B0D17]">
-      <header className="bg-[#0B0D17] border-b border-[#202B3A]">
-        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center w-full py-2 sm:py-3">
-            <Link href="/" className="flex items-center select-none hover:opacity-80 transition-opacity">
-              <img 
-                src="/logo.png?v=6" 
-                alt="AI画堂" 
-                className="h-20 w-20 object-contain"
-              />
+      <header className="border-b border-[#202B3A] bg-[#0B0D17]">
+        <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
+          <div className="flex w-full items-center justify-between py-2 sm:py-3">
+            <Link href="/" className="flex items-center select-none transition-opacity hover:opacity-80">
+              <img src="/logo.png?v=6" alt="AI画堂" className="h-20 w-20 object-contain" />
             </Link>
 
-            <nav className="hidden md:flex items-center gap-4">
-              <Link href="/dashboard" className="px-5 py-2.5 bg-[#141923] text-white font-semibold text-base tracking-wide md:text-lg border border-[#202B3A] hover:bg-[#1a2230] hover:border-[#00F2FE] transition-all rounded-xl">
-                创作
-              </Link>
-              <Link href="/records" className="px-5 py-2.5 bg-[#10B981] text-[#0B0D17] font-semibold text-base tracking-wide md:text-lg border border-[#202B3A] shadow-[0_0_15px_rgba(16,185,129,0.4)] rounded-xl">
-                记录
-              </Link>
-              <Link href="/recharge" className="px-5 py-2.5 bg-[#141923] text-white font-semibold text-base tracking-wide md:text-lg border border-[#202B3A] hover:bg-[#1a2230] hover:border-[#00F2FE] transition-all rounded-xl">
-                卡密兑换
-              </Link>
+            <nav className="hidden items-center gap-4 md:flex">
+              <NavLink href="/dashboard">创作中心</NavLink>
+              <NavLink href="/records" active>生成记录</NavLink>
+              <NavLink href="/recharge">卡密兑换</NavLink>
             </nav>
 
             <div className="flex items-center gap-2 sm:gap-4">
-              <div className="hidden sm:flex items-center gap-2 text-xs text-[#00F2FE]">
+              <div className="hidden items-center gap-2 text-xs text-[#00F2FE] sm:flex">
                 <span>{new Date().toLocaleDateString('zh-CN')}</span>
-                <span className="text-white font-mono font-bold text-sm">{currentTime}</span>
+                <span className="font-mono text-sm font-bold text-white">{currentTime}</span>
               </div>
-              <div className="px-2 sm:px-3 py-1 sm:py-1.5 bg-[#141923] border border-[#202B3A] flex items-center gap-1 sm:gap-1.5 rounded-lg">
-                <span className="w-2 h-2 bg-[#10B981] border border-[#202B3A]"></span>
-                <span className="text-xs text-[#00F2FE] hidden sm:inline">积分</span>
-                <span className="font-bold text-white text-sm">{profile?.credits || 0}</span>
+              <div className="flex items-center gap-1 rounded-lg border border-[#202B3A] bg-[#141923] px-2 py-1 sm:gap-1.5 sm:px-3 sm:py-1.5">
+                <span className="h-2 w-2 rounded-full border border-[#202B3A] bg-[#10B981]" />
+                <span className="hidden text-xs text-[#00F2FE] sm:inline">积分</span>
+                <span className="text-sm font-bold text-white">{profile?.credits || 0}</span>
               </div>
               <div className="relative">
-                <button 
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="w-8 h-8 sm:w-9 sm:h-9 bg-[#141923] border border-[#202B3A] flex items-center justify-center hover:border-[#00F2FE] transition-colors rounded-lg"
+                <button
+                  onClick={() => setShowUserMenu((prev) => !prev)}
+                  className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-[#202B3A] bg-[#141923] transition-colors hover:border-[#00F2FE] sm:h-9 sm:w-9"
                 >
-                  <span className="text-white font-bold text-sm">
-                    {user?.email ? user.email.substring(0, 2).toUpperCase() : 'HA'}
-                  </span>
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="头像" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-bold text-white">{user?.email ? user.email.substring(0, 2).toUpperCase() : 'HA'}</span>
+                  )}
                 </button>
-                
+
                 {showUserMenu && (
-                  <div className="absolute right-0 top-10 w-48 sm:w-56 bg-[#141923] border border-[#202B3A] shadow-lg z-50 rounded-xl overflow-hidden">
-                    <div className="p-3 sm:p-4 border-b border-[#202B3A]">
-                      <p className="text-xs text-[#00F2FE] mb-1">当前账号</p>
-                      <p className="text-sm text-white font-medium truncate">{user?.email || '未登录'}</p>
-                    </div>
-                    <div className="p-2 border-b border-[#202B3A] md:hidden">
-                      <Link href="/dashboard" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors rounded-lg">
-                        🎨 创作工坊
-                      </Link>
-                      <Link href="/records" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors rounded-lg">
-                        📁 生成记录
-                      </Link>
-                      <Link href="/recharge" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors rounded-lg">
-                        🔑 卡密兑换
-                      </Link>
+                  <div className="absolute right-0 top-10 z-50 w-56 overflow-hidden rounded-xl border border-[#202B3A] bg-[#141923] shadow-lg">
+                    <div className="border-b border-[#202B3A] p-3 sm:p-4">
+                      <p className="mb-1 text-xs text-[#00F2FE]">当前账号</p>
+                      <p className="truncate text-sm font-medium text-white">{user?.email || '未登录'}</p>
                     </div>
                     <div className="p-2">
-                      <Link href="/dashboard" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors rounded-lg hidden md:block">
-                        创作工坊
-                      </Link>
-                      <Link href="/recharge" onClick={() => setShowUserMenu(false)} className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors rounded-lg hidden md:block">
-                        🔑 卡密兑换
-                      </Link>
-                      <div className="border-t border-[#202B3A] my-1 hidden md:block"></div>
-                      <button 
-                        onClick={() => { router.push('/profile'); setShowUserMenu(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#1a2230] hover:text-[#00F2FE] transition-colors rounded-lg"
-                      >
-                        个人中心
-                      </button>
-                      <button 
-                        onClick={handleLogout}
-                        className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#1a2230] transition-colors rounded-lg"
-                      >
-                        退出登录
-                      </button>
+                      <MenuButton onClick={() => { router.push('/dashboard'); setShowUserMenu(false) }}>创作中心</MenuButton>
+                      <MenuButton onClick={() => { router.push('/recharge'); setShowUserMenu(false) }}>卡密兑换</MenuButton>
+                      <MenuButton onClick={() => { router.push('/profile'); setShowUserMenu(false) }}>个人中心</MenuButton>
+                      <MenuButton onClick={() => { setShowChangePassword(true); setShowUserMenu(false) }}>修改密码</MenuButton>
+                      <div className="my-1 border-t border-[#202B3A]" />
+                      <MenuButton danger onClick={() => { handleLogout(); setShowUserMenu(false) }}>退出登录</MenuButton>
                     </div>
                   </div>
                 )}
@@ -453,42 +436,40 @@ export default function RecordsPage() {
       </header>
 
       <main className="p-4 pb-24">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div>
-              <h2 className="text-xl font-bold text-white">🎨 生成记录</h2>
-              <p className="text-sm text-[#00F2FE] mt-1">您的创作资产库 · 共 {totalRecords} 条</p>
+              <h2 className="text-xl font-bold text-white">生成记录</h2>
+              <p className="mt-1 text-sm text-[#00F2FE]">你的创作资产库，共 {totalRecords} 条</p>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteAllModal(true)}
                 disabled={records.length === 0}
-                className="px-4 py-2 bg-red-500/20 text-red-400 font-bold text-sm border border-red-500/50 hover:bg-red-500/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="rounded-lg border border-red-500/50 bg-red-500/20 px-4 py-2 text-sm font-bold text-red-400 transition-all hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-30"
               >
-                🗑️ 全部删除
+                全部删除
               </button>
               <Link
                 href="/dashboard"
-                className="px-4 py-2 bg-[#00E676] text-[#0B0D17] font-bold text-sm border border-[#202B3A] shadow-[0_0_15px_rgba(0,230,118,0.4)] hover:shadow-[0_0_20px_rgba(0,230,118,0.6)] transition-all"
+                className="rounded-lg border border-[#202B3A] bg-[#00E676] px-4 py-2 text-sm font-bold text-[#0B0D17] shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all hover:shadow-[0_0_20px_rgba(0,230,118,0.6)]"
               >
                 返回创作
               </Link>
             </div>
           </div>
 
-          <div className="flex gap-2 mb-6 p-1 bg-[#141923] rounded-xl w-fit">
+          <div className="mb-6 flex w-fit gap-2 rounded-xl bg-[#141923] p-1">
             {[
               { key: 'all', label: '全部', color: 'bg-[#00F2FE] text-[#0A0F1D]' },
               { key: 'success', label: '生成成功', color: 'bg-[#10B981] text-[#0A0F1D]' },
-              { key: 'failed', label: '生成失败', color: 'bg-red-500 text-white' }
-            ].map(tab => (
+              { key: 'failed', label: '生成失败', color: 'bg-red-500 text-white' },
+            ].map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setFilterStatus(tab.key)}
-                className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${
-                  filterStatus === tab.key
-                    ? `${tab.color} shadow-lg`
-                    : 'text-[#94A3B8] hover:text-white'
+                onClick={() => setFilterStatus(tab.key as FilterStatus)}
+                className={`rounded-lg px-4 py-2 text-sm font-bold transition-all ${
+                  filterStatus === tab.key ? `${tab.color} shadow-lg` : 'text-[#94A3B8] hover:text-white'
                 }`}
               >
                 {tab.label} ({statusCounts[tab.key as keyof typeof statusCounts]})
@@ -497,191 +478,114 @@ export default function RecordsPage() {
           </div>
 
           {loading ? (
-            <div className="text-center py-20">
-              {/* 改进的骨架屏 - 固定高度防止布局抖动 */}
-              <div className="animate-pulse">
-                <div className="w-12 h-12 bg-[#10B981] border border-[#202B3A] mx-auto mb-4 rounded-full"></div>
-                <p className="text-[#00F2FE]">加载中...</p>
-              </div>
-              {/* 骨架屏网格 */}
-              <div className="flex gap-3 mt-8 max-w-6xl mx-auto px-4">
-                {[1, 2, 3, 4, 5].map(col => (
-                  <div key={col} className="flex-1 space-y-3">
-                    {[1, 2, 3].map(row => (
-                      <div 
-                        key={`${col}-${row}`} 
-                        className="h-48 bg-[#141923] border border-[#1E293B] rounded-lg animate-pulse transition-all duration-300"
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : records.length === 0 ? (
-            <div className="border-2 border-dashed border-[#202B3A] rounded-none p-16 text-center">
-              <div className="inline-flex items-center justify-center w-24 h-24 bg-[#141923] border border-[#00F2FE] shadow-[0_0_30px_rgba(0,242,254,0.3)] mb-8">
-                <span className="text-5xl">🖼️</span>
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-3">暂无手绘卡片记录</h3>
-              <p className="text-[#00F2FE] mb-8 max-w-md mx-auto">
-                立刻去控制台开启你的赛博草图之旅吧！<br/>
-                <span className="text-[#94A3B8] text-sm">让你的创意在霓虹世界中自由绽放</span>
-              </p>
-              <Link
-                href="/dashboard"
-                className="inline-block px-8 py-4 bg-[#00E676] text-[#0A0F1D] font-black text-base border border-[#202B3A] shadow-[0_0_20px_rgba(0,230,118,0.5)] hover:shadow-[0_0_30px_rgba(0,230,118,0.8)] transition-all"
-              >
-                ⚡ 前去创作
-              </Link>
-            </div>
+            <LoadingState />
+          ) : filteredRecords.length === 0 ? (
+            <EmptyRecords />
           ) : (
             <div className="flex gap-3">
-              {columns.map((column, colIndex) => (
+              {filteredColumns.map((column, colIndex) => (
                 <div key={colIndex} className="flex-1 space-y-3">
                   {column.map((record) => {
-                    const imageUrls = typeof record.image_urls === 'string' ? JSON.parse(record.image_urls) : record.image_urls
-                    const totalCost = getModelPrice(record.model) * (record.image_count || 1)
+                    const imageUrls = parseImageUrls(record.image_urls)
+                    const coverUrl = image4kUrls[record.id] || record.image_url_4k || imageUrls[0] || ''
+                    const totalCost = getModelPrice() * (record.image_count || 1)
                     const firstSentence = getFirstSentence(record.prompt)
-                    
+                    const success = record.status === 'success' || record.status === 'completed'
+                    const failed = record.status === 'failed' || record.status === 'error'
+
                     return (
-                      <div 
-                        key={record.id} 
-                        className="bg-[#0D111A] border border-[#1E293B] overflow-hidden hover:border-[#00F2FE]/50 transition-all duration-300 rounded-lg group"
+                      <div
+                        key={record.id}
+                        className="group overflow-hidden rounded-lg border border-[#1E293B] bg-[#0D111A] transition-all duration-300 hover:border-[#00F2FE]/50"
                       >
                         <div className="relative overflow-hidden bg-[#161a2b]">
-                          {imageUrls && imageUrls[0] ? (
-                            <img 
-                              src={image4kUrls[record.id] || imageUrls[0]} 
-                              alt="生成图" 
-                              className="w-full h-auto object-contain"
-                            />
+                          {coverUrl ? (
+                            <img src={coverUrl} alt="生成图片" className="h-auto w-full object-contain" />
                           ) : (
-                            <div className="w-full aspect-square flex items-center justify-center text-[#94A3B8] bg-[#0B0D17] text-xs">
-                              {record.status === 'failed' || record.status === 'error' ? (
-                                <span className="text-center p-2">❌ 生成失败</span>
-                              ) : (
-                                <span>无图片</span>
-                              )}
+                            <div className="flex aspect-square w-full items-center justify-center bg-[#0B0D17] text-xs text-[#94A3B8]">
+                              {failed ? <span className="p-2 text-center">生成失败</span> : <span>暂无图片</span>}
                             </div>
                           )}
 
-                          <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col items-center justify-center gap-1.5 p-2">
-                            {imageUrls && imageUrls[0] && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/80 p-2 opacity-0 transition-all duration-200 group-hover:opacity-100">
+                            {coverUrl && (
                               <>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setPreviewImageUrl(imageUrls?.[0] || '')
-                                    setShowImagePreview(true)
-                                  }}
-                                  className="w-full px-2 py-1.5 bg-[#00E676] text-[#0A0F1D] text-xs font-bold hover:bg-[#00ff80] transition-all backdrop-blur-sm border border-[#00E676] flex items-center justify-center gap-1 rounded"
-                                >
-                                  🔍 预览
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleDownload(image4kUrls[record.id] || imageUrls?.[0] || '', 0)
-                                  }}
-                                  className="w-full px-2 py-1.5 bg-[#00F2FE] text-[#0A0F1D] text-xs font-bold hover:bg-[#33f5ff] transition-all backdrop-blur-sm border border-[#00F2FE] flex items-center justify-center gap-1 rounded"
-                                >
-                                  ⬇️ 下载
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleCopyLink(image4kUrls[record.id] || imageUrls?.[0] || '')
-                                  }}
-                                  className="w-full px-2 py-1.5 bg-white/90 text-[#0A0F1D] text-xs font-bold hover:bg-white transition-all backdrop-blur-sm border border-white/50 flex items-center justify-center gap-1 rounded"
-                                >
-                                  🔗 复制
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleUpscale(record.id, imageUrls?.[0] || '')
-                                  }}
+                                <ActionButton onClick={() => setPreviewImageUrl(coverUrl)} tone="green">预览</ActionButton>
+                                <ActionButton onClick={() => void handleDownload(coverUrl, 0)} tone="blue">下载</ActionButton>
+                                <ActionButton onClick={() => void handleCopyLink(coverUrl)} tone="white">复制链接</ActionButton>
+                                <ActionButton
+                                  onClick={() => void handleUpscale(record.id, imageUrls[0] || '')}
+                                  tone={image4kUrls[record.id] ? 'success' : 'amber'}
                                   disabled={upscalingIds.has(record.id) || !!image4kUrls[record.id]}
-                                  className={`w-full px-2 py-1.5 text-xs font-bold transition-all backdrop-blur-sm border flex items-center justify-center gap-1 rounded ${
-                                    image4kUrls[record.id]
-                                      ? 'bg-[#10B981] text-[#0A0F1D] border-[#10B981]'
-                                      : upscalingIds.has(record.id)
-                                        ? 'bg-gray-500/50 text-gray-400 border-gray-500/50 cursor-not-allowed'
-                                        : 'bg-[#F59E0B] text-[#0A0F1D] border-[#F59E0B] hover:bg-[#fbbf24]'
-                                  }`}
                                 >
-                                  {image4kUrls[record.id] ? (
-                                    <>✅ 已 4K</>
-                                  ) : upscalingIds.has(record.id) ? (
-                                    <>⏳ 处理中...</>
-                                  ) : (
-                                    <>📐 一键 4K 超清</>
-                                  )}
-                                </button>
+                                  {image4kUrls[record.id]
+                                    ? '已完成 4K'
+                                    : upscalingIds.has(record.id)
+                                      ? '处理中...'
+                                      : '一键 4K 放大'}
+                                </ActionButton>
                               </>
                             )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
+
+                            <ActionButton
+                              onClick={() => {
                                 if (confirm('确定要删除这条记录吗？')) {
-                                  handleDeleteRecord(record.id)
+                                  void handleDeleteRecord(record.id)
                                 }
                               }}
-                              className="w-full px-2 py-1.5 bg-red-500/90 text-white text-xs font-bold hover:bg-red-500 transition-all backdrop-blur-sm border border-red-500/50 flex items-center justify-center gap-1 rounded"
+                              tone="danger"
                             >
-                              🗑️ 删除
-                            </button>
+                              删除
+                            </ActionButton>
                           </div>
 
-                          {imageUrls && imageUrls.length > 1 && (
-                            <div className="absolute top-1 right-1">
-                              <div className="px-1.5 py-0.5 bg-black/60 text-[#00F2FE] text-[10px] font-bold backdrop-blur-sm rounded">
+                          {imageUrls.length > 1 && (
+                            <div className="absolute right-1 top-1">
+                              <div className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-bold text-[#00F2FE] backdrop-blur-sm">
                                 +{imageUrls.length - 1}
                               </div>
                             </div>
                           )}
 
-                          <div className="absolute top-1 left-1">
-                            <span className={`px-1.5 py-0.5 text-[10px] font-bold backdrop-blur-sm rounded ${
-                              record.status === 'success' || record.status === 'completed'
-                                ? 'bg-[#10B981]/80 text-white'
-                                : record.status === 'failed' || record.status === 'error'
-                                  ? 'bg-red-500/80 text-white'
-                                  : 'bg-yellow-500/80 text-black'
-                            }`}>
-                              {record.status === 'success' || record.status === 'completed' ? '✓' : record.status === 'failed' || record.status === 'error' ? '✕' : '⏳'}
+                          <div className="absolute left-1 top-1">
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[10px] font-bold backdrop-blur-sm ${
+                                success
+                                  ? 'bg-[#10B981]/80 text-white'
+                                  : failed
+                                    ? 'bg-red-500/80 text-white'
+                                    : 'bg-yellow-500/80 text-black'
+                              }`}
+                            >
+                              {success ? '成功' : failed ? '失败' : '处理中'}
                             </span>
                           </div>
                         </div>
 
                         <div className="p-2">
-                          <div className="flex items-center gap-1 flex-wrap mb-1">
-                            <span className="px-1.5 py-0.5 bg-[#10B981]/20 text-[#10B981] text-[10px] font-bold border border-[#10B981]/50 rounded">
+                          <div className="mb-1 flex flex-wrap items-center gap-1">
+                            <span className="rounded border border-[#10B981]/50 bg-[#10B981]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#10B981]">
                               {record.style_name}
                             </span>
-                            <span className="px-2 py-0.5 bg-[#00F2FE]/20 text-[#00F2FE] text-xs font-bold border border-[#00F2FE]/50 rounded">
+                            <span className="rounded border border-[#00F2FE]/50 bg-[#00F2FE]/20 px-2 py-0.5 text-xs font-bold text-[#00F2FE]">
                               {record.model}
                             </span>
-                            <span className="px-1.5 py-0.5 bg-[#F59E0B]/20 text-[#F59E0B] text-[10px] font-bold border border-[#F59E0B]/50 rounded">
-                              ⚡️ {totalCost}
+                            <span className="rounded border border-[#F59E0B]/50 bg-[#F59E0B]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#F59E0B]">
+                              积分 {totalCost}
                             </span>
                           </div>
 
-                          <div className="flex items-center justify-between">
-                            <p className="text-[10px] text-[#94A3B8] truncate flex-1 mr-2">
-                              {firstSentence}
-                            </p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="flex-1 truncate text-[10px] text-[#94A3B8]">{firstSentence}</p>
                             <button
                               onClick={() => openDetailModal(record)}
-                              className="text-[10px] text-[#00F2FE] hover:text-[#00E676] transition-colors"
+                              className="text-[10px] text-[#00F2FE] transition-colors hover:text-[#00E676]"
                             >
-                              ▼
+                              详情
                             </button>
                           </div>
 
-                          <p className="text-[9px] text-[#475569] mt-1">
-                            {formatDate(record.created_at)}
-                          </p>
+                          <p className="mt-1 text-[9px] text-[#475569]">{formatDate(record.created_at)}</p>
                         </div>
                       </div>
                     )
@@ -692,22 +596,21 @@ export default function RecordsPage() {
           )}
 
           {hasMore && !loading && (
-            <div ref={observerRef} className="text-center py-8">
+            <div ref={observerRef} className="py-8 text-center">
               {loadingMore ? (
-                <div className="inline-flex items-center gap-2 px-6 py-3 bg-[#141923] border border-[#202B3A] rounded-xl">
-                  <div className="w-4 h-4 border-2 border-[#00F2FE] border-t-transparent rounded-full animate-spin"></div>
+                <div className="inline-flex items-center gap-2 rounded-xl border border-[#202B3A] bg-[#141923] px-6 py-3">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#00F2FE] border-t-transparent" />
                   <span className="text-sm text-[#00F2FE]">加载更多...</span>
                 </div>
               ) : (
                 <button
                   onClick={() => {
                     setLoadingMore(true)
-                    setCurrentPage(prev => prev + 1)
-                    fetchRecords(currentPage + 1, false)
+                    setCurrentPage((prev) => prev + 1)
                   }}
-                  className="px-8 py-3 bg-[#141923] border border-[#00F2FE] text-[#00F2FE] font-bold text-sm hover:bg-[#00F2FE] hover:text-[#0A0F1D] transition-all rounded-xl"
+                  className="rounded-xl border border-[#00F2FE] bg-[#141923] px-8 py-3 text-sm font-bold text-[#00F2FE] transition-all hover:bg-[#00F2FE] hover:text-[#0A0F1D]"
                 >
-                  📥 加载更多记录
+                  加载更多记录
                 </button>
               )}
             </div>
@@ -715,184 +618,75 @@ export default function RecordsPage() {
         </div>
       </main>
 
-      {showImagePreview && previewImageUrl && (
-        <div 
-          className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50"
-          onClick={() => setShowImagePreview(false)}
+      {previewImageUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setPreviewImageUrl(null)}
         >
           <button
-            onClick={() => setShowImagePreview(false)}
-            className="absolute top-4 right-4 w-10 h-10 bg-red-500/90 text-white flex items-center justify-center text-xl font-bold hover:bg-red-500 transition-all z-10"
+            onClick={() => setPreviewImageUrl(null)}
+            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/90 text-xl font-bold text-white transition-all hover:bg-red-500"
           >
-            ✕
+            ×
           </button>
-          <img 
-            src={previewImageUrl} 
-            alt="预览图" 
-            className="max-w-full max-h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
+          <img
+            src={previewImageUrl}
+            alt="预览图片"
+            className="max-h-full max-w-full object-contain"
+            onClick={(event) => event.stopPropagation()}
           />
         </div>
       )}
 
-      {showDetailModal && selectedRecord && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-2xl bg-[#141923] border border-[#202B3A] max-h-[90vh] overflow-y-auto rounded-xl">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-white">📋 记录详情</h3>
-                <button
-                  onClick={() => setShowDetailModal(false)}
-                  className="w-8 h-8 bg-[#202B3A] text-white flex items-center justify-center hover:bg-[#2a3343] transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="mb-6">
-                <p className="text-xs text-[#00F2FE] mb-2 uppercase">原始文本</p>
-                <p className="text-sm text-white leading-relaxed whitespace-pre-wrap bg-[#0B0D17] p-4 border border-[#202B3A]">
-                  {selectedRecord.prompt}
-                </p>
-              </div>
-
-              {selectedRecord.style_prompt && (
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-[#00F2FE] uppercase">DeepSeek 翻译 Prompt</p>
-                    <button
-                      onClick={() => handleCopyPrompt(selectedRecord.style_prompt || '', selectedRecord.id)}
-                      className="text-xs text-[#00E676] hover:text-[#00F2FE] transition-colors"
-                    >
-                      {copiedPrompt === selectedRecord.id ? '✓ 已复制' : '📋 复制'}
-                    </button>
-                  </div>
-                  <div className="bg-[#070A13] border border-[#1A2333] p-4 text-xs font-mono text-[#A0AEC0] leading-relaxed max-h-48 overflow-y-auto">
-                    {selectedRecord.style_prompt}
-                  </div>
-                </div>
-              )}
-
-              {selectedRecord.image_urls && (
-                <div className="mb-6">
-                  <p className="text-xs text-[#00F2FE] mb-3 uppercase">全部图片 ({JSON.parse(selectedRecord.image_urls).length}张)</p>
-                  <div className="grid grid-cols-3 gap-3">
-                    {JSON.parse(selectedRecord.image_urls).map((url: string, index: number) => (
-                      <div key={index} className="relative aspect-square bg-[#0A0F1D] border border-[#202B3A] overflow-hidden group cursor-pointer hover:border-[#00F2FE] transition-all">
-                        <img src={url} alt={`图 ${index + 1}`} className="w-full h-full object-cover" />
-                        <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-black/60 text-[#00F2FE] text-[10px]">
-                          {index + 1}
-                        </div>
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
-                          <button
-                            onClick={() => {
-                              setPreviewImageUrl(url)
-                              setShowImagePreview(true)
-                            }}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-2xl"
-                          >
-                            🔍
-                          </button>
-                        </div>
-                        <button
-                          onClick={() => handleDownload(url, index)}
-                          className="absolute bottom-1 right-1 w-6 h-6 bg-[#00F2FE]/80 text-[#0A0F1D] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all text-xs font-bold"
-                        >
-                          ⬇️
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowDetailModal(false)}
-                  className="flex-1 py-3 bg-[#0B0D17] border border-[#202B3A] text-white font-bold text-sm hover:border-[#00F2FE] transition-all"
-                >
-                  关闭
-                </button>
-                {selectedRecord.image_urls && (
-                  <>
-                    <button
-                      onClick={() => {
-                        const urls = JSON.parse(selectedRecord.image_urls)
-                        downloadAllImages(urls)
-                      }}
-                      className="flex-1 py-3 bg-[#00F2FE] text-[#0A0F1D] font-bold text-sm border border-[#00F2FE] shadow-[0_0_15px_rgba(0,242,254,0.4)] hover:shadow-[0_0_20px_rgba(0,242,254,0.6)] transition-all"
-                    >
-                      📥 一键批量下载全部图片
-                    </button>
-                    <button
-                      onClick={() => {
-                        const urls = JSON.parse(selectedRecord.image_urls)
-                        if (urls && urls[0]) {
-                          handleUpscale(selectedRecord.id, urls[0])
-                        }
-                      }}
-                      disabled={upscalingIds.has(selectedRecord.id) || !!image4kUrls[selectedRecord.id]}
-                      className={`flex-1 py-3 font-bold text-sm border transition-all ${
-                        image4kUrls[selectedRecord.id]
-                          ? 'bg-[#10B981] text-[#0A0F1D] border-[#10B981]'
-                          : upscalingIds.has(selectedRecord.id)
-                            ? 'bg-gray-500/50 text-gray-400 border-gray-500/50 cursor-not-allowed'
-                            : 'bg-[#F59E0B] text-[#0A0F1D] border-[#F59E0B] hover:bg-[#fbbf24]'
-                      }`}
-                    >
-                      {image4kUrls[selectedRecord.id] ? (
-                        '✅ 已 4K'
-                      ) : upscalingIds.has(selectedRecord.id) ? (
-                        '⏳ 处理中...'
-                      ) : (
-                        '📐 一键 4K 超清'
-                      )}
-                    </button>
-                  </>
-                )}
-                <button
-                  onClick={() => {
-                    if (confirm('确定要删除这条记录吗？')) {
-                      handleDeleteRecord(selectedRecord.id)
-                    }
-                    setShowDetailModal(false)
-                  }}
-                  className="flex-1 py-3 bg-red-500/20 text-red-400 font-bold text-sm border border-red-500/50 hover:bg-red-500/30 transition-all"
-                >
-                  🗑️ 删除记录
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {selectedRecord && (
+        <RecordDetailModal
+          record={selectedRecord}
+          copiedPromptId={copiedPromptId}
+          onClose={() => setSelectedRecord(null)}
+          onCopyPrompt={handleCopyPrompt}
+          onPreview={(url) => setPreviewImageUrl(url)}
+          onDownload={handleDownload}
+          onDownloadAll={downloadAllImages}
+          onUpscale={handleUpscale}
+          onDelete={async () => {
+            if (confirm('确定要删除这条记录吗？')) {
+              await handleDeleteRecord(selectedRecord.id)
+              setSelectedRecord(null)
+            }
+          }}
+          image4kUrl={image4kUrls[selectedRecord.id]}
+          isUpscaling={upscalingIds.has(selectedRecord.id)}
+          parseImageUrls={parseImageUrls}
+        />
       )}
 
       {showDeleteAllModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-md bg-[#141923] border border-[#202B3A] rounded-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-md rounded-xl border border-[#202B3A] bg-[#141923]">
             <div className="p-6">
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-red-500/20 border border-red-500/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-3xl">⚠️</span>
+              <div className="mb-6 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-red-500/50 bg-red-500/20">
+                  <span className="text-3xl">!</span>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">确认清空所有记录</h3>
+                <h3 className="mb-2 text-xl font-bold text-white">确认清空所有记录</h3>
                 <p className="text-sm text-[#94A3B8]">
-                  此操作将删除您的全部 {records.length} 条生成记录，且无法恢复。<br/>
-                  <span className="text-red-400">请谨慎操作！</span>
+                  这会删除你的全部 {records.length} 条生成记录，并且无法恢复。
+                  <br />
+                  <span className="text-red-400">请谨慎操作。</span>
                 </p>
               </div>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowDeleteAllModal(false)}
-                  className="flex-1 py-3 bg-[#0B0D17] border border-[#202B3A] text-white font-bold text-sm hover:border-[#00F2FE] transition-all"
+                  className="flex-1 rounded-lg border border-[#202B3A] bg-[#0B0D17] py-3 text-sm font-bold text-white transition-all hover:border-[#00F2FE]"
                 >
                   取消
                 </button>
                 <button
-                  onClick={handleDeleteAll}
-                  className="flex-1 py-3 bg-red-500 text-white font-bold text-sm hover:bg-red-600 transition-all"
+                  onClick={() => void handleDeleteAll()}
+                  className="flex-1 rounded-lg bg-red-500 py-3 text-sm font-bold text-white transition-all hover:bg-red-600"
                 >
-                  ✕ 确认删除全部
+                  确认删除
                 </button>
               </div>
             </div>
@@ -900,29 +694,283 @@ export default function RecordsPage() {
         </div>
       )}
 
-      <ChangePasswordModal
-        show={showChangePassword}
-        onClose={() => setShowChangePassword(false)}
-      />
+      <ChangePasswordModal show={showChangePassword} onClose={() => setShowChangePassword(false)} />
+      <TermsModal show={showTermsModal} onClose={() => setShowTermsModal(false)} />
 
-      <TermsModal
-        show={showTermsModal}
-        onClose={() => setShowTermsModal(false)}
-      />
-
-      <footer className="fixed bottom-0 left-0 right-0 py-2.5 bg-[#030712]/95 border-t border-[#1e293b]/50 backdrop-blur-sm z-40">
-        <div className="max-w-[1400px] mx-auto px-4 text-center">
+      <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#1e293b]/50 bg-[#030712]/95 py-2.5 backdrop-blur-sm">
+        <div className="mx-auto max-w-[1400px] px-4 text-center">
           <p className="text-sm text-gray-400">
-            登录或使用本站即代表您同意{' '}
-            <button 
+            使用本站即表示你同意
+            <button
               onClick={() => setShowTermsModal(true)}
-              className="text-[#10B981] hover:text-[#00F2FE] font-semibold underline underline-offset-2 decoration-[#10B981]/50 hover:decoration-[#00F2FE] transition-all duration-300 hover:shadow-[0_0_8px_rgba(16,185,129,0.3)] rounded px-1"
+              className="rounded px-1 font-semibold text-[#10B981] underline decoration-[#10B981]/50 underline-offset-2 transition-all duration-300 hover:text-[#00F2FE] hover:decoration-[#00F2FE]"
             >
               《安全合规与使用须知》
             </button>
           </p>
         </div>
       </footer>
+    </div>
+  )
+}
+
+function NavLink({
+  href,
+  children,
+  active,
+}: {
+  href: string
+  children: React.ReactNode
+  active?: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className={`rounded-xl border px-5 py-2.5 text-base font-semibold tracking-wide transition-all md:text-lg ${
+        active
+          ? 'border-[#202B3A] bg-[#10B981] text-[#0B0D17] shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+          : 'border-[#202B3A] bg-[#141923] text-white hover:border-[#00F2FE] hover:bg-[#1a2230]'
+      }`}
+    >
+      {children}
+    </Link>
+  )
+}
+
+function MenuButton({
+  children,
+  onClick,
+  danger,
+}: {
+  children: React.ReactNode
+  onClick: () => void
+  danger?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+        danger
+          ? 'text-red-400 hover:bg-[#1a2230]'
+          : 'text-white hover:bg-[#1a2230] hover:text-[#00F2FE]'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function ActionButton({
+  children,
+  onClick,
+  tone,
+  disabled,
+}: {
+  children: React.ReactNode
+  onClick: () => void
+  tone: 'green' | 'blue' | 'white' | 'amber' | 'danger' | 'success'
+  disabled?: boolean
+}) {
+  const toneClass: Record<string, string> = {
+    green: 'border-[#00E676] bg-[#00E676] text-[#0A0F1D] hover:bg-[#00ff80]',
+    blue: 'border-[#00F2FE] bg-[#00F2FE] text-[#0A0F1D] hover:bg-[#33f5ff]',
+    white: 'border-white/50 bg-white/90 text-[#0A0F1D] hover:bg-white',
+    amber: 'border-[#F59E0B] bg-[#F59E0B] text-[#0A0F1D] hover:bg-[#fbbf24]',
+    danger: 'border-red-500/50 bg-red-500/90 text-white hover:bg-red-500',
+    success: 'border-[#10B981] bg-[#10B981] text-[#0A0F1D]',
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex w-full items-center justify-center gap-1 rounded border px-2 py-1.5 text-xs font-bold transition-all backdrop-blur-sm ${
+        disabled ? 'cursor-not-allowed border-gray-500/50 bg-gray-500/50 text-gray-400' : toneClass[tone]
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function LoadingState() {
+  return (
+    <div className="py-20 text-center">
+      <div className="animate-pulse">
+        <div className="mx-auto mb-4 h-12 w-12 rounded-full border border-[#202B3A] bg-[#10B981]" />
+        <p className="text-[#00F2FE]">加载中...</p>
+      </div>
+      <div className="mx-auto mt-8 flex max-w-6xl gap-3 px-4">
+        {[1, 2, 3, 4, 5].map((column) => (
+          <div key={column} className="flex-1 space-y-3">
+            {[1, 2, 3].map((row) => (
+              <div key={`${column}-${row}`} className="h-48 animate-pulse rounded-lg border border-[#1E293B] bg-[#141923]" />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function EmptyRecords() {
+  return (
+    <div className="rounded-lg border-2 border-dashed border-[#202B3A] p-16 text-center">
+      <div className="mb-8 inline-flex h-24 w-24 items-center justify-center rounded-xl border border-[#00F2FE] bg-[#141923] shadow-[0_0_30px_rgba(0,242,254,0.3)]">
+        <span className="text-3xl text-[#00F2FE]">空</span>
+      </div>
+      <h3 className="mb-3 text-2xl font-bold text-white">还没有生成记录</h3>
+      <p className="mx-auto mb-8 max-w-md text-[#00F2FE]">
+        去创作页生成你的第一批内容吧。
+        <br />
+        <span className="text-sm text-[#94A3B8]">生成后的图片、提示词和下载入口都会保存在这里。</span>
+      </p>
+      <Link
+        href="/dashboard"
+        className="inline-block rounded-lg border border-[#202B3A] bg-[#00E676] px-8 py-4 text-base font-black text-[#0A0F1D] shadow-[0_0_20px_rgba(0,230,118,0.5)] transition-all hover:shadow-[0_0_30px_rgba(0,230,118,0.8)]"
+      >
+        去创作
+      </Link>
+    </div>
+  )
+}
+
+function RecordDetailModal({
+  record,
+  copiedPromptId,
+  onClose,
+  onCopyPrompt,
+  onPreview,
+  onDownload,
+  onDownloadAll,
+  onUpscale,
+  onDelete,
+  image4kUrl,
+  isUpscaling,
+  parseImageUrls,
+}: {
+  record: GenerationRecord
+  copiedPromptId: string | null
+  onClose: () => void
+  onCopyPrompt: (prompt: string, id: string) => void
+  onPreview: (url: string) => void
+  onDownload: (url: string, index: number) => void
+  onDownloadAll: (urls: string[]) => void
+  onUpscale: (recordId: string, imageUrl: string) => void
+  onDelete: () => void
+  image4kUrl?: string
+  isUpscaling: boolean
+  parseImageUrls: (value: string) => string[]
+}) {
+  const urls = parseImageUrls(record.image_urls)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-[#202B3A] bg-[#141923]">
+        <div className="p-6">
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="text-xl font-bold text-white">记录详情</h3>
+            <button
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#202B3A] text-white transition-colors hover:bg-[#2a3343]"
+            >
+              ×
+            </button>
+          </div>
+
+          <div className="mb-6">
+            <p className="mb-2 text-xs uppercase text-[#00F2FE]">原始文本</p>
+            <p className="whitespace-pre-wrap rounded-lg border border-[#202B3A] bg-[#0B0D17] p-4 text-sm leading-relaxed text-white">
+              {record.prompt}
+            </p>
+          </div>
+
+          {record.style_prompt && (
+            <div className="mb-6">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs uppercase text-[#00F2FE]">扩写 Prompt</p>
+                <button
+                  onClick={() => onCopyPrompt(record.style_prompt || '', record.id)}
+                  className="text-xs text-[#00E676] transition-colors hover:text-[#00F2FE]"
+                >
+                  {copiedPromptId === record.id ? '已复制' : '复制'}
+                </button>
+              </div>
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-[#1A2333] bg-[#070A13] p-4 text-xs leading-relaxed text-[#A0AEC0]">
+                {record.style_prompt}
+              </div>
+            </div>
+          )}
+
+          {urls.length > 0 && (
+            <div className="mb-6">
+              <p className="mb-3 text-xs uppercase text-[#00F2FE]">全部图片（{urls.length} 张）</p>
+              <div className="grid grid-cols-3 gap-3">
+                {urls.map((url, index) => (
+                  <div key={index} className="group relative aspect-square cursor-pointer overflow-hidden rounded-lg border border-[#202B3A] bg-[#0A0F1D] transition-all hover:border-[#00F2FE]">
+                    <img src={url} alt={`图片 ${index + 1}`} className="h-full w-full object-cover" />
+                    <div className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-[#00F2FE]">
+                      {index + 1}
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-all group-hover:bg-black/20">
+                      <button
+                        onClick={() => onPreview(url)}
+                        className="rounded-lg bg-black/50 px-3 py-1 text-sm text-white opacity-0 transition-opacity group-hover:opacity-100"
+                      >
+                        预览
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => onDownload(url, index)}
+                      className="absolute bottom-1 right-1 rounded bg-[#00F2FE]/80 px-2 py-1 text-xs font-bold text-[#0A0F1D] opacity-0 transition-all group-hover:opacity-100"
+                    >
+                      下载
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={onClose}
+              className="min-w-[120px] flex-1 rounded-lg border border-[#202B3A] bg-[#0B0D17] py-3 text-sm font-bold text-white transition-all hover:border-[#00F2FE]"
+            >
+              关闭
+            </button>
+            {urls.length > 0 && (
+              <>
+                <button
+                  onClick={() => void onDownloadAll(urls)}
+                  className="min-w-[160px] flex-1 rounded-lg border border-[#00F2FE] bg-[#00F2FE] py-3 text-sm font-bold text-[#0A0F1D] shadow-[0_0_15px_rgba(0,242,254,0.4)] transition-all hover:shadow-[0_0_20px_rgba(0,242,254,0.6)]"
+                >
+                  批量下载图片
+                </button>
+                <button
+                  onClick={() => urls[0] && onUpscale(record.id, urls[0])}
+                  disabled={isUpscaling || !!image4kUrl}
+                  className={`min-w-[160px] flex-1 rounded-lg border py-3 text-sm font-bold transition-all ${
+                    image4kUrl
+                      ? 'border-[#10B981] bg-[#10B981] text-[#0A0F1D]'
+                      : isUpscaling
+                        ? 'cursor-not-allowed border-gray-500/50 bg-gray-500/50 text-gray-400'
+                        : 'border-[#F59E0B] bg-[#F59E0B] text-[#0A0F1D] hover:bg-[#fbbf24]'
+                  }`}
+                >
+                  {image4kUrl ? '已生成 4K' : isUpscaling ? '处理中...' : '一键 4K 放大'}
+                </button>
+              </>
+            )}
+            <button
+              onClick={onDelete}
+              className="min-w-[120px] flex-1 rounded-lg border border-red-500/50 bg-red-500/20 py-3 text-sm font-bold text-red-400 transition-all hover:bg-red-500/30"
+            >
+              删除记录
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

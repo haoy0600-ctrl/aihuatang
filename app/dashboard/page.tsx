@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { HANDDRAWN_STYLES, HanddrawnStyle } from '@/config/styles'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
@@ -24,159 +23,168 @@ interface CustomStyle {
 
 type GenerationMode = 'text' | 'image'
 type GenerationStatus = 'idle' | 'loading' | 'success'
+type ModelType = 'GPT-Image-2' | 'NanoBanana2'
 
 const ASPECT_RATIOS = [
-  { label: 'auto', value: 'auto', note: '智能自适应' },
-  { label: '1:1', value: '1:1', note: '正方形切片' },
-  { label: '3:4', value: '3:4', note: '小红书经典图文' },
-  { label: '9:16', value: '9:16', note: '小红书/抖音视频' },
-  { label: '16:9', value: '16:9', note: '横屏PPT/课件' },
-  { label: '3:2', value: '3:2', note: '经典摄影比例' },
-  { label: '2:3', value: '2:3', note: '竖版海报' },
-  { label: '4:3', value: '4:3', note: '传统显示器' },
-  { label: '21:9', value: '21:9', note: '宽幅电影感' },
-  { label: '9:21', value: '9:21', note: '超长手机屏' },
-  { label: '1:3', value: '1:3', note: '全景横幅' },
-  { label: '3:1', value: '3:1', note: '长条连环画' },
-  { label: '1:2', value: '1:2', note: '长版教学板书' },
+  { label: 'auto', value: 'auto', note: '自动适配' },
+  { label: '1:1', value: '1:1', note: '方形封面' },
+  { label: '3:4', value: '3:4', note: '竖版配图' },
+  { label: '9:16', value: '9:16', note: '短视频封面' },
+  { label: '16:9', value: '16:9', note: '横版演示 / PPT' },
+  { label: '3:2', value: '3:2', note: '通用横构图' },
+  { label: '2:3', value: '2:3', note: '海报长图' },
+  { label: '4:3', value: '4:3', note: '课程配图' },
+  { label: '21:9', value: '21:9', note: '超宽横幅' },
+  { label: '9:21', value: '9:21', note: '超长竖图' },
+  { label: '1:3', value: '1:3', note: '窄长竖版' },
+  { label: '3:1', value: '3:1', note: '窄长横版' },
+  { label: '1:2', value: '1:2', note: '双倍长图' },
 ]
+
+const systemStyleLabel = (_style: HanddrawnStyle, index: number) => `系统风格 ${index + 1}`
+const getStoredJson = <T,>(key: string, fallback: T): T => {
+  if (typeof window === 'undefined') {
+    return fallback
+  }
+
+  const raw = localStorage.getItem(key)
+  if (!raw) {
+    return fallback
+  }
+
+  try {
+    return JSON.parse(raw) as T
+  } catch {
+    return fallback
+  }
+}
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const abortController = useRef<AbortController | null>(null)
+
+  const [user, setUser] = useState<{ id: string; email: string } | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState('')
-  const abortController = useRef<AbortController | null>(null)
 
   const [genMode, setGenMode] = useState<GenerationMode>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('ai_huatang_draft_genMode') as GenerationMode) || 'text'
-    }
-    return 'text'
+    if (typeof window === 'undefined') return 'text'
+    return (localStorage.getItem('ai_huatang_draft_genMode') as GenerationMode) || 'text'
   })
   const [activeTab, setActiveTab] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      return parseInt(localStorage.getItem('ai_huatang_draft_activeTab') || '1')
-    }
-    return 1
+    if (typeof window === 'undefined') return 1
+    return parseInt(localStorage.getItem('ai_huatang_draft_activeTab') || '1', 10)
   })
   const [totalTabs, setTotalTabs] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      return parseInt(localStorage.getItem('ai_huatang_draft_totalTabs') || '1')
-    }
-    return 1
+    if (typeof window === 'undefined') return 1
+    return parseInt(localStorage.getItem('ai_huatang_draft_totalTabs') || '1', 10)
   })
   const [textSegments, setTextSegments] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ai_huatang_draft_textSegments')
-      if (saved) {
-        try {
-          return JSON.parse(saved)
-        } catch {
-          return Array(10).fill('')
-        }
-      }
-    }
-    return Array(10).fill('')
+    if (typeof window === 'undefined') return Array(10).fill('')
+    return getStoredJson('ai_huatang_draft_textSegments', Array(10).fill(''))
   })
   const [uploadedImages, setUploadedImages] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ai_huatang_draft_uploadedImages')
-      if (saved) {
-        try {
-          return JSON.parse(saved)
-        } catch {
-          return []
-        }
-      }
-    }
-    return []
+    if (typeof window === 'undefined') return []
+    return getStoredJson('ai_huatang_draft_uploadedImages', [])
   })
-  const [selectedModel, setSelectedModel] = useState<'GPT-Image-2' | 'NanoBanana2'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('ai_huatang_draft_model') as 'GPT-Image-2' | 'NanoBanana2') || 'GPT-Image-2'
-    }
-    return 'GPT-Image-2'
+  const [selectedModel, setSelectedModel] = useState<ModelType>(() => {
+    if (typeof window === 'undefined') return 'GPT-Image-2'
+    return (localStorage.getItem('ai_huatang_draft_model') as ModelType) || 'GPT-Image-2'
   })
   const [selectedRatio, setSelectedRatio] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('ai_huatang_draft_ratio') || '9:16'
-    }
-    return '9:16'
+    if (typeof window === 'undefined') return '9:16'
+    return localStorage.getItem('ai_huatang_draft_ratio') || '9:16'
   })
   const [selectedResolution, setSelectedResolution] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('ai_huatang_draft_resolution') || '2K'
-    }
-    return '2K'
+    if (typeof window === 'undefined') return '2K'
+    return localStorage.getItem('ai_huatang_draft_resolution') || '2K'
   })
   const [selectedStyleId, setSelectedStyleId] = useState<number | null>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ai_huatang_draft_styleId')
-      return saved ? parseInt(saved) : null
-    }
-    return null
+    if (typeof window === 'undefined') return null
+    const value = localStorage.getItem('ai_huatang_draft_styleId')
+    return value ? parseInt(value, 10) : null
   })
   const [customStyleName, setCustomStyleName] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('ai_huatang_draft_customStyleName') || ''
-    }
-    return ''
+    if (typeof window === 'undefined') return ''
+    return localStorage.getItem('ai_huatang_draft_customStyleName') || ''
   })
   const [customStylePrompt, setCustomStylePrompt] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('ai_huatang_draft_customStylePrompt') || ''
-    }
-    return ''
+    if (typeof window === 'undefined') return ''
+    return localStorage.getItem('ai_huatang_draft_customStylePrompt') || ''
   })
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ai_huatang_draft_status') as GenerationStatus
-      // 关键修复：loading 状态不恢复，避免刷新后卡死在生成中
-      if (saved === 'loading') {
-        return 'idle'
-      }
-      return saved || 'idle'
-    }
-    return 'idle'
+    if (typeof window === 'undefined') return 'idle'
+    const saved = localStorage.getItem('ai_huatang_draft_status') as GenerationStatus
+    return saved === 'loading' ? 'idle' : saved || 'idle'
   })
   const [generatedImages, setGeneratedImages] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ai_huatang_last_preview')
-      if (saved) {
-        try {
-          return JSON.parse(saved)
-        } catch {
-          return []
-        }
-      }
-    }
-    return []
+    if (typeof window === 'undefined') return []
+    return getStoredJson('ai_huatang_last_preview', [])
   })
   const [customStylesList, setCustomStylesList] = useState<CustomStyle[]>([])
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
-  const [isGuideOpen, setIsGuideOpen] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
+  const [isGuideOpen, setIsGuideOpen] = useState(false)
   const [isApiNoticeOpen, setIsApiNoticeOpen] = useState(false)
   const [isExpanding, setIsExpanding] = useState(false)
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
-    const updateTime = () => {
+    const timer = setInterval(() => {
       const now = new Date()
-      const hours = String(now.getHours()).padStart(2, '0')
-      const minutes = String(now.getMinutes()).padStart(2, '0')
-      const seconds = String(now.getSeconds()).padStart(2, '0')
-      setCurrentTime(`${hours}:${minutes}:${seconds}`)
-    }
-    updateTime()
-    const interval = setInterval(updateTime, 1000)
-    return () => clearInterval(interval)
+      setCurrentTime(now.toLocaleTimeString('zh-CN', { hour12: false }))
+    }, 1000)
+
+    setCurrentTime(new Date().toLocaleTimeString('zh-CN', { hour12: false }))
+    return () => clearInterval(timer)
   }, [])
 
   useEffect(() => {
+    const fetchProfile = async () => {
+      const session = getStoredSession()
+      if (!session) {
+        router.replace('/login')
+        return
+      }
+
+      try {
+        const response = await fetch('/api/auth/me', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({}),
+        })
+
+        const data = await response.json()
+        if (!response.ok || !data.success || !data.user || !data.profile) {
+          clearStoredSession()
+          router.replace('/login')
+          return
+        }
+
+        setUser(data.user)
+        setProfile(data.profile)
+      } catch (error) {
+        console.error('Fetch profile error:', error)
+        clearStoredSession()
+        router.replace('/login')
+        return
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    void fetchProfile()
+  }, [router])
+
+  useEffect(() => {
+    setCustomStylesList(getStoredJson<CustomStyle[]>('customStyles', []))
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
     localStorage.setItem('ai_huatang_draft_genMode', genMode)
     localStorage.setItem('ai_huatang_draft_activeTab', String(activeTab))
     localStorage.setItem('ai_huatang_draft_totalTabs', String(totalTabs))
@@ -185,253 +193,206 @@ export default function DashboardPage() {
     localStorage.setItem('ai_huatang_draft_model', selectedModel)
     localStorage.setItem('ai_huatang_draft_ratio', selectedRatio)
     localStorage.setItem('ai_huatang_draft_resolution', selectedResolution)
+    localStorage.setItem('ai_huatang_draft_customStyleName', customStyleName)
+    localStorage.setItem('ai_huatang_draft_customStylePrompt', customStylePrompt)
+    localStorage.setItem('ai_huatang_draft_status', generationStatus)
+
     if (selectedStyleId) {
       localStorage.setItem('ai_huatang_draft_styleId', String(selectedStyleId))
     } else {
       localStorage.removeItem('ai_huatang_draft_styleId')
     }
-    localStorage.setItem('ai_huatang_draft_customStyleName', customStyleName)
-    localStorage.setItem('ai_huatang_draft_customStylePrompt', customStylePrompt)
-    localStorage.setItem('ai_huatang_draft_status', generationStatus)
-  }, [genMode, activeTab, totalTabs, textSegments, uploadedImages, selectedModel, selectedRatio, selectedResolution, selectedStyleId, customStyleName, customStylePrompt, generationStatus])
+  }, [
+    activeTab,
+    customStyleName,
+    customStylePrompt,
+    genMode,
+    generationStatus,
+    selectedModel,
+    selectedRatio,
+    selectedResolution,
+    selectedStyleId,
+    textSegments,
+    totalTabs,
+    uploadedImages,
+  ])
 
   useEffect(() => {
-    if (generatedImages && generatedImages.length > 0) {
+    if (typeof window === 'undefined') return
+
+    localStorage.setItem('customStyles', JSON.stringify(customStylesList))
+
+    if (generatedImages.length > 0) {
       localStorage.setItem('ai_huatang_last_preview', JSON.stringify(generatedImages))
     } else {
       localStorage.removeItem('ai_huatang_last_preview')
     }
-  }, [generatedImages])
+  }, [customStylesList, generatedImages])
 
-  useEffect(() => {
-    const clearLocalSession = () => {
-      try {
-        clearStoredSession()
-        localStorage.removeItem('sb-gpaptwlbqoxwuawpzcnj-auth-token')
-      } catch (e) {
-        console.error('Failed to clear local storage:', e)
-      }
+  const validSegments = useMemo(
+    () => textSegments.slice(0, totalTabs).filter((item) => item.trim() !== ''),
+    [textSegments, totalTabs]
+  )
+
+  const getResolutionPrice = (resolution: string) => {
+    switch (resolution) {
+      case '1K':
+        return 2
+      case '2K':
+        return 4
+      case '4K':
+        return 8
+      default:
+        return 2
+    }
+  }
+
+  const currentSinglePrice = getResolutionPrice(selectedResolution)
+  const outputCount = genMode === 'text' ? validSegments.length : uploadedImages.length
+  const totalCost = currentSinglePrice * outputCount
+  const currentWordCount = getEffectiveWordCount(textSegments[activeTab - 1] || '')
+
+  const getAspectClass = () => {
+    const ratioMap: Record<string, string> = {
+      auto: 'aspect-[9/16]',
+      '1:1': 'aspect-square',
+      '3:4': 'aspect-[3/4]',
+      '9:16': 'aspect-[9/16]',
+      '16:9': 'aspect-video',
+      '3:2': 'aspect-[3/2]',
+      '2:3': 'aspect-[2/3]',
+      '4:3': 'aspect-[4/3]',
+      '21:9': 'aspect-[21/9]',
+      '9:21': 'aspect-[9/21]',
+      '1:3': 'aspect-[1/3]',
+      '3:1': 'aspect-[3/1]',
+      '1:2': 'aspect-[1/2]',
     }
 
-    const redirectToLogin = () => {
-      clearLocalSession()
-      window.location.href = '/login'
-    }
+    return ratioMap[selectedRatio] || 'aspect-[9/16]'
+  }
 
-    const checkAuthAndGetProfile = async () => {
-      setLoading(true)
-
-      const timeoutPromise = new Promise<void>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 5000)
-      })
-
-      try {
-        if (!supabase) {
-          setUser({ email: 'demo@handdrawn.com' })
-          setProfile({ id: 'demo', email: 'demo@handdrawn.com', credits: 3 })
-          setLoading(false)
-          return
-        }
-
-        const session = getStoredSession()
-        if (!session) {
-          redirectToLogin()
-          return
-        }
-
-        try {
-          const response = await fetch('/api/auth/me', {
-            method: 'POST',
-            headers: authHeaders(),
-            body: JSON.stringify({})
-          })
-
-          const data = await response.json()
-
-          if (!data.success) {
-            redirectToLogin()
-            return
-          }
-
-          setUser(data.user)
-
-          if (data.profile) {
-            setProfile(data.profile)
-          } else {
-            redirectToLogin()
-            return
-          }
-        } catch (error) {
-          console.error('Auth check error:', error)
-          redirectToLogin()
-          return
-        }
-      } catch (error) {
-        console.error('Auth check error:', error)
-        redirectToLogin()
-        return
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    checkAuthAndGetProfile()
-  }, [])
-
-  useEffect(() => {
-    const saved = localStorage.getItem('customStyles')
-    if (saved) {
-      setCustomStylesList(JSON.parse(saved))
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem('customStyles', JSON.stringify(customStylesList))
-  }, [customStylesList])
-
-  const handleLogout = async () => {
+  const handleLogout = () => {
     clearStoredSession()
-    router.push('/login')
+    router.replace('/login')
   }
 
   const handleAddTab = () => {
-    if (totalTabs < 10) {
-      setTotalTabs(totalTabs + 1)
-      setActiveTab(totalTabs + 1)
-    }
+    if (totalTabs >= 10) return
+    setTotalTabs((prev) => prev + 1)
+    setActiveTab(totalTabs + 1)
   }
 
   const handleRemoveTab = () => {
-    if (totalTabs > 1) {
-      const newSegments = [...textSegments]
-      newSegments.splice(activeTab - 1, 1)
-      newSegments.push('')
-      setTextSegments(newSegments)
-      setTotalTabs(totalTabs - 1)
-      setActiveTab(Math.min(activeTab, totalTabs - 1))
-    }
+    if (totalTabs <= 1) return
+
+    const nextSegments = [...textSegments]
+    nextSegments.splice(activeTab - 1, 1)
+    nextSegments.push('')
+    setTextSegments(nextSegments)
+    setTotalTabs((prev) => prev - 1)
+    setActiveTab((prev) => Math.min(prev, totalTabs - 1))
   }
 
   const handleTextChange = (value: string) => {
-    const newSegments = [...textSegments]
-    newSegments[activeTab - 1] = value
-    setTextSegments(newSegments)
+    const nextSegments = [...textSegments]
+    nextSegments[activeTab - 1] = value
+    setTextSegments(nextSegments)
   }
 
   const handleAIExpand = async () => {
     const currentText = textSegments[activeTab - 1]?.trim() || ''
-    
     if (!currentText) {
-      alert('请先输入课程线索（如：新概念1第一课）')
+      alert('请先输入需要优化的文案')
       return
     }
 
     setIsExpanding(true)
-    
+
     try {
       const response = await fetch('/api/expand-text', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ text: currentText })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: currentText }),
       })
 
       const data = await response.json()
-
-      if (data.success && data.expandedText) {
-        const newSegments = [...textSegments]
-        newSegments[activeTab - 1] = data.expandedText
-        setTextSegments(newSegments)
-      } else {
-        alert(data.error || 'AI 扩写失败，请重试')
+      if (!response.ok || !data.success || !data.expandedText) {
+        alert(data.error || 'AI 扩写失败，请稍后重试')
+        return
       }
+
+      const nextSegments = [...textSegments]
+      nextSegments[activeTab - 1] = data.expandedText
+      setTextSegments(nextSegments)
     } catch (error) {
-      console.error('AI Expand Error:', error)
-      alert('AI 扩写请求失败，请检查网络连接')
+      console.error('AI expand error:', error)
+      alert('AI 扩写请求失败，请检查网络后重试')
     } finally {
       setIsExpanding(false)
     }
   }
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) return
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
-
-    Array.from(files).forEach((file) => {
-      if (uploadedImages.length >= 10) return
-      
+    const remaining = Math.max(0, 10 - uploadedImages.length)
+    files.slice(0, remaining).forEach((file) => {
       const reader = new FileReader()
-      reader.onload = (event) => {
-        const result = event.target?.result as string
-        setUploadedImages(prev => [...prev, result])
+      reader.onload = (loadEvent) => {
+        const result = loadEvent.target?.result as string
+        if (!result) return
+        setUploadedImages((prev) => (prev.length >= 10 ? prev : [...prev, result]))
       }
       reader.readAsDataURL(file)
     })
   }
 
   const handleRemoveImage = (index: number) => {
-    const newImages = uploadedImages.filter((_, i) => i !== index)
-    setUploadedImages(newImages)
-  }
-
-  const getEffectiveWordCount = (str: string): number => {
-    if (!str) return 0
-
-    const noPhonetics = str.replace(/\[.*?\]/g, '')
-
-    const chineseChars = (noPhonetics.match(/[\u4e00-\u9fa5]/g) || []).length
-
-    const englishWords = noPhonetics
-      .replace(/[\u4e00-\u9fa5]/g, ' ')
-      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()①②③④⑤⑥⑦⑧⑨⑩\n\r]/g, ' ')
-      .split(/\s+/)
-      .filter(word => word.length > 0)
-
-    return chineseChars + englishWords.length
+    setUploadedImages((prev) => prev.filter((_, currentIndex) => currentIndex !== index))
   }
 
   const handleStyleChange = (styleId: number) => {
     setSelectedStyleId(styleId)
-    
-    const customStyle = customStylesList.find(s => s.id === styleId)
+
+    const customStyle = customStylesList.find((item) => item.id === styleId)
     if (customStyle) {
       setCustomStyleName(customStyle.name)
-      setCustomStylePrompt(`${customStyle.styleKeywords}\n${customStyle.layoutDirectives}`)
+      setCustomStylePrompt([customStyle.styleKeywords, customStyle.layoutDirectives].filter(Boolean).join('\n'))
       return
     }
 
-    const systemStyle = HANDDRAWN_STYLES.find(s => s.id === styleId)
+    const systemStyleIndex = HANDDRAWN_STYLES.findIndex((item) => item.id === styleId)
+    const systemStyle = systemStyleIndex >= 0 ? HANDDRAWN_STYLES[systemStyleIndex] : null
     if (systemStyle) {
-      setCustomStyleName(systemStyle.name)
-      setCustomStylePrompt(`${systemStyle.styleKeywords}\n${systemStyle.layoutDirectives}`)
+      setCustomStyleName(systemStyleLabel(systemStyle, systemStyleIndex))
+      setCustomStylePrompt([systemStyle.styleKeywords, systemStyle.layoutDirectives].filter(Boolean).join('\n'))
     }
   }
 
   const handleSaveCustomStyle = () => {
     if (!customStyleName.trim()) {
-      alert('请输入风格名称')
+      alert('请填写风格名称')
       return
     }
     if (!customStylePrompt.trim()) {
-      alert('请输入风格描述 Prompt')
+      alert('请填写风格 Prompt')
       return
     }
 
-    const newStyle: CustomStyle = {
+    const nextStyle: CustomStyle = {
       id: Date.now(),
       name: customStyleName.trim(),
       styleKeywords: customStylePrompt.trim(),
       layoutDirectives: '',
     }
 
-    setCustomStylesList(prev => [...prev, newStyle])
-    setSelectedStyleId(newStyle.id)
-    alert('自定义风格保存成功！')
+    setCustomStylesList((prev) => [...prev, nextStyle])
+    setSelectedStyleId(nextStyle.id)
+    alert('自定义风格已保存')
   }
-
   const handleDeleteCustomStyle = (styleId: number) => {
-    setCustomStylesList(prev => prev.filter(s => s.id !== styleId))
+    setCustomStylesList((prev) => prev.filter((item) => item.id !== styleId))
     if (selectedStyleId === styleId) {
       setSelectedStyleId(null)
       setCustomStyleName('')
@@ -447,55 +408,45 @@ export default function DashboardPage() {
 
   const executeActualGeneration = async () => {
     if (!selectedStyleId) {
-      alert('请先选择一种风格')
+      alert('请先选择一个风格')
       return
     }
 
-    localStorage.removeItem('ai_huatang_last_preview')
-    setGeneratedImages([])
+    const selectedCustomStyle = customStylesList.find((item) => item.id === selectedStyleId)
+    const selectedSystemStyle = HANDDRAWN_STYLES.find((item) => item.id === selectedStyleId)
+    const activeStyle = selectedCustomStyle || selectedSystemStyle
 
-    let style: HanddrawnStyle | CustomStyle | undefined
-    
-    const customStyle = customStylesList.find(s => s.id === selectedStyleId)
-    if (customStyle) {
-      style = customStyle
-    } else {
-      style = HANDDRAWN_STYLES.find(s => s.id === selectedStyleId)
-    }
-
-    if (!style) {
-      alert('所选风格不存在')
+    if (!activeStyle) {
+      alert('未找到对应风格，请重新选择')
       return
     }
 
-    const validInputs = textSegments.slice(0, totalTabs).filter(item => item.trim() !== '')
-    
-    if (genMode === 'text' && validInputs.length === 0) {
-      alert('请至少输入一段内容')
+    if (genMode === 'text' && validSegments.length === 0) {
+      alert('请先输入要生成的文案')
       return
     }
 
     if (genMode === 'image' && uploadedImages.length === 0) {
-      alert('请至少上传一张参考图片')
-      return
-    }
-
-    if (profile && profile.credits < totalCost) {
-      alert(`积分不足！需要 ${totalCost} 积分，当前 ${profile.credits} 积分`)
+      alert('请先上传参考图片')
       return
     }
 
     if (!profile?.id) {
-      alert('用户未登录，请重新登录')
-      router.push('/login')
+      alert('登录状态已失效，请重新登录')
+      router.replace('/login')
+      return
+    }
+
+    if (profile.credits < totalCost) {
+      alert(`积分不足，本次需要 ${totalCost} 积分，当前仅剩 ${profile.credits} 积分`)
       return
     }
 
     setGenerationStatus('loading')
     setGeneratedImages([])
     setProgress(0)
+    localStorage.removeItem('ai_huatang_last_preview')
 
-    // 动态进度条：渐进式模拟，越往后越慢
     let currentProgress = 0
     const progressTimer = setInterval(() => {
       currentProgress += (100 - currentProgress) * 0.05
@@ -503,11 +454,7 @@ export default function DashboardPage() {
     }, 1500)
 
     abortController.current = new AbortController()
-    const timeoutId = setTimeout(() => {
-      if (abortController.current) {
-        abortController.current.abort()
-      }
-    }, 300000)
+    const timeoutId = setTimeout(() => abortController.current?.abort(), 300000)
 
     try {
       const resolutionMap: Record<string, string> = {
@@ -515,133 +462,103 @@ export default function DashboardPage() {
         '2K': '2048x2048',
         '4K': '4096x4096',
       }
-      const targetSize = resolutionMap[selectedResolution] || '2048x2048'
 
+      const imageSize = resolutionMap[selectedResolution] || '2048x2048'
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({
           userId: profile.id,
-          inputContents: genMode === 'text' ? validInputs : [],
+          inputContents: genMode === 'text' ? validSegments : [],
           referenceImages: genMode === 'image' ? uploadedImages : [],
-          styleName: customStyleName || style.name,
+          styleName: selectedCustomStyle ? selectedCustomStyle.name : selectedSystemStyle?.name,
           customStyle: customStylePrompt,
           aspectRatio: selectedRatio,
           modelType: selectedModel,
           resolution: selectedResolution,
-          imageSize: targetSize,
+          imageSize,
           mode: genMode,
         }),
         signal: abortController.current.signal,
       })
 
-      // #region debug-point FRONTEND-RESPONSE
-      console.error('[DEBUG-FRONTEND-RESPONSE] Response received:', {
-        ok: response.ok,
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers.get('content-type')
-      })
-      // #endregion
+      const rawText = await response.text()
+      let data: any
 
-      const responseText = await response.text()
-
-      // #region debug-point FRONTEND-RAW-TEXT
-      console.error('[DEBUG-FRONTEND-RAW-TEXT] Raw response text:', responseText.substring(0, 500))
-      // #endregion
-
-      let data
       try {
-        data = JSON.parse(responseText)
-        // #region debug-point FRONTEND-PARSE-SUCCESS
-        console.error('[DEBUG-FRONTEND-PARSE-SUCCESS] JSON parsed successfully:', {
-          success: data.success,
-          hasImageUrls: !!data.imageUrls,
-          imageUrlCount: data.imageUrls?.length,
-          creditsRemaining: data.creditsRemaining
-        })
-        // #endregion
+        data = JSON.parse(rawText)
       } catch (parseError: any) {
-        // #region debug-point FRONTEND-PARSE-ERROR
-        console.error('[DEBUG-FRONTEND-PARSE-ERROR] JSON parse failed:', {
-          error: parseError.message,
-          rawText: responseText.substring(0, 500)
-        })
-        // #endregion
-        throw new Error('响应格式错误: ' + parseError.message)
+        throw new Error(`服务返回异常：${parseError.message}`)
       }
 
       if (!response.ok || !data.success) {
-        clearInterval(progressTimer)
-        const errorMsg = data.error || data.message || '生成失败，请重试'
-        console.error('Generation API error:', errorMsg)
-        
-        if (errorMsg.includes('无权使用 VIP 4K')) {
-          const confirmed = confirm('当前账号未开通VIP权限，无法使用4K极清功能。\n\n如需使用4K极清，请前往"卡密兑换"页面充值高级卡密。\n\n是否立即前往充值？')
+        const errorMessage = data.error || data.message || '生成失败，请稍后重试'
+
+        if (String(errorMessage).includes('VIP 4K')) {
+          const confirmed = confirm(
+            '当前账号没有 VIP 4K 权限，无法使用 4K 极清生成功能。\n\n4K 需要更高等级卡密或高级权益解锁。\n\n现在前往充值页吗？'
+          )
           if (confirmed) {
             router.push('/recharge')
           }
         } else {
-          alert(errorMsg)
+          alert(errorMessage)
         }
-        
+
         setGenerationStatus('idle')
         return
       }
 
-      setProgress(100) // 成功时进度条拉满
-      clearInterval(progressTimer)
-      setGeneratedImages(data.imageUrls || [data.imageUrl])
+      const nextImages = data.imageUrls || (data.imageUrl ? [data.imageUrl] : [])
+      setProgress(100)
+      setGeneratedImages(nextImages)
       setGenerationStatus('success')
-
-      // 通知记录页面刷新
       window.dispatchEvent(new Event('ai-huatang-generation-complete'))
 
-      if (profile && data.creditsRemaining !== undefined) {
+      if (data.creditsRemaining !== undefined && profile) {
         setProfile({ ...profile, credits: data.creditsRemaining })
       }
     } catch (error: any) {
-      clearInterval(progressTimer)
-      console.error('Generation failed:', error)
+      console.error('Generation error:', error)
       if (error.name === 'AbortError') {
-        alert('请求超时，请稍后重试')
+        alert('生成超时，已自动取消，请稍后再试')
       } else {
-        alert('网络错误，请稍后重试')
+        alert(error.message || '生成失败，请稍后重试')
       }
       setGenerationStatus('idle')
     } finally {
+      clearInterval(progressTimer)
       clearTimeout(timeoutId)
       abortController.current = null
     }
   }
-
   const handleGenerate = () => {
-    const validSegments = textSegments.filter(s => s && s.trim().length > 0)
-    if (validSegments.length === 0 && genMode === 'text') {
-      alert('请至少输入一段内容')
+    if (genMode === 'text' && validSegments.length === 0) {
+      alert('请先输入要生成的文案')
       return
     }
+
     if (genMode === 'image' && uploadedImages.length === 0) {
-      alert('请至少上传一张参考图片')
+      alert('请先上传参考图片')
       return
     }
+
     if (!selectedStyleId) {
-      alert('请先选择一种风格')
+      alert('请先选择一个风格')
       return
     }
 
-    const hasSeenNotice = localStorage.getItem('has_seen_api_notice')
-    if (!hasSeenNotice) {
-      setIsApiNoticeOpen(true)
-    } else {
-      executeActualGeneration()
+    if (localStorage.getItem('has_seen_api_notice')) {
+      void executeActualGeneration()
+      return
     }
-  }
 
+    setIsApiNoticeOpen(true)
+  }
   const handleConfirmNotice = () => {
     localStorage.setItem('has_seen_api_notice', 'true')
     setIsApiNoticeOpen(false)
-    executeActualGeneration()
+    void executeActualGeneration()
   }
 
   const handleDownload = async (url: string, index: number) => {
@@ -658,7 +575,6 @@ export default function DashboardPage() {
       URL.revokeObjectURL(blobUrl)
     } catch (error) {
       console.error('Download failed:', error)
-      // Fallback: 直接下载
       const link = document.createElement('a')
       link.href = url
       link.download = `handdrawn-${Date.now()}-${index + 1}.png`
@@ -666,142 +582,142 @@ export default function DashboardPage() {
     }
   }
 
-  // 分辨率积分定价：1K=2分 / 2K=4分 / 4K=8分
-  const getResolutionPrice = (model: string, res: string) => {
-    switch (res) {
-      case '1K': return 2
-      case '2K': return 4
-      case '4K': return 8
-      default: return 2
-    }
-  }
-  const validSegments = textSegments.filter(s => s && s.trim().length > 0)
-  const currentSinglePrice = getResolutionPrice(selectedModel, selectedResolution)
-  const outputCount = genMode === 'text' ? validSegments.length : uploadedImages.length
-  const totalCost = currentSinglePrice * outputCount
-  const currentWordCount = getEffectiveWordCount(textSegments[activeTab - 1] || '')
-
-  const getAspectClass = () => {
-    const ratioMap: Record<string, string> = {
-      'auto': 'aspect-[9/16]',
-      '9:16': 'aspect-[9/16]',
-      '3:4': 'aspect-[3/4]',
-      '1:1': 'aspect-square',
-      '16:9': 'aspect-video',
-      '4:3': 'aspect-[4/3]',
-      '2:3': 'aspect-[2/3]',
-      '3:2': 'aspect-[3/2]',
-      '21:9': 'aspect-[21/9]',
-      '9:21': 'aspect-[9/21]',
-      '1:3': 'aspect-[1/3]',
-      '3:1': 'aspect-[3/1]',
-      '1:2': 'aspect-[1/2]',
-    }
-    return ratioMap[selectedRatio] || 'aspect-[9/16]'
-  }
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#040D0A] flex items-center justify-center">
-        <p className="text-[#03F09C] text-sm">正在加载...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#040D0A]">
+        <p className="text-sm text-[#03F09C]">正在加载...</p>
       </div>
     )
   }
 
   return (
-    <div className="h-screen w-full flex flex-col bg-[#040D0A] overflow-hidden">
-      <header className="bg-[#040D0A] border-b border-[#142D24] flex-shrink-0">
-        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center w-full py-1 sm:py-2">
-            <Link href="/" className="flex items-center select-none hover:opacity-80 transition-opacity">
-              <img 
-                src="/logo.png?v=6" 
-                alt="AI画堂" 
-                className="h-20 w-20 object-contain"
-              />
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-[#040D0A]">
+      <header className="border-b border-[#142D24] bg-[#040D0A]">
+        <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
+          <div className="flex w-full items-center justify-between py-1 sm:py-2">
+            <Link href="/" className="flex items-center transition-opacity hover:opacity-80">
+              <img src="/logo.png?v=6" alt="AI画堂" className="h-20 w-20 object-contain" />
             </Link>
 
-            {/* 手机端隐藏导航 */}
-            <nav className="hidden md:flex items-center gap-4">
-              <button onClick={() => setIsGuideOpen(true)} className="px-5 py-2.5 bg-[#091511]/60 backdrop-blur-sm text-[#00F2FE] font-semibold text-base tracking-wide md:text-lg border border-[#00F2FE]/30 hover:bg-[#00F2FE]/10 hover:border-[#00F2FE] transition-all rounded-xl">
+            <nav className="hidden items-center gap-4 md:flex">
+              <button
+                onClick={() => setIsGuideOpen(true)}
+                className="rounded-xl border border-[#00F2FE]/30 bg-[#091511]/60 px-5 py-2.5 text-base font-semibold tracking-wide text-[#00F2FE] transition-all hover:border-[#00F2FE] hover:bg-[#00F2FE]/10 md:text-lg"
+              >
                 功能介绍
               </button>
-              <Link href="/dashboard" className="px-5 py-2.5 bg-[#10B981] text-[#040D0A] font-semibold text-base tracking-wide md:text-lg border border-[#142D24] shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:shadow-[0_0_20px_rgba(16,185,129,0.6)] transition-all rounded-xl">
-                创作
+              <Link
+                href="/dashboard"
+                className="rounded-xl border border-[#142D24] bg-[#10B981] px-5 py-2.5 text-base font-semibold tracking-wide text-[#040D0A] shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all hover:shadow-[0_0_20px_rgba(16,185,129,0.6)] md:text-lg"
+              >
+                创作中心
               </Link>
-              <Link href="/records" className="px-5 py-2.5 bg-[#091511]/60 backdrop-blur-sm text-white font-semibold text-base tracking-wide md:text-lg border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-xl">
-                记录
+              <Link
+                href="/records"
+                className="rounded-xl border border-[#142D24] bg-[#091511]/60 px-5 py-2.5 text-base font-semibold tracking-wide text-white transition-all hover:border-[#10B981] hover:bg-[#142D24] md:text-lg"
+              >
+                生成记录
               </Link>
-              <Link href="/recharge" className="px-5 py-2.5 bg-[#091511]/60 backdrop-blur-sm text-white font-semibold text-base tracking-wide md:text-lg border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-xl">
+              <Link
+                href="/recharge"
+                className="rounded-xl border border-[#142D24] bg-[#091511]/60 px-5 py-2.5 text-base font-semibold tracking-wide text-white transition-all hover:border-[#10B981] hover:bg-[#142D24] md:text-lg"
+              >
                 卡密兑换
               </Link>
             </nav>
 
             <div className="flex items-center gap-2 sm:gap-4">
-              {/* 手机端显示记录按钮 */}
-              <Link href="/records" className="md:hidden px-3 py-1.5 bg-[#091511]/60 backdrop-blur-sm text-white font-bold text-xs border border-[#142D24] hover:border-[#10B981] transition-all rounded-lg">
-                📁 记录
+              <Link
+                href="/records"
+                className="rounded-lg border border-[#142D24] bg-[#091511]/60 px-3 py-1.5 text-xs font-bold text-white transition-all hover:border-[#10B981] md:hidden"
+              >
+                记录
               </Link>
-              {/* 手机端隐藏时间 */}
-              <div className="hidden sm:flex items-center gap-2 text-xs text-[#10B981]">
+
+              <div className="hidden items-center gap-2 text-xs text-[#10B981] sm:flex">
                 <span>{new Date().toLocaleDateString('zh-CN')}</span>
-                <span className="text-white font-mono font-bold text-sm">{currentTime}</span>
+                <span className="font-mono text-sm font-bold text-white">{currentTime}</span>
               </div>
-              {/* 积分显示 */}
-              <div className="px-2 sm:px-3 py-1 sm:py-1.5 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] flex items-center gap-1 sm:gap-1.5 rounded-lg">
-                <span className="w-2 h-2 bg-[#10B981] rounded-full"></span>
-                <span className="text-xs text-[#10B981] hidden sm:inline">积分</span>
-                <span className="font-bold text-white text-sm">{profile?.credits || 0}</span>
+
+              <div className="flex items-center gap-1 rounded-lg border border-[#142D24] bg-[#091511]/60 px-2 py-1 sm:gap-1.5 sm:px-3 sm:py-1.5">
+                <span className="h-2 w-2 rounded-full bg-[#10B981]"></span>
+                <span className="hidden text-xs text-[#10B981] sm:inline">积分</span>
+                <span className="text-sm font-bold text-white">{profile?.credits || 0}</span>
               </div>
-              {/* 用户头像 */}
+
               <div className="relative">
-                <button 
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="w-8 h-8 sm:w-9 sm:h-9 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] flex items-center justify-center hover:border-[#10B981] transition-colors rounded-lg"
+                <button
+                  onClick={() => setShowUserMenu((value) => !value)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#142D24] bg-[#091511]/60 transition-colors hover:border-[#10B981] sm:h-9 sm:w-9"
                 >
-                  <span className="text-white font-bold text-sm">
+                  <span className="text-sm font-bold text-white">
                     {user?.email ? user.email.substring(0, 2).toUpperCase() : 'HA'}
                   </span>
                 </button>
-                
+
                 {showUserMenu && (
-                  <div className="absolute right-0 top-10 w-48 sm:w-56 bg-[#091511]/95 backdrop-blur-md border border-[#142D24] shadow-2xl z-50 rounded-xl overflow-hidden">
-                    <div className="p-3 sm:p-4 border-b border-[#142D24]">
-                      <p className="text-xs text-[#10B981] mb-1">当前账号</p>
-                      <p className="text-sm text-white font-medium truncate">{user?.email || '未登录'}</p>
+                  <div className="absolute right-0 top-10 z-50 w-48 overflow-hidden rounded-xl border border-[#142D24] bg-[#091511]/95 shadow-2xl backdrop-blur-md sm:w-56">
+                    <div className="border-b border-[#142D24] p-3 sm:p-4">
+                      <p className="mb-1 text-xs text-[#10B981]">当前账号</p>
+                      <p className="truncate text-sm font-medium text-white">{user?.email || '未登录'}</p>
                     </div>
-                    {/* 手机端显示导航链接 */}
-                    <div className="p-2 border-b border-[#142D24] md:hidden">
-                      <button 
-                        onClick={() => { router.push('/dashboard'); setShowUserMenu(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg"
+
+                    <div className="border-b border-[#142D24] p-2 md:hidden">
+                      <button
+                        onClick={() => {
+                          router.push('/dashboard')
+                          setShowUserMenu(false)
+                        }}
+                        className="w-full rounded-lg px-3 py-2 text-left text-sm text-white transition-colors hover:bg-[#142D24] hover:text-[#10B981]"
                       >
-                        🎨 创作工坊
+                        创作中心
                       </button>
-                      <button 
-                        onClick={() => { router.push('/records'); setShowUserMenu(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg"
+                      <button
+                        onClick={() => {
+                          router.push('/records')
+                          setShowUserMenu(false)
+                        }}
+                        className="w-full rounded-lg px-3 py-2 text-left text-sm text-white transition-colors hover:bg-[#142D24] hover:text-[#10B981]"
                       >
-                        📁 生成记录
+                        生成记录
                       </button>
-                      <button 
-                        onClick={() => { router.push('/recharge'); setShowUserMenu(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg"
+                      <button
+                        onClick={() => {
+                          router.push('/recharge')
+                          setShowUserMenu(false)
+                        }}
+                        className="w-full rounded-lg px-3 py-2 text-left text-sm text-white transition-colors hover:bg-[#142D24] hover:text-[#10B981]"
                       >
-                        🔑 卡密兑换
+                        卡密兑换
                       </button>
                     </div>
+
                     <div className="p-2">
-                      <button 
-                        onClick={() => { router.push('/profile'); setShowUserMenu(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#142D24] hover:text-[#10B981] transition-colors rounded-lg"
+                      <button
+                        onClick={() => {
+                          router.push('/profile')
+                          setShowUserMenu(false)
+                        }}
+                        className="w-full rounded-lg px-3 py-2 text-left text-sm text-white transition-colors hover:bg-[#142D24] hover:text-[#10B981]"
                       >
                         个人中心
                       </button>
-                      <div className="border-t border-[#142D24] my-1"></div>
-                      <button 
-                        onClick={() => { handleLogout(); setShowUserMenu(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#142D24] transition-colors rounded-lg"
+                      <button
+                        onClick={() => {
+                          setShowChangePassword(true)
+                          setShowUserMenu(false)
+                        }}
+                        className="w-full rounded-lg px-3 py-2 text-left text-sm text-white transition-colors hover:bg-[#142D24] hover:text-[#10B981]"
+                      >
+                        修改密码
+                      </button>
+                      <div className="my-1 border-t border-[#142D24]"></div>
+                      <button
+                        onClick={() => {
+                          handleLogout()
+                          setShowUserMenu(false)
+                        }}
+                        className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-[#142D24]"
                       >
                         退出登录
                       </button>
@@ -814,89 +730,85 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="flex-1 w-full overflow-auto">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-2">
+      <main className="flex-1 overflow-auto">
+        <div className="mx-auto max-w-[1400px] px-4 py-2 sm:px-6 lg:px-8">
           <div className="mb-2">
-            <h2 className="text-lg font-bold mb-1 text-white">创作工坊</h2>
-            <p className="text-xs text-[#10B981]">输入内容，选择风格，生成知识卡片</p>
+            <h2 className="mb-1 text-lg font-bold text-white">创作中心</h2>
+            <p className="text-xs text-[#10B981]">输入内容、选择风格，一键生成高密度知识图卡。</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr,1fr,1.2fr] gap-4 items-stretch">
-            {/* 第一栏：参数配置卡片 */}
-            <div className="bg-[#091511]/60 backdrop-blur-md border border-[#142D24] rounded-xl p-4 md:p-5 shadow-2xl transition-all duration-300">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">🛠️</span>
+          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[1fr,1fr,1.2fr]">
+            <section className="rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-lg">参数</span>
                 <h3 className="text-base font-bold text-white">参数配置</h3>
               </div>
 
-              <div className="space-y-2">
-                {/* 生成模式 */}
+              <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-[#10B981] mb-1 block">生成模式</label>
+                  <label className="mb-1 block text-xs text-[#10B981]">生成模式</label>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setGenMode('text')}
-                      className={`flex-1 py-2.5 text-sm font-bold border border-[#142D24] transition-all rounded-lg ${
+                      className={`flex-1 rounded-lg border border-[#142D24] py-2.5 text-sm font-bold transition-all ${
                         genMode === 'text'
                           ? 'bg-[#10B981] text-[#040D0A] shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-                          : 'bg-[#091511]/60 backdrop-blur-sm text-white hover:bg-[#142D24]'
+                          : 'bg-[#091511]/60 text-white hover:bg-[#142D24]'
                       }`}
                     >
-                      📝 文生图
+                      文生图
                     </button>
                     <button
                       onClick={() => setGenMode('image')}
-                      className={`flex-1 py-2.5 text-sm font-bold border border-[#142D24] transition-all rounded-lg ${
+                      className={`flex-1 rounded-lg border border-[#142D24] py-2.5 text-sm font-bold transition-all ${
                         genMode === 'image'
                           ? 'bg-[#10B981] text-[#040D0A] shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-                          : 'bg-[#091511]/60 backdrop-blur-sm text-white hover:bg-[#142D24]'
+                          : 'bg-[#091511]/60 text-white hover:bg-[#142D24]'
                       }`}
                     >
-                      🖼 图生图
+                      图生图
                     </button>
                   </div>
                 </div>
 
-                {/* 文字内容/图生图输入 */}
-                {genMode === 'text' && (
+                {genMode === 'text' ? (
                   <div>
-                    <label className="text-xs text-[#10B981] mb-1 block">文字内容</label>
-                    
-                    <div className="flex items-center gap-1.5 mb-1">
+                    <label className="mb-1 block text-xs text-[#10B981]">文字内容</label>
+
+                    <div className="mb-1 flex items-center gap-1.5">
                       {Array.from({ length: totalTabs }).map((_, index) => {
-                        const textContent = textSegments[index] || ''
-                        const textLength = getEffectiveWordCount(textContent)
+                        const textLength = getEffectiveWordCount(textSegments[index] || '')
                         const isActive = activeTab === index + 1
                         const isEmpty = textLength === 0
-                        const hasContent = textLength > 0 && textLength <= 150
                         const isOverLength = textLength > 150
-                        
+
                         return (
                           <button
                             key={index}
                             onClick={() => setActiveTab(index + 1)}
-                            className={`relative w-9 h-9 text-sm font-bold border border-[#142D24] transition-all duration-200 rounded-lg ${
+                            className={`relative h-9 w-9 rounded-lg border border-[#142D24] text-sm font-bold transition-all ${
                               isActive
                                 ? 'bg-[#10B981] text-[#040D0A] ring-2 ring-[#10B981] shadow-[0_0_10px_rgba(16,185,129,0.6)]'
                                 : isEmpty
-                                  ? 'bg-[#091511]/60 backdrop-blur-sm text-[#64748B] hover:bg-[#142D24] hover:text-[#94A3B8]'
-                                  : 'bg-[#091511]/60 backdrop-blur-sm text-white hover:bg-[#142D24]'
+                                  ? 'bg-[#091511]/60 text-[#64748B] hover:bg-[#142D24] hover:text-[#94A3B8]'
+                                  : 'bg-[#091511]/60 text-white hover:bg-[#142D24]'
                             }`}
                           >
                             {index + 1}
-                            {hasContent && (
-                              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#10B981] rounded-full shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
+                            {!isEmpty && !isOverLength && (
+                              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[#10B981]"></span>
                             )}
                             {isOverLength && (
-                              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full shadow-[0_0_6px_rgba(245,158,11,0.8)]"></span>
+                              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-500"></span>
                             )}
                           </button>
                         )
                       })}
+
                       {totalTabs < 10 && (
                         <button
                           onClick={handleAddTab}
-                          className="w-9 h-9 text-sm font-bold border border-dashed border-[#142D24] bg-[#091511]/60 backdrop-blur-sm text-[#10B981] hover:border-[#10B981] hover:text-[#10B981] transition-all rounded-lg"
+                          className="h-9 w-9 rounded-lg border border-dashed border-[#142D24] bg-[#091511]/60 text-[#10B981] transition-all hover:border-[#10B981]"
                         >
                           +
                         </button>
@@ -905,76 +817,64 @@ export default function DashboardPage() {
 
                     {totalTabs > 1 && (
                       <button
-                      onClick={handleRemoveTab}
-                      className="mb-1 text-xs text-[#10B981] hover:text-red-400 flex items-center gap-1 transition-colors"
-                    >
-                        🗑 删除当前段落
+                        onClick={handleRemoveTab}
+                        className="mb-1 flex items-center gap-1 text-xs text-[#10B981] transition-colors hover:text-red-400"
+                      >
+                        删除当前段落
                       </button>
                     )}
 
                     <textarea
                       value={textSegments[activeTab - 1] || ''}
-                      onChange={(e) => handleTextChange(e.target.value)}
+                      onChange={(event) => handleTextChange(event.target.value)}
                       placeholder="请输入内容..."
-                      className="w-full px-3 py-3 bg-[#040D0A] border border-[#142D24] text-sm text-white focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] focus:outline-none resize-none h-40 placeholder-[#64748B] rounded-lg"
+                      className="h-40 w-full resize-none rounded-lg border border-[#142D24] bg-[#040D0A] px-3 py-3 text-sm text-white outline-none transition-colors placeholder:text-[#64748B] focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
                     />
 
                     <button
                       onClick={handleAIExpand}
                       disabled={isExpanding}
-                      className={`w-full py-2.5 text-sm font-bold border transition-all duration-300 rounded-lg flex items-center justify-center gap-2 ${
+                      className={`mt-2 flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-bold transition-all ${
                         isExpanding
-                          ? 'bg-[#091511]/60 border-[#142D24] text-[#64748B] cursor-not-allowed'
-                          : 'bg-gradient-to-r from-[#03F09C]/20 to-[#00F2FE]/20 border-[#03F09C]/50 text-[#03F09C] hover:bg-gradient-to-r from-[#03F09C]/30 to-[#00F2FE]/30 hover:border-[#03F09C] hover:shadow-[0_0_15px_rgba(3,240,156,0.3)]'
+                          ? 'cursor-not-allowed border-[#142D24] bg-[#091511]/60 text-[#64748B]'
+                          : 'border-[#03F09C]/50 bg-gradient-to-r from-[#03F09C]/20 to-[#00F2FE]/20 text-[#03F09C] hover:border-[#03F09C] hover:shadow-[0_0_15px_rgba(3,240,156,0.3)]'
                       }`}
                     >
-                      {isExpanding ? (
-                        <>
-                          <span className="animate-spin">⏳</span>
-                          AI正在疯狂优化中...
-                        </>
-                      ) : (
-                        <>
-                          ✨ AI一键优化
-                        </>
-                      )}
+                      {isExpanding ? 'AI 正在优化中...' : 'AI 一键优化'}
                     </button>
 
-                    <div className="flex justify-between items-center mt-2">
+                    <div className="mt-2 flex items-center justify-between">
                       <span className="text-xs text-[#10B981]">第 {activeTab} / {totalTabs} 段</span>
                       <span className="text-xs text-[#10B981]">{currentWordCount} 字</span>
                     </div>
                   </div>
-                )}
-
-                {genMode === 'image' && (
+                ) : (
                   <div>
-                    <label className="text-xs text-[#10B981] mb-2 block">参考图片</label>
-                    
-                    <div className="border-2 border-dashed border-[#142D24] p-8 text-center hover:border-[#10B981] transition-all cursor-pointer bg-[#091511]/30 rounded-lg">
+                    <label className="mb-2 block text-xs text-[#10B981]">参考图片</label>
+                    <div className="rounded-lg border-2 border-dashed border-[#142D24] bg-[#091511]/30 p-8 text-center transition-all hover:border-[#10B981]">
                       <input
+                        id="image-upload"
                         type="file"
                         multiple
                         accept="image/*"
                         onChange={handleImageUpload}
                         className="hidden"
-                        id="image-upload"
                       />
                       <label htmlFor="image-upload" className="cursor-pointer">
-                        <div className="text-4xl mb-3">📤</div>
+                        <div className="mb-3 text-4xl">上传</div>
                         <div className="text-sm text-[#10B981]">点击或拖拽上传参考图片</div>
-                        <div className="text-xs text-[#64748B] mt-1">支持多图上传，最多 10 张</div>
+                        <div className="mt-1 text-xs text-[#64748B]">支持多图上传，最多 10 张</div>
                       </label>
                     </div>
 
                     {uploadedImages.length > 0 && (
                       <div className="mt-4 grid grid-cols-4 gap-2">
                         {uploadedImages.map((url, index) => (
-                          <div key={index} className="relative aspect-square border border-[#142D24] overflow-hidden rounded-lg">
-                            <img src={url} alt={`参考图 ${index + 1}`} className="w-full h-full object-cover" />
+                          <div key={index} className="relative aspect-square overflow-hidden rounded-lg border border-[#142D24]">
+                            <img src={url} alt={`参考图 ${index + 1}`} className="h-full w-full object-cover" />
                             <button
                               onClick={() => handleRemoveImage(index)}
-                              className="absolute top-1 right-1 w-6 h-6 bg-red-500/90 text-white text-xs flex items-center justify-center hover:bg-red-500 transition-colors border border-[#142D24] rounded"
+                              className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded bg-red-500/90 text-xs text-white transition-colors hover:bg-red-500"
                             >
                               ×
                             </button>
@@ -985,52 +885,40 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                {/* 模型选择 */}
                 <div>
-                  <label className="text-xs text-[#10B981] mb-2 block">模型选择</label>
+                  <label className="mb-2 block text-xs text-[#10B981]">模型选择</label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setSelectedModel('GPT-Image-2')}
-                      className={`relative px-4 py-3 border text-center transition-all duration-300 rounded-xl overflow-hidden ${
+                      className={`relative overflow-hidden rounded-xl border px-4 py-3 text-center transition-all ${
                         selectedModel === 'GPT-Image-2'
-                          ? 'border-[#03F09C] bg-[#141d1a]/60 shadow-[0_0_25px_rgba(3,240,156,0.15)] scale-[1.02]'
+                          ? 'scale-[1.02] border-[#03F09C] bg-[#141d1a]/60 shadow-[0_0_25px_rgba(3,240,156,0.15)]'
                           : 'border-white/10 bg-[#0e0d15] hover:border-white/20 hover:bg-white/5'
                       }`}
                     >
-                      {selectedModel === 'GPT-Image-2' && (
-                        <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-[#03F09C] to-[#00F2FE] opacity-10 blur-sm pointer-events-none"></div>
-                      )}
-                      <div className="relative">
-                        <div className={`text-sm font-bold ${selectedModel === 'GPT-Image-2' ? 'text-[#03F09C]' : 'text-white'}`}>GPT-Image-2</div>
-                        <div className={`text-xs mt-0.5 ${selectedModel === 'GPT-Image-2' ? 'text-[#03F09C]/70' : 'text-gray-500'}`}>更高质量</div>
-                      </div>
+                      <div className="text-sm font-bold text-white">GPT-Image-2</div>
+                      <div className="mt-0.5 text-xs text-gray-400">更高质量</div>
                     </button>
                     <button
                       onClick={() => setSelectedModel('NanoBanana2')}
-                      className={`relative px-4 py-3 border text-center transition-all duration-300 rounded-xl overflow-hidden ${
+                      className={`relative overflow-hidden rounded-xl border px-4 py-3 text-center transition-all ${
                         selectedModel === 'NanoBanana2'
-                          ? 'border-[#03F09C] bg-[#141d1a]/60 shadow-[0_0_25px_rgba(3,240,156,0.15)] scale-[1.02]'
+                          ? 'scale-[1.02] border-[#03F09C] bg-[#141d1a]/60 shadow-[0_0_25px_rgba(3,240,156,0.15)]'
                           : 'border-white/10 bg-[#0e0d15] hover:border-white/20 hover:bg-white/5'
                       }`}
                     >
-                      {selectedModel === 'NanoBanana2' && (
-                        <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-[#03F09C] to-[#00F2FE] opacity-10 blur-sm pointer-events-none"></div>
-                      )}
-                      <div className="relative">
-                        <div className={`text-sm font-bold ${selectedModel === 'NanoBanana2' ? 'text-[#03F09C]' : 'text-white'}`}>NanoBanana2</div>
-                        <div className={`text-xs mt-0.5 ${selectedModel === 'NanoBanana2' ? 'text-[#03F09C]/70' : 'text-gray-500'}`}>快速生成</div>
-                      </div>
+                      <div className="text-sm font-bold text-white">NanoBanana2</div>
+                      <div className="mt-0.5 text-xs text-gray-400">更快生成</div>
                     </button>
                   </div>
                 </div>
 
-                {/* 画面比例 */}
                 <div>
-                  <label className="text-xs text-[#10B981] mb-1 block">画面比例</label>
+                  <label className="mb-1 block text-xs text-[#10B981]">画面比例</label>
                   <select
                     value={selectedRatio}
-                    onChange={(e) => setSelectedRatio(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] text-sm text-white focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] focus:outline-none appearance-none cursor-pointer rounded-lg"
+                    onChange={(event) => setSelectedRatio(event.target.value)}
+                    className="w-full cursor-pointer appearance-none rounded-lg border border-[#142D24] bg-[#091511]/60 px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
                   >
                     {ASPECT_RATIOS.map((ratio) => (
                       <option key={ratio.value} value={ratio.value} className="bg-[#091511]">
@@ -1040,116 +928,108 @@ export default function DashboardPage() {
                   </select>
                 </div>
 
-                {/* 分辨率选择 */}
                 <div>
-                  <label className="text-xs text-[#10B981] mb-1 block">分辨率</label>
+                  <label className="mb-1 block text-xs text-[#10B981]">分辨率</label>
                   <div className="flex gap-2">
-                    {['1K', '2K', '4K'].map((res) => (
+                    {['1K', '2K', '4K'].map((resolution) => (
                       <button
-                        key={res}
-                        onClick={() => setSelectedResolution(res)}
-                        className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${
-                          selectedResolution === res
-                            ? 'bg-[#10B981] text-[#040D0A] border border-[#142D24]'
-                            : 'bg-[#091511]/60 text-white border border-[#142D24] hover:bg-[#142D24]'
+                        key={resolution}
+                        onClick={() => setSelectedResolution(resolution)}
+                        className={`flex-1 rounded-lg py-2.5 text-sm font-bold transition-all ${
+                          selectedResolution === resolution
+                            ? 'border border-[#142D24] bg-[#10B981] text-[#040D0A]'
+                            : 'border border-[#142D24] bg-[#091511]/60 text-white hover:bg-[#142D24]'
                         }`}
                       >
-                        {res} ({getResolutionPrice(selectedModel, res)}积分)
+                        {resolution} ({getResolutionPrice(resolution)}积分)
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
-            </div>
+            </section>
 
-            {/* 第二栏：风格定义卡片 */}
-            <div className="bg-[#091511]/60 backdrop-blur-md border border-[#142D24] rounded-xl p-4 md:p-5 shadow-2xl transition-all duration-300">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">🎨</span>
+            <section className="rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-lg">风格</span>
                 <h3 className="text-base font-bold text-white">风格定义</h3>
               </div>
 
               <div className="space-y-3">
-                {/* 系统风格 */}
                 <div>
-                  <label className="text-xs text-[#10B981] mb-1.5 block">系统风格</label>
+                  <label className="mb-1.5 block text-xs text-[#10B981]">系统风格</label>
                   <select
                     value={selectedStyleId || ''}
-                    onChange={(e) => handleStyleChange(Number(e.target.value))}
-                    className="w-full px-3 py-3 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] text-sm text-white focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] focus:outline-none appearance-none cursor-pointer rounded-lg"
+                    onChange={(event) => handleStyleChange(Number(event.target.value))}
+                    className="w-full cursor-pointer appearance-none rounded-lg border border-[#142D24] bg-[#091511]/60 px-3 py-3 text-sm text-white outline-none transition-colors focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
                   >
-                    <option value="" className="bg-[#091511]">选择风格...</option>
+                    <option value="" className="bg-[#091511]">
+                      选择风格...
+                    </option>
                     {customStylesList.length > 0 && (
-                      <optgroup label="⭐ 我的自定义风格" className="bg-[#091511]">
-                        {customStylesList.map(style => (
-                          <option key={style.id} value={style.id} className="bg-[#091511]">{style.name}</option>
+                      <optgroup label="我的自定义风格" className="bg-[#091511]">
+                        {customStylesList.map((style) => (
+                          <option key={style.id} value={style.id} className="bg-[#091511]">
+                            {style.name}
+                          </option>
                         ))}
                       </optgroup>
                     )}
-                    <optgroup label="🔥 顶级爆款" className="bg-[#091511]">
-                      {HANDDRAWN_STYLES.filter(s => s.category === '顶级爆款').map(style => (
-                        <option key={style.id} value={style.id} className="bg-[#091511]">{style.name}</option>
+                    <optgroup label="系统风格" className="bg-[#091511]">
+                      {HANDDRAWN_STYLES.map((style, index) => (
+                        <option key={style.id} value={style.id} className="bg-[#091511]">
+                          {systemStyleLabel(style, index)}
+                        </option>
                       ))}
                     </optgroup>
-                    {['特色极简', '现代数码手账', '传统复古美学', '教育与学术板书', '潮流前沿艺术'].map(category => (
-                      <optgroup key={category} label={category} className="bg-[#091511]">
-                        {HANDDRAWN_STYLES.filter(s => s.category === category).map(style => (
-                          <option key={style.id} value={style.id} className="bg-[#091511]">{style.name}</option>
-                        ))}
-                      </optgroup>
-                    ))}
                   </select>
                 </div>
 
-                {/* 风格名称 */}
                 <div>
-                  <label className="text-xs text-[#10B981] mb-1.5 block">风格名称</label>
+                  <label className="mb-1.5 block text-xs text-[#10B981]">风格名称</label>
                   <input
                     type="text"
                     value={customStyleName}
-                    onChange={(e) => setCustomStyleName(e.target.value)}
+                    onChange={(event) => setCustomStyleName(event.target.value)}
                     placeholder="输入风格名称..."
-                    className="w-full px-3 py-3 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] text-sm text-white focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] focus:outline-none placeholder-[#64748B] rounded-lg"
+                    className="w-full rounded-lg border border-[#142D24] bg-[#091511]/60 px-3 py-3 text-sm text-white outline-none transition-colors placeholder:text-[#64748B] focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
                   />
                 </div>
 
-                {/* 风格描述 */}
                 <div>
-                  <label className="text-xs text-[#10B981] mb-1.5 block">风格描述 Prompt</label>
+                  <label className="mb-1.5 block text-xs text-[#10B981]">风格描述 Prompt</label>
                   <textarea
                     value={customStylePrompt}
-                    onChange={(e) => setCustomStylePrompt(e.target.value)}
+                    onChange={(event) => setCustomStylePrompt(event.target.value)}
                     placeholder="输入风格描述..."
-                    rows={3}
-                    className="w-full px-4 py-3 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] text-sm text-white focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] focus:outline-none resize-none h-24 placeholder-[#64748B] rounded-lg"
+                    rows={4}
+                    className="h-28 w-full resize-none rounded-lg border border-[#142D24] bg-[#091511]/60 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-[#64748B] focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
                   />
                 </div>
 
-                {/* 我的自定义风格 */}
                 <div>
-                  <h4 className="text-xs font-bold mb-2 text-white">✨ 我的自定义风格</h4>
+                  <h4 className="mb-2 text-xs font-bold text-white">我的自定义风格</h4>
                   {customStylesList.length === 0 ? (
-                    <div className="py-3 px-3 bg-[#091511]/30 border border-[#142D24] rounded-lg">
-                      <p className="text-xs text-[#10B981] font-normal text-center">暂无自定义风格，可在上方输入名称与描述后点击下方保存</p>
+                    <div className="rounded-lg border border-[#142D24] bg-[#091511]/30 px-3 py-3">
+                      <p className="text-center text-xs font-normal text-[#10B981]">
+                        还没有自定义风格。填写名称和描述后，点击下方按钮即可保存。
+                      </p>
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {customStylesList.map((style) => (
                         <div
                           key={style.id}
-                          className={`border border-[#142D24] px-3 py-2 text-xs font-mono font-medium cursor-pointer transition-all flex items-center gap-2 rounded-lg ${
+                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
                             selectedStyleId === style.id
-                              ? 'bg-[#10B981] text-[#040D0A] shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                              : 'bg-[#091511]/60 backdrop-blur-sm text-white hover:bg-[#142D24]'
+                              ? 'border-[#10B981] bg-[#10B981] text-[#040D0A] shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                              : 'border-[#142D24] bg-[#091511]/60 text-white hover:bg-[#142D24]'
                           }`}
                         >
-                          <span onClick={() => handleSelectCustomStyle(style)}>{style.name}</span>
+                          <button onClick={() => handleSelectCustomStyle(style)}>{style.name}</button>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteCustomStyle(style.id)
-                            }}
-                            className="hover:text-red-400 transition-colors"
+                            onClick={() => handleDeleteCustomStyle(style.id)}
+                            className="transition-colors hover:text-red-400"
                           >
                             ×
                           </button>
@@ -1159,143 +1039,128 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* 保存按钮 */}
                 <button
                   onClick={handleSaveCustomStyle}
-                  className="w-full py-3 bg-[#091511]/60 backdrop-blur-sm border border-[#142D24] text-sm text-white hover:border-[#10B981] hover:text-[#10B981] transition-all rounded-lg"
+                  className="w-full rounded-lg border border-[#142D24] bg-[#091511]/60 py-3 text-sm text-white transition-all hover:border-[#10B981] hover:text-[#10B981]"
                 >
-                  💾 保存自定义风格
+                  保存自定义风格
                 </button>
 
-                {/* 分隔线 */}
                 <div className="border-t border-[#142D24] pt-4">
-                  {/* 开始生成按钮 */}
                   {generationStatus === 'loading' ? (
                     <button
                       onClick={() => {
-                        if (abortController.current) {
-                          abortController.current.abort()
-                          abortController.current = null
-                        }
+                        abortController.current?.abort()
+                        abortController.current = null
                         setGenerationStatus('idle')
                         localStorage.setItem('ai_huatang_draft_status', 'idle')
                       }}
-                      className="w-full py-3 bg-[#EF4444] text-white font-bold text-sm border border-red-900/50 transition-all flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(239,68,68,0.4)] rounded-lg hover:shadow-[0_0_30px_rgba(239,68,68,0.6)]"
+                      className="w-full rounded-lg border border-red-900/50 bg-[#EF4444] py-3 text-sm font-bold text-white shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-all hover:shadow-[0_0_30px_rgba(239,68,68,0.6)]"
                     >
-                      ⛔ 取消生成
+                      取消生成
                     </button>
                   ) : (
                     <button
                       onClick={handleGenerate}
-                      className="w-full py-3 bg-[#10B981] text-[#040D0A] font-bold text-sm border border-[#142D24] transition-all flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(16,185,129,0.4)] rounded-lg hover:shadow-[0_0_30px_rgba(16,185,129,0.6)]"
+                      className="w-full rounded-lg border border-[#142D24] bg-[#10B981] py-3 text-sm font-bold text-[#040D0A] shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all hover:shadow-[0_0_30px_rgba(16,185,129,0.6)]"
                     >
-                      🚀 开始生成
+                      开始生成
                     </button>
                   )}
 
-                  {/* 成本信息 */}
-                  <div className="mt-3 p-3 bg-[#091511]/30 border border-[#142D24] rounded-lg text-center">
+                  <div className="mt-3 rounded-lg border border-[#142D24] bg-[#091511]/30 p-3 text-center">
                     <div className="flex justify-center gap-4 text-xs">
                       <span className="text-[#10B981]">
-                        模型单价: <span className="font-bold text-white">{currentSinglePrice}</span> 积分
+                        单张成本: <span className="font-bold text-white">{currentSinglePrice}</span> 积分
                       </span>
                       <span className="text-[#10B981]">
                         生成数量: <span className="font-bold text-white">{outputCount}</span> 张
                       </span>
                     </div>
                     <div className="mt-2 text-xs text-[#10B981]">
-                      总成本: <span className="font-bold text-[#10B981]">{totalCost}</span> 积分
+                      总计: <span className="font-bold text-[#10B981]">{totalCost}</span> 积分
                       <span className="mx-3 text-[#142D24]">|</span>
                       余额: <span className="font-bold text-white">{profile?.credits || 0}</span> 积分
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </section>
 
-            {/* 第三栏：生成预览卡片 */}
-            <div className="bg-[#091511]/60 backdrop-blur-md border border-[#142D24] rounded-xl p-4 md:p-5 shadow-2xl transition-all duration-300 flex flex-col">
-              <div className="flex items-center justify-between mb-4">
+            <section className="flex flex-col rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
+              <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">🖼️</span>
+                  <span className="text-lg">预览</span>
                   <h3 className="text-base font-bold text-white">生成预览</h3>
                   {generatedImages.length > 0 && (
-                    <span className="text-xs text-[#10B981] bg-[#10B981]/10 px-2 py-0.5 rounded-full">
+                    <span className="rounded-full bg-[#10B981]/10 px-2 py-0.5 text-xs text-[#10B981]">
                       {generatedImages.length} 张
                     </span>
                   )}
                 </div>
+
                 {generationStatus === 'success' && generatedImages.length > 0 && (
                   <button
-                    onClick={() => {
-                      generatedImages.forEach((url, idx) => {
-                        setTimeout(() => handleDownload(url, idx), idx * 300)
-                      })
-                    }}
-                    className="px-3 py-1.5 bg-[#091511] text-[#10B981] text-xs font-bold border border-[#142D24] hover:bg-[#142D24] hover:border-[#10B981] transition-all rounded-lg flex items-center gap-1"
+                    onClick={() => generatedImages.forEach((url, index) => setTimeout(() => handleDownload(url, index), index * 250))}
+                    className="flex items-center gap-1 rounded-lg border border-[#142D24] bg-[#091511] px-3 py-1.5 text-xs font-bold text-[#10B981] transition-all hover:border-[#10B981] hover:bg-[#142D24]"
                   >
-                    📦 批量保存
+                    批量保存
                   </button>
                 )}
               </div>
-              
-              <div className="flex-1 flex flex-col min-h-0">
-                <div
-                  className={`flex-1 w-full bg-[#040D0A] border-2 border-[#142D24] flex items-center justify-center overflow-hidden rounded-lg`}
-                >
+
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className={`flex flex-1 items-center justify-center overflow-hidden rounded-lg border-2 border-[#142D24] bg-[#040D0A] ${getAspectClass()}`}>
                   {generationStatus === 'idle' && (
-                    <div className="text-center p-8">
-                      <div className="text-5xl mb-4">🎨</div>
-                      <p className="text-base text-[#10B981] mb-2">暂无生成记录</p>
-                      <p className="text-sm text-[#64748B]">请在左侧输入内容并选择风格后<br />点击开始生成</p>
+                    <div className="p-8 text-center">
+                      <div className="mb-4 text-5xl">等待</div>
+                      <p className="mb-2 text-base text-[#10B981]">暂无生成结果</p>
+                      <p className="text-sm text-[#64748B]">
+                        请在左侧输入内容并选择风格后
+                        <br />
+                        点击开始生成
+                      </p>
                     </div>
                   )}
 
                   {generationStatus === 'loading' && (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="text-5xl mb-4 animate-bounce">🎨</div>
-                        <p className="text-base text-[#10B981] mb-2">正在创作中...</p>
-                        <p className="text-sm text-[#64748B]">AI 正在绘制您的知识卡片</p>
-                        <p className="text-xs text-[#64748B]/70 mt-2">预计需要 1-3 分钟，请耐心等待</p>
-                        <div className="mt-4 w-48 h-2 bg-[#142D24] rounded-full overflow-hidden mx-auto">
-                          <div 
-                            className="h-full bg-gradient-to-r from-[#10B981] to-[#34D399] rounded-full transition-all duration-500"
-                            style={{width: `${progress}%`}}
-                          ></div>
-                        </div>
-                        <p className="text-xs text-[#10B981] mt-2 font-mono">{progress}%</p>
+                    <div className="w-full text-center">
+                      <div className="mb-4 text-5xl">生成中</div>
+                      <p className="mb-2 text-base text-[#10B981]">正在创作中...</p>
+                      <p className="text-sm text-[#64748B]">AI 正在绘制你的知识图卡</p>
+                      <p className="mt-2 text-xs text-[#64748B]/70">预计需要 1 到 3 分钟，请耐心等待</p>
+                      <div className="mx-auto mt-4 h-2 w-48 overflow-hidden rounded-full bg-[#142D24]">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-[#10B981] to-[#34D399] transition-all duration-500"
+                          style={{ width: `${progress}%` }}
+                        ></div>
                       </div>
+                      <p className="mt-2 font-mono text-xs text-[#10B981]">{progress}%</p>
                     </div>
                   )}
 
                   {generationStatus === 'success' && generatedImages.length === 1 && (
-                    <img
-                      src={generatedImages[0]}
-                      alt="Generated"
-                      className="w-full h-full object-contain"
-                    />
+                    <img src={generatedImages[0]} alt="Generated" className="h-full w-full object-contain" />
                   )}
 
                   {generationStatus === 'success' && generatedImages.length > 1 && (
-                    <div className="w-full h-full p-2 grid grid-cols-2 grid-rows-2 gap-2">
+                    <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-2 p-2">
                       {generatedImages.slice(0, 4).map((url, index) => (
-                        <div key={index} className="relative group overflow-hidden rounded-lg bg-[#091511]/50 border border-[#142D24]">
-                          <img
-                            src={url}
-                            alt={`Generated ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <div key={index} className="group relative overflow-hidden rounded-lg border border-[#142D24] bg-[#091511]/50">
+                          <img src={url} alt={`Generated ${index + 1}`} className="h-full w-full object-cover" />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100">
                             <button
-                              onClick={(e) => { e.stopPropagation(); handleDownload(url, index) }}
-                              className="px-3 py-1.5 bg-[#10B981] text-[#040D0A] text-xs font-bold rounded-lg shadow-lg hover:shadow-[0_0_15px_rgba(16,185,129,0.6)] transition-all"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                void handleDownload(url, index)
+                              }}
+                              className="rounded-lg bg-[#10B981] px-3 py-1.5 text-xs font-bold text-[#040D0A] shadow-lg transition-all hover:shadow-[0_0_15px_rgba(16,185,129,0.6)]"
                             >
-                              📥 下载
+                              下载
                             </button>
                           </div>
-                          <div className="absolute top-1.5 left-1.5 w-5 h-5 bg-[#10B981] rounded-full flex items-center justify-center">
-                            <span className="text-[#040D0A] font-bold text-xs">{index + 1}</span>
+                          <div className="absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#10B981]">
+                            <span className="text-xs font-bold text-[#040D0A]">{index + 1}</span>
                           </div>
                         </div>
                       ))}
@@ -1306,175 +1171,167 @@ export default function DashboardPage() {
                 {generationStatus === 'success' && generatedImages.length === 1 && (
                   <div className="mt-3 flex gap-2">
                     <button
-                      onClick={() => handleDownload(generatedImages[0], 0)}
-                      className="flex-1 py-2.5 bg-[#10B981] text-[#040D0A] text-sm font-bold border border-[#142D24] shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:shadow-[0_0_25px_rgba(16,185,129,0.6)] transition-all rounded-lg"
+                      onClick={() => void handleDownload(generatedImages[0], 0)}
+                      className="flex-1 rounded-lg border border-[#142D24] bg-[#10B981] py-2.5 text-sm font-bold text-[#040D0A] shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all hover:shadow-[0_0_25px_rgba(16,185,129,0.6)]"
                     >
-                      📥 下载图片
+                      下载图片
                     </button>
                   </div>
                 )}
               </div>
-            </div>
+            </section>
           </div>
-
-          </div>
+        </div>
       </main>
 
-      <ChangePasswordModal
-        show={showChangePassword}
-        onClose={() => setShowChangePassword(false)}
-      />
+      <ChangePasswordModal show={showChangePassword} onClose={() => setShowChangePassword(false)} />
 
       {isGuideOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-[#0B0D17] border border-[#202B3A] rounded-xl max-w-2xl w-full shadow-2xl">
-            <div className="text-gray-200 space-y-4 max-w-xl mx-auto p-1 max-h-[80vh] overflow-y-auto text-xs leading-relaxed scrollbar-thin">
-              <div className="border-b border-white/10 pb-2">
-                <h2 className="text-base font-bold bg-gradient-to-r from-[#03F09C] to-[#00F2FE] bg-clip-text text-transparent font-art">一：🤖 前言介绍</h2>
-                <p className="text-gray-300 mt-1">平台自带50多种风格可选，作为参考就好。支持自定义编辑专属提示词并保存，下次直接调用。任何知识都可以秒变知识图【巨大用推荐】，支持 GPT-Image-2 和 NanoBanana2 模型。</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-xl border border-[#202B3A] bg-[#0B0D17] shadow-2xl">
+            <div className="max-h-[80vh] overflow-y-auto p-5 text-xs leading-relaxed text-gray-200">
+              <div className="border-b border-white/10 pb-3">
+                <h2 className="bg-gradient-to-r from-[#03F09C] to-[#00F2FE] bg-clip-text text-base font-bold text-transparent">
+                  使用说明
+                </h2>
+                <p className="mt-2 text-gray-300">
+                  平台内置多种系统风格，也支持你保存自己的风格模板。适合制作知识图卡、封面图、课程笔记和图文信息卡。
+                </p>
               </div>
-              <div className="space-y-3">
-                <h2 className="text-sm font-bold text-[#00F2FE] border-b border-white/5 pb-0.5">二：💁 使用教学</h2>
-                <div>
-                  <h3 className="font-bold text-white">步骤一：打开网址工具</h3>
-                  <p className="text-gray-400">复制链接在手机/电脑/iPad全设备通用打开。首次使用先注册登录，<span className="text-yellow-400">建议登录后收藏页面</span>以便下次使用。</p>
-                </div>
-                <div className="bg-black/30 p-2 rounded border border-white/5 space-y-1">
-                  <h3 className="font-bold text-[#03F09C]">▶ 文生图模式</h3>
-                  <p className="text-yellow-400 font-bold">💡 重点须知：选择对应模型</p>
-                  <p className="text-gray-300">• 制作<span className="text-white font-bold">英语相关图</span>：选 <span className="text-[#03F09C]">NanoBanana2</span> 模型（英文内容➔选Nano Banana 2）。<br />• 做<span className="text-white font-bold">中文内容图</span>：选 <span className="text-[#00F2FE]">GPT-Image-2</span> 模型（中文内容➔选image-2）。</p>
-                  <p className="text-gray-300 pt-1"><span className="text-white font-bold">方式一（复制知识）：</span>将语文、数学、英语、历史、生物、考研等知识文本复制进去。【知识点内容不易太多】。具体步骤：1.复制粘贴知识 ➔ 2.选择模型、尺寸和风格 ➔ 3.点击生成。</p>
-                  <div className="pt-1 border-t border-white/5 text-gray-400">
-                    <p className="text-white font-bold">方式二（直接输入指令参考，用大白话即可）：</p>
-                    <p className="italic text-[11px]">示例："三年级英语上册单元知识点汇总、产品宣传文案，需要全英文图，要求：全程只用英文，不要出现中文"</p>
-                    <p className="text-[#03F09C]">• 比如：帮我生成一个短视频的封面图，主标题是<span className="underline text-white">教辅卖家偷偷在用的出图工具</span>，标题加粗显眼，位置居中。</p>
-                    <p className="text-[#00F2FE]">• 比如：帮我生成哪个版本，哪个年级、上册或下册，什么学科的知识汇总、练习题、习题、教案等。</p>
-                  </div>
-                </div>
-                <div className="bg-black/30 p-2 rounded border border-white/5 space-y-1">
-                  <h3 className="font-bold text-[#00F2FE]">▶ 图生图模式</h3>
-                  <p className="text-gray-300">📸 上传知识图片并选择风格，也能做出与原图一样的风格！</p>
-                  <p className="text-gray-400"><span className="text-white font-bold">1. 比例与质量：</span>小红书笔记选<span className="text-yellow-400">3比4</span>；短视频封面选<span className="text-yellow-400">9比16</span>；商品图选<span className="text-yellow-400">1比1</span>。<span className="text-[#03F09C]">质量默认超清</span>。<br /><span className="text-white font-bold">2. 风格选择：</span>支持多选，推荐：学霸风、黑板粉笔、儿童手绘、卡通手绘、数字极简等。</p>
-                </div>
-                <div className="bg-black/30 p-2 rounded border border-white/5 text-gray-300">
-                  <h3 className="font-bold text-white">▶ 自定义风格区</h3>
-                  <p className="text-red-400 font-bold">只需自定义风格名称与描述词，用很简单的大白话书写即可！</p>
-                  <p className="text-gray-400">描绘出你心中想要的感觉并保存，即可在风格选项中勾选并生成对应效果。</p>
-                </div>
+
+              <div className="mt-4 space-y-4">
+                <section>
+                  <h3 className="font-bold text-[#00F2FE]">1. 文生图怎么用</h3>
+                  <p className="mt-1 text-gray-400">
+                    输入每一段内容，选择模型、比例、分辨率和风格，然后点击“开始生成”。如果一段文字太长，建议拆成多段。
+                  </p>
+                </section>
+
+                <section>
+                  <h3 className="font-bold text-[#03F09C]">2. 图生图怎么用</h3>
+                  <p className="mt-1 text-gray-400">
+                    上传参考图后，系统会按你选定的风格重新生成，适合做风格迁移、视觉统一和样式复刻。
+                  </p>
+                </section>
+
+                <section>
+                  <h3 className="font-bold text-white">3. 模型选择建议</h3>
+                  <ul className="mt-2 space-y-1 text-gray-300">
+                    <li>• 中文知识图卡、封面图：优先使用 `GPT-Image-2`</li>
+                    <li>• 更快出图、参考图改写：可以试试 `NanoBanana2`</li>
+                    <li>• 4K 会额外消耗更多积分，建议先用 2K 试稿</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h3 className="font-bold text-white">4. 自定义风格</h3>
+                  <p className="mt-1 text-gray-400">
+                    你可以把喜欢的画面风格总结成 Prompt 保存起来，下次直接调用，不用每次重写。
+                  </p>
+                </section>
+
+                <section className="rounded-lg border border-red-500/20 bg-red-950/20 p-3 text-gray-300">
+                  <h3 className="text-sm font-bold text-red-400">特别提醒</h3>
+                  <p className="mt-2">
+                    • 卡密兑换后积分通常会立即到账。
+                    <br />
+                    • 如果因超时或网络波动导致失败，正常情况下不会扣积分。
+                    <br />
+                    • 大量文字排版生图时，个别字形轻微变化属于模型常见现象，建议适当精简字数。
+                  </p>
+                </section>
               </div>
-              <div className="bg-white/5 p-2 rounded border border-white/5 space-y-1.5">
-                <h2 className="text-sm font-bold text-white border-b border-white/5 pb-0.5">🎁 三：🎀 文字生成详细参考</h2>
-                <p className="text-gray-400">💡 因想法各异，固定提示词无法满足所有人，以下分享通用复刻落地方式：</p>
-                <p className="text-gray-300"><strong className="text-[#03F09C]">3.1 英语场景</strong>：切换成 <span className="text-[#03F09C]">NanoBanana2</span> 模型生成，效果极佳。</p>
-                <div className="pt-1 border-t border-white/5 text-gray-300">
-                  <p><strong className="text-[#00F2FE]">3.2 反推复刻</strong>：想要其他图卡视觉，可将原图发给豆包/ChatGPT，发送指令让AI帮你总结风格排版样式的提示词，抓住想要的提取出来即可。</p>
-                  <div className="bg-black/50 p-1.5 rounded font-mono text-[11px] text-gray-400 my-1">指令1：我非常喜欢这个风格，我希望你用大白话的方式把图片上的这种风格给我描述</div>
-                  <div className="bg-black/50 p-1.5 rounded font-mono text-[11px] text-gray-400">指令2：请你使用图片识别模式，帮我总结这张图片上面的风格，排版，样式，把总结好的提示词名称以及内容反馈给我，我需要用这个提示词语去做图</div>
-                </div>
-              </div>
-              <div className="bg-red-950/20 border border-red-500/20 p-3 rounded-lg text-gray-300 space-y-1">
-                <h2 className="font-bold text-red-400 text-sm">⚠️ 特别说明</h2>
-                <p>• 卡密兑换积分立马到账，支持多张卡密连续无缝叠加激活，单张作图成本低至<span className="text-[#03F09C] font-semibold">0.14 元</span>起。<br />• 对接中转站最新模型，偶尔因敏感词或网络波动超时属正常，<span className="text-red-400 font-bold">生成失败绝不扣积分</span>，超时点击二次生成即可。<br />• 大量文字排版生图时，个别汉字若轻微变形属<span className="text-yellow-400">生图模型通病（正常情况）</span>，建议适当精简字数输入。</p>
-              </div>
-              <button onClick={()=>setIsGuideOpen(false)} className="w-full py-2 rounded bg-gradient-to-r from-[#03F09C] to-[#00F2FE] text-[#040D0A] font-bold text-xs hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer shadow-[0_0_10px_rgba(3,240,156,0.2)]">进入创作工坊</button>
+
+              <button
+                onClick={() => setIsGuideOpen(false)}
+                className="mt-5 w-full rounded-lg bg-gradient-to-r from-[#03F09C] to-[#00F2FE] py-2 text-xs font-bold text-[#040D0A] transition-all hover:scale-[1.01]"
+              >
+                进入创作中心
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {isApiNoticeOpen && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-[99] p-4">
-          <div className="bg-[#12111a] border border-white/10 rounded-2xl p-5 max-w-md w-full text-gray-200 shadow-2xl relative">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-amber-500 font-bold text-base">
-                <span>⚠️</span>
+        <div className="fixed inset-0 z-[99] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#12111a] p-5 text-gray-200 shadow-2xl">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-base font-bold text-amber-500">
+                <span>提示</span>
                 <span>API 调用须知</span>
               </div>
-              <button onClick={() => setIsApiNoticeOpen(false)} className="text-gray-500 hover:text-gray-300 transition-colors text-lg">×</button>
-            </div>
-            <p className="text-xs text-gray-400 mb-4">以下两种情况会导致调用成功但无图片返回，且会正常扣费：</p>
-
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-              <div className="border border-white/5 bg-[#1a1824] rounded-xl p-3.5 space-y-2">
-                <div className="flex items-start gap-2 text-sm font-bold text-gray-100">
-                  <span className="text-amber-500 mt-0.5">📐</span>
-                  <span>Prompt 未明确要求「返回图片」</span>
-                </div>
-                <p className="text-xs text-gray-400 leading-relaxed pl-6">
-                  如果文案只描述需求，没写清「请返回图片」，模型可能只进行内部推理，最终无图片返回。
-                </p>
-                <div className="flex items-center gap-1.5 text-[11px] pl-6">
-                  <span className="bg-[#2a1b40] text-[#a885f4] px-1.5 py-0.5 rounded">Prompt</span>
-                  <span className="text-gray-600">➔</span>
-                  <span className="bg-[#24212d] text-gray-400 px-1.5 py-0.5 rounded">内部推理</span>
-                  <span className="text-gray-600">➔</span>
-                  <span className="bg-[#36271c] text-amber-500 px-1.5 py-0.5 rounded">无图片</span>
-                  <span className="text-gray-600">➔</span>
-                  <span className="bg-[#3a1c22] text-red-400 px-1.5 py-0.5 rounded">扣费</span>
-                </div>
-                <div className="bg-[#13251e] border border-[#1b3a2b] p-2 rounded text-[11px] text-[#4ade80] pl-3 leading-relaxed">
-                  建议：在 Prompt 中明确写清「请返回一张图片 / 返回 image 数据」并提供详细描述。
-                </div>
-              </div>
-
-              <div className="border border-white/5 bg-[#1a1824] rounded-xl p-3.5 space-y-2">
-                <div className="flex items-start gap-2 text-sm font-bold text-gray-100">
-                  <span className="text-amber-500 mt-0.5">🛡️</span>
-                  <span>内容触发 Google 官方风控</span>
-                </div>
-                <p className="text-xs text-gray-400 leading-relaxed pl-6">
-                  若文案或图涉及版权 IP、敏感人物/内容，官方直接拒绝，不出图，不报错。
-                </p>
-                <div className="flex items-center gap-1.5 text-[11px] pl-6">
-                  <span className="bg-[#36271c] text-amber-500 px-1.5 py-0.5 rounded">敏感内容</span>
-                  <span className="text-gray-600">➔</span>
-                  <span className="bg-[#201f35] text-[#7976e6] px-1.5 py-0.5 rounded">被拦截</span>
-                  <span className="text-gray-600">➔</span>
-                  <span className="bg-[#36271c] text-amber-500 px-1.5 py-0.5 rounded">无图片</span>
-                  <span className="text-gray-600">➔</span>
-                  <span className="bg-[#3a1c22] text-red-400 px-1.5 py-0.5 rounded">扣费</span>
-                </div>
-                <div className="bg-[#142327] border border-[#18353d] p-2 rounded text-[11px] text-[#38bdf8] pl-3 leading-relaxed">
-                  建议：调整 Prompt，规避版权与敏感描述后重试。
-                </div>
-              </div>
-
-              <div className="bg-[#161a2b] border border-[#222a45] rounded-xl p-3 text-[11px] text-[#5bf] leading-relaxed flex items-start gap-1.5">
-                <span className="mt-0.5">⚠️</span>
-                <span>429/5xx 等官方异常不计费，但上述「调用成功无图」Google 官方规则即扣费。</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5 mt-4">
               <button
                 onClick={() => setIsApiNoticeOpen(false)}
-                className="px-4 py-2 rounded-xl border border-white/10 text-xs font-bold hover:bg-white/5 text-gray-300 transition-all"
+                className="text-lg text-gray-500 transition-colors hover:text-gray-300"
+              >
+                ×
+              </button>
+            </div>
+            <p className="mb-4 text-xs text-gray-400">
+              以下两类情况，可能会出现“调用成功但没有返回图片”的现象，并且仍然可能正常计费：
+            </p>
+
+            <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+              <div className="space-y-2 rounded-xl border border-white/5 bg-[#1a1824] p-3.5">
+                <div className="flex items-start gap-2 text-sm font-bold text-gray-100">
+                  <span className="text-amber-500">1.</span>
+                  <span>Prompt 没有明确要求“返回图片”</span>
+                </div>
+                <p className="pl-6 text-xs leading-relaxed text-gray-400">
+                  如果文案只描述需求，却没有明确要求返回图片，模型有时会停留在内部推理阶段，最终没有图片输出。
+                </p>
+                <div className="rounded bg-[#13251e] p-2 pl-3 text-[11px] leading-relaxed text-[#4ade80]">
+                  建议：在 Prompt 中明确写清“请返回一张图片 / 返回 image 数据”，并补充足够详细的描述。
+                </div>
+              </div>
+
+              <div className="space-y-2 rounded-xl border border-white/5 bg-[#1a1824] p-3.5">
+                <div className="flex items-start gap-2 text-sm font-bold text-gray-100">
+                  <span className="text-amber-500">2.</span>
+                  <span>内容触发上游平台风控</span>
+                </div>
+                <p className="pl-6 text-xs leading-relaxed text-gray-400">
+                  如果内容涉及版权 IP、敏感人物或高风险表达，上游平台可能直接拦截，不报错也不出图。
+                </p>
+                <div className="rounded bg-[#142327] p-2 pl-3 text-[11px] leading-relaxed text-[#38bdf8]">
+                  建议：调整 Prompt，避开版权和敏感描述后再重新尝试。
+                </div>
+              </div>
+
+              <div className="flex items-start gap-1.5 rounded-xl border border-[#222a45] bg-[#161a2b] p-3 text-[11px] leading-relaxed text-[#5bf]">
+                <span>补充：</span>
+                <span>429、5xx 等上游异常通常不计费，但“成功调用却无图片”的情况是否扣费，取决于上游平台规则。</span>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-end gap-3 border-t border-white/5 pt-4">
+              <button
+                onClick={() => setIsApiNoticeOpen(false)}
+                className="rounded-xl border border-white/10 px-4 py-2 text-xs font-bold text-gray-300 transition-all hover:bg-white/5"
               >
                 返回修改
               </button>
               <button
                 onClick={handleConfirmNotice}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#7c3aed] to-[#6366f1] text-xs font-bold text-white shadow-[0_0_15px_rgba(124,58,237,0.3)] hover:scale-[1.01] active:scale-[0.99] transition-all"
+                className="rounded-xl bg-gradient-to-r from-[#7c3aed] to-[#6366f1] px-4 py-2 text-xs font-bold text-white shadow-[0_0_15px_rgba(124,58,237,0.3)] transition-all hover:scale-[1.01]"
               >
-                ✨ 我已了解，开始调用
+                我已了解，开始调用
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <TermsModal
-        show={showTermsModal}
-        onClose={() => setShowTermsModal(false)}
-      />
+      <TermsModal show={showTermsModal} onClose={() => setShowTermsModal(false)} />
 
-      <footer className="fixed bottom-0 left-0 right-0 py-2.5 bg-[#030712]/95 border-t border-[#1e293b]/50 backdrop-blur-sm z-40">
-        <div className="max-w-[1400px] mx-auto px-4 text-center">
+      <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#1e293b]/50 bg-[#030712]/95 py-2.5 backdrop-blur-sm">
+        <div className="mx-auto max-w-[1400px] px-4 text-center">
           <p className="text-sm text-gray-400">
             登录或使用本站即代表您同意{' '}
-            <button 
+            <button
               onClick={() => setShowTermsModal(true)}
-              className="text-[#10B981] hover:text-[#00F2FE] font-semibold underline underline-offset-2 decoration-[#10B981]/50 hover:decoration-[#00F2FE] transition-all duration-300 hover:shadow-[0_0_8px_rgba(16,185,129,0.3)] rounded px-1"
+              className="rounded px-1 font-semibold text-[#10B981] underline decoration-[#10B981]/50 underline-offset-2 transition-all duration-300 hover:text-[#00F2FE]"
             >
               《安全合规与使用须知》
             </button>
@@ -1483,4 +1340,18 @@ export default function DashboardPage() {
       </footer>
     </div>
   )
+}
+
+function getEffectiveWordCount(str: string): number {
+  if (!str) return 0
+
+  const noPhonetics = str.replace(/\[.*?\]/g, '')
+  const chineseChars = (noPhonetics.match(/[\u4e00-\u9fa5]/g) || []).length
+  const englishWords = noPhonetics
+    .replace(/[\u4e00-\u9fa5]/g, ' ')
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()\n\r]/g, ' ')
+    .split(/\s+/)
+    .filter((word) => word.length > 0)
+
+  return chineseChars + englishWords.length
 }

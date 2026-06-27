@@ -13,11 +13,11 @@ const CARD_TIERS = [
 function generateCardCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let code = 'AHT-'
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 4; i += 1) {
     code += chars.charAt(Math.floor(Math.random() * chars.length))
   }
   code += '-'
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 4; i += 1) {
     code += chars.charAt(Math.floor(Math.random() * chars.length))
   }
   return code
@@ -25,25 +25,25 @@ function generateCardCode(): string {
 
 async function generateUniqueCardCode(): Promise<string> {
   let code = generateCardCode()
-  
+
   if (!supabaseAdmin) {
     return code
   }
 
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 10; i += 1) {
     const { data } = await supabaseAdmin
       .from('card_codes')
       .select('id')
       .eq('code', code)
       .limit(1)
-    
+
     if (!data || data.length === 0) {
       return code
     }
     code = generateCardCode()
   }
-  
-  return code + '-' + Date.now().toString(36).toUpperCase()
+
+  return `${code}-${Date.now().toString(36).toUpperCase()}`
 }
 
 export async function POST(request: NextRequest) {
@@ -53,11 +53,11 @@ export async function POST(request: NextRequest) {
 
     const { tierId, customCredits, count } = await request.json()
 
-    const numCount = parseInt(count || '1')
+    const numCount = parseInt(count || '1', 10)
     if (numCount < 1 || numCount > 100) {
       return NextResponse.json(
-        { success: false, error: '生成数量必须在1-100之间' },
-        { status: 400 }
+        { success: false, error: '生成数量必须在 1 到 100 之间。' },
+        { status: 400 },
       )
     }
 
@@ -65,42 +65,42 @@ export async function POST(request: NextRequest) {
     let selectedTierName = ''
 
     if (tierId && tierId !== 'custom') {
-      const tier = CARD_TIERS.find(t => t.id === tierId)
+      const tier = CARD_TIERS.find((item) => item.id === tierId)
       if (!tier) {
         return NextResponse.json(
-          { success: false, error: '无效的档位选择' },
-          { status: 400 }
+          { success: false, error: '无效的档位选择。' },
+          { status: 400 },
         )
       }
       credits = tier.credits
       selectedTierName = tier.name
     } else if (customCredits) {
-      const customAmount = parseInt(customCredits)
+      const customAmount = parseInt(customCredits, 10)
       if (customAmount < 10 || customAmount > 100000) {
         return NextResponse.json(
-          { success: false, error: '自定义积分必须在10-100000之间' },
-          { status: 400 }
+          { success: false, error: '自定义积分必须在 10 到 100000 之间。' },
+          { status: 400 },
         )
       }
       credits = customAmount
       selectedTierName = `自定义 ${customAmount} 积分`
     } else {
       return NextResponse.json(
-        { success: false, error: '请选择档位或输入自定义积分' },
-        { status: 400 }
+        { success: false, error: '请选择档位或输入自定义积分。' },
+        { status: 400 },
       )
     }
 
     const adminClient = supabaseAdmin
     if (!adminClient) {
       return NextResponse.json(
-        { success: false, error: '系统配置未完成，请稍后重试' },
-        { status: 500 }
+        { success: false, error: '系统配置未完成，请稍后重试。' },
+        { status: 500 },
       )
     }
 
     const cardCodes = []
-    for (let i = 0; i < numCount; i++) {
+    for (let i = 0; i < numCount; i += 1) {
       const code = await generateUniqueCardCode()
       cardCodes.push({
         code,
@@ -117,8 +117,8 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Failed to insert card codes:', error)
       return NextResponse.json(
-        { success: false, error: '制卡失败，请重试' },
-        { status: 500 }
+        { success: false, error: '制卡失败，请重试。' },
+        { status: 500 },
       )
     }
 
@@ -129,17 +129,16 @@ export async function POST(request: NextRequest) {
       totalCredits: credits * numCount,
       count: numCount,
     })
-
   } catch (error: any) {
     console.error('Batch generate error:', error)
     return NextResponse.json(
-      { success: false, error: '服务器内部错误' },
-      { status: 500 }
+      { success: false, error: '服务器内部错误。' },
+      { status: 500 },
     )
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     return NextResponse.json({
       success: true,
@@ -147,8 +146,8 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: '服务器内部错误' },
-      { status: 500 }
+      { success: false, error: '服务器内部错误。' },
+      { status: 500 },
     )
   }
 }

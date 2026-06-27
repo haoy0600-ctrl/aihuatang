@@ -37,13 +37,15 @@ export function saveStoredSession(session: LoginSession) {
     email: session.email,
     expiresAt: session.expiresAt,
   }))
-  document.cookie = `${SESSION_STORAGE_KEY}=${cookieValue}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax`
+  const secure = window.location.protocol === 'https:' ? '; secure' : ''
+  document.cookie = `${SESSION_STORAGE_KEY}=${cookieValue}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax${secure}`
 }
 
 export function clearStoredSession() {
   if (typeof window === 'undefined') return
   localStorage.removeItem(SESSION_STORAGE_KEY)
-  document.cookie = `${SESSION_STORAGE_KEY}=; path=/; max-age=0; samesite=lax`
+  const secure = window.location.protocol === 'https:' ? '; secure' : ''
+  document.cookie = `${SESSION_STORAGE_KEY}=; path=/; max-age=0; samesite=lax${secure}`
 }
 
 export function authHeaders(contentType = true): HeadersInit {

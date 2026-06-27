@@ -1,32 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
 import { requireAuthenticatedUser } from '@/lib/auth'
+import { supabaseAdmin } from '@/lib/supabase'
 
-// GET: 获取用户未读公告数量
-// POST: 标记公告为已读
 export async function GET(request: NextRequest) {
   try {
     if (!supabaseAdmin) {
-      return NextResponse.json({
-        success: false,
-        error: 'Supabase 未配置'
-      }, { status: 500 })
+      return NextResponse.json(
+        { success: false, error: 'Supabase 未配置，公告服务暂不可用。' },
+        { status: 500 },
+      )
     }
 
     const auth = await requireAuthenticatedUser(request)
-    if (auth.response || !auth.user) return auth.response
+    if (auth.response || !auth.user) {
+      return auth.response
+    }
 
-    const userId = auth.user.id
-
-    // 获取用户已读的公告 ID
-    const { data: reads } = await supabaseAdmin
+    const { data: reads, error: readsError } = await supabaseAdmin
       .from('announcement_reads')
       .select('announcement_id')
-      .eq('user_id', userId)
+      .eq('user_id', auth.user.id)
 
-    const readIds = reads?.map(r => r.announcement_id) || []
+    if (readsError) {
+      console.error('Get announcement reads error:', readsError)
+      return NextResponse.json(
+        { success: false, error: '读取已读公告记录失败。' },
+        { status: 500 },
+      )
+    }
 
-    // 获取公告列表，排除已读的
+    const readIds = (reads || []).map((item) => item.announcement_id)
+
     let query = supabaseAdmin
       .from('announcements')
       .select('id, title, type, is_pinned, created_at')
@@ -36,81 +40,84 @@ export async function GET(request: NextRequest) {
       query = query.not('id', 'in', `(${readIds.join(',')})`)
     }
 
-    const { data: unreadAnnouncements, error } = await query
+    const { data, error } = await query
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
 
     if (error) {
       console.error('Get unread announcements error:', error)
-      return NextResponse.json({
-        success: false,
-        error: '获取未读公告失败'
-      }, { status: 500 })
+      return NextResponse.json(
+        { success: false, error: '获取未读公告失败。' },
+        { status: 500 },
+      )
     }
 
     return NextResponse.json({
       success: true,
-      unreadCount: unreadAnnouncements?.length || 0,
-      unreadAnnouncements: unreadAnnouncements || []
+      unreadCount: data?.length || 0,
+      unreadAnnouncements: data || [],
     })
   } catch (error) {
-    console.error('Unread announcements API error:', error)
-    return NextResponse.json({
-      success: false,
-      error: '服务器错误'
-    }, { status: 500 })
+    console.error('Unread announcements GET error:', error)
+    return NextResponse.json(
+      { success: false, error: '服务器开小差了，请稍后重试。' },
+      { status: 500 },
+    )
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     if (!supabaseAdmin) {
-      return NextResponse.json({
-        success: false,
-        error: 'Supabase 未配置'
-      }, { status: 500 })
+      return NextResponse.json(
+        { success: false, error: 'Supabase 未配置，公告服务暂不可用。' },
+        { status: 500 },
+      )
     }
 
     const auth = await requireAuthenticatedUser(request)
-    if (auth.response || !auth.user) return auth.response
+    if (auth.response || !auth.user) {
+      return auth.response
+    }
 
-    const userId = auth.user.id
     const body = await request.json()
-    const { announcement_id } = body
+    const announcementId = Number(body.announcement_id)
 
-    if (!announcement_id) {
-      return NextResponse.json({
-        success: false,
-        error: '公告ID不能为空'
-      }, { status: 400 })
+    if (!announcementId || Number.isNaN(announcementId)) {
+      return NextResponse.json(
+        { success: false, error: '公告 ID 无效。' },
+        { status: 400 },
+      )
     }
 
     const { error } = await supabaseAdmin
       .from('announcement_reads')
-      .upsert({
-        announcement_id,
-        user_id: userId,
-        read_at: new Date().toISOString()
-      }, {
-        onConflict: 'announcement_id,user_id'
-      })
+      .upsert(
+        {
+          announcement_id: announcementId,
+          user_id: auth.user.id,
+          read_at: new Date().toISOString(),
+        },
+        { onConflict: 'announcement_id,user_id' },
+      )
 
     if (error) {
-      console.error('Mark read error:', error)
-      return NextResponse.json({
-        success: false,
-        error: '标记已读失败'
-      }, { status: 500 })
+      console.error('Mark announcement as read error:', error)
+      return NextResponse.json(
+        { success: false, error: '标记公告已读失败。' },
+        { status: 500 },
+      )
     }
 
     return NextResponse.json({
-      success: true
+      success: true,
+      message: '公告已标记为已读。',
     })
   } catch (error) {
-    console.error('Mark read API error:', error)
-    return NextResponse.json({
-      success: false,
-      error: '服务器错误'
-    }, { status: 500 })
+    console.error('Unread announcements POST error:', error)
+    return NextResponse.json(
+      { success: false, error: '服务器开小差了，请稍后重试。' },
+      { status: 500 },
+    )
   }
 }

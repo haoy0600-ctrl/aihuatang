@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
 import { requireAdminUser } from '@/lib/auth'
+import { supabaseAdmin } from '@/lib/supabase'
 
-// GET: 获取公告列表
-// POST: 创建公告（仅管理员）
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     if (!supabaseAdmin) {
-      return NextResponse.json({
-        success: false,
-        error: 'Supabase 未配置'
-      }, { status: 500 })
+      return NextResponse.json(
+        { success: false, error: 'Supabase 未配置，公告服务暂不可用。' },
+        { status: 500 },
+      )
     }
 
-    const { data: announcements, error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from('announcements')
       .select('*')
       .eq('is_active', true)
@@ -22,77 +20,85 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Get announcements error:', error)
-      return NextResponse.json({
-        success: false,
-        error: '获取公告列表失败'
-      }, { status: 500 })
+      return NextResponse.json(
+        { success: false, error: '获取公告列表失败。' },
+        { status: 500 },
+      )
     }
 
     return NextResponse.json({
       success: true,
-      announcements: announcements || []
+      announcements: data || [],
     })
   } catch (error) {
-    console.error('Announcements API error:', error)
-    return NextResponse.json({
-      success: false,
-      error: '服务器错误'
-    }, { status: 500 })
+    console.error('Announcements GET error:', error)
+    return NextResponse.json(
+      { success: false, error: '服务器开小差了，请稍后重试。' },
+      { status: 500 },
+    )
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     if (!supabaseAdmin) {
-      return NextResponse.json({
-        success: false,
-        error: 'Supabase 未配置'
-      }, { status: 500 })
+      return NextResponse.json(
+        { success: false, error: 'Supabase 未配置，公告服务暂不可用。' },
+        { status: 500 },
+      )
     }
 
     const auth = await requireAdminUser(request)
-    if (auth.response || !auth.user) return auth.response
-
-    const body = await request.json()
-    const { title, content, type, is_pinned } = body
-
-    if (!title || !content) {
-      return NextResponse.json({
-        success: false,
-        error: '标题和内容不能为空'
-      }, { status: 400 })
+    if (auth.response || !auth.user) {
+      return auth.response
     }
 
-    const { data: announcement, error } = await supabaseAdmin
+    const body = await request.json()
+    const title = String(body.title || '').trim()
+    const content = String(body.content || '').trim()
+    const type = ['system', 'activity', 'maintenance', 'important'].includes(body.type)
+      ? body.type
+      : 'system'
+    const isPinned = Boolean(body.is_pinned)
+
+    if (!title || !content) {
+      return NextResponse.json(
+        { success: false, error: '公告标题和内容不能为空。' },
+        { status: 400 },
+      )
+    }
+
+    const { data, error } = await supabaseAdmin
       .from('announcements')
       .insert({
         title,
         content,
-        type: type || 'system',
-        is_pinned: is_pinned || false,
+        type,
+        is_pinned: isPinned,
         is_active: true,
-        created_by: auth.user.email
+        created_by: auth.user.email,
       })
       .select()
       .single()
 
     if (error) {
       console.error('Create announcement error:', error)
-      return NextResponse.json({
-        success: false,
-        error: '创建公告失败'
-      }, { status: 500 })
+      return NextResponse.json(
+        { success: false, error: '发布公告失败，请稍后再试。' },
+        { status: 500 },
+      )
     }
 
     return NextResponse.json({
       success: true,
-      announcement
+      message: '公告发布成功。',
+      announcement: data,
     })
   } catch (error) {
     console.error('Announcements POST error:', error)
-    return NextResponse.json({
-      success: false,
-      error: '服务器错误'
-    }, { status: 500 })
+    return NextResponse.json(
+      { success: false, error: '服务器开小差了，请稍后重试。' },
+      { status: 500 },
+    )
   }
 }

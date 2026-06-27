@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
 import { TermsModal } from '@/components/TermsModal'
 import { isAdminEmail } from '@/lib/auth'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
@@ -229,9 +229,9 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B0D17] flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-[#0B0D17]">
         <div className="text-center">
-          <div className="w-12 h-12 bg-[#00F2FE] border border-[#00F2FE] mx-auto mb-4 animate-pulse rounded-lg" />
+          <div className="mx-auto mb-4 h-12 w-12 animate-pulse rounded-lg border border-[#00F2FE] bg-[#00F2FE]" />
           <p className="text-[#00F2FE]">加载中...</p>
         </div>
       </div>
@@ -240,11 +240,11 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-[#0B0D17]">
-      <header className="bg-[#0B0D17] border-b border-[#202B3A]">
-        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center w-full py-2 sm:py-3">
+      <header className="border-b border-[#202B3A] bg-[#0B0D17]">
+        <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
+          <div className="flex w-full items-center justify-between py-2 sm:py-3">
             <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center select-none hover:opacity-80 transition-opacity">
+              <Link href="/" className="flex items-center select-none transition-opacity hover:opacity-80">
                 <img src="/logo.png?v=6" alt="AI画堂" className="h-16 w-16 object-contain" />
               </Link>
               <div>
@@ -253,46 +253,43 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <nav className="hidden md:flex items-center gap-2">
+            <nav className="hidden items-center gap-2 md:flex">
               <TabButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')}>
                 数据看板
               </TabButton>
               <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')}>
                 用户管理
               </TabButton>
-              <Link href="/admin/cards" className="px-3 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors">
+              <Link href="/admin/cards" className="px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:text-white">
                 卡密管理
               </Link>
-              <Link
-                href="/admin/announcements"
-                className="px-3 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
-              >
+              <Link href="/admin/announcements" className="px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:text-white">
                 公告管理
               </Link>
             </nav>
 
             <div className="flex items-center gap-2 sm:gap-4">
-              <div className="hidden sm:flex items-center gap-2 text-xs text-[#00F2FE]">
+              <div className="hidden items-center gap-2 text-xs text-[#00F2FE] sm:flex">
                 <span>{new Date().toLocaleDateString('zh-CN')}</span>
-                <span className="text-white font-mono font-bold text-sm">{currentTime}</span>
+                <span className="font-mono text-sm font-bold text-white">{currentTime}</span>
               </div>
               <div className="relative">
                 <button
                   onClick={() => setShowUserMenu((prev) => !prev)}
-                  className="w-8 h-8 sm:w-9 sm:h-9 bg-[#141923] border border-[#202B3A] flex items-center justify-center hover:border-[#00F2FE] transition-colors rounded-lg"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#202B3A] bg-[#141923] transition-colors hover:border-[#00F2FE] sm:h-9 sm:w-9"
                 >
-                  <span className="text-white font-bold text-sm">AD</span>
+                  <span className="text-sm font-bold text-white">AD</span>
                 </button>
                 {showUserMenu && (
-                  <div className="absolute right-0 top-10 w-52 bg-[#141923] border border-[#202B3A] shadow-lg z-50 rounded-xl overflow-hidden">
-                    <div className="p-3 border-b border-[#202B3A]">
-                      <p className="text-xs text-[#00F2FE] mb-1">管理员账号</p>
-                      <p className="text-sm text-white font-medium truncate">{user?.email}</p>
+                  <div className="absolute right-0 top-10 z-50 w-52 overflow-hidden rounded-xl border border-[#202B3A] bg-[#141923] shadow-lg">
+                    <div className="border-b border-[#202B3A] p-3">
+                      <p className="mb-1 text-xs text-[#00F2FE]">管理员账号</p>
+                      <p className="truncate text-sm font-medium text-white">{user?.email}</p>
                     </div>
                     <div className="p-2">
                       <button
                         onClick={handleLogout}
-                        className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#1a2230] transition-colors rounded-lg"
+                        className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-[#1a2230]"
                       >
                         退出登录
                       </button>
@@ -306,10 +303,10 @@ export default function AdminPage() {
       </header>
 
       <main className="p-4 pb-24">
-        <div className="max-w-7xl mx-auto">
+        <div className="mx-auto max-w-7xl">
           {activeTab === 'dashboard' && (
             <>
-              <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+              <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-6">
                 <MetricCard label="总用户数" value={stats?.totalUsers || 0} accent="text-white" />
                 <MetricCard label="总生成次数" value={stats?.totalGenerations || 0} accent="text-white" />
                 <MetricCard label="累计消耗积分" value={stats?.totalConsumed || 0} accent="text-[#00F2FE]" />
@@ -318,7 +315,7 @@ export default function AdminPage() {
                 <MetricCard label="近 7 天活跃用户" value={stats?.activeUsers || 0} accent="text-amber-500" />
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+              <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <StatPanel title="模型使用统计">
                   {Object.entries(stats?.modelStats || {}).length > 0 ? (
                     Object.entries(stats?.modelStats || {}).map(([model, data]) => (
@@ -360,14 +357,14 @@ export default function AdminPage() {
                 </StatPanel>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+              <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <StatPanel title="最近生成记录">
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                  <div className="max-h-64 space-y-2 overflow-y-auto">
                     {stats?.recentGenerations && stats.recentGenerations.length > 0 ? (
                       stats.recentGenerations.map((item) => (
-                        <div key={item.id} className="bg-[#0B0D17] border border-[#202B3A] p-3 rounded-lg">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs text-[#00F2FE] font-medium">{item.model}</span>
+                        <div key={item.id} className="rounded-lg border border-[#202B3A] bg-[#0B0D17] p-3">
+                          <div className="mb-1 flex items-center justify-between">
+                            <span className="text-xs font-medium text-[#00F2FE]">{item.model}</span>
                             <span
                               className={`text-xs font-bold ${
                                 item.status === 'success'
@@ -380,13 +377,13 @@ export default function AdminPage() {
                               {item.status === 'success' ? '成功' : item.status === 'failed' ? '失败' : '处理中'}
                             </span>
                           </div>
-                          <div className="flex items-center justify-between text-xs text-[#94A3B8] mb-1">
+                          <div className="mb-1 flex items-center justify-between text-xs text-[#94A3B8]">
                             <span>
                               {item.resolution} / {item.image_count} 张
                             </span>
                             <span>{formatDate(item.created_at)}</span>
                           </div>
-                          <div className="text-xs text-amber-400 truncate">
+                          <div className="truncate text-xs text-amber-400">
                             用户：{item.username || item.userEmail || '未知'}
                           </div>
                         </div>
@@ -401,9 +398,9 @@ export default function AdminPage() {
                   <div className="space-y-2">
                     {stats?.topUsers && stats.topUsers.length > 0 ? (
                       stats.topUsers.map((item, index) => (
-                        <div key={item.id} className="flex items-center gap-3 bg-[#0B0D17] border border-[#202B3A] p-3 rounded-lg">
+                        <div key={item.id} className="flex items-center gap-3 rounded-lg border border-[#202B3A] bg-[#0B0D17] p-3">
                           <span
-                            className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${
+                            className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
                               index === 0
                                 ? 'bg-amber-500 text-black'
                                 : index === 1
@@ -415,8 +412,8 @@ export default function AdminPage() {
                           >
                             {index + 1}
                           </span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-white truncate">{item.username || item.email}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm text-white">{item.username || item.email}</p>
                             <div className="flex items-center gap-2 text-xs text-[#94A3B8]">
                               <span>{formatDate(item.created_at)} 注册</span>
                               <span className="text-[#10B981]">|</span>
@@ -425,12 +422,9 @@ export default function AdminPage() {
                               <span className="text-amber-400">{item.totalImages || 0} 张</span>
                             </div>
                             {item.usedModels && Object.keys(item.usedModels).length > 0 && (
-                              <div className="flex gap-1 mt-1 flex-wrap">
+                              <div className="mt-1 flex flex-wrap gap-1">
                                 {Object.entries(item.usedModels).slice(0, 3).map(([model, count]) => (
-                                  <span
-                                    key={model}
-                                    className="px-1.5 py-0.5 bg-[#202B3A] text-[10px] text-[#00F2FE] rounded"
-                                  >
+                                  <span key={model} className="rounded bg-[#202B3A] px-1.5 py-0.5 text-[10px] text-[#00F2FE]">
                                     {model} x{count}
                                   </span>
                                 ))}
@@ -453,10 +447,10 @@ export default function AdminPage() {
               </div>
 
               <StatPanel title="实时生成队列监控">
-                <div className="flex items-center justify-between mb-4">
+                <div className="mb-4 flex items-center justify-between">
                   <span className="text-sm text-[#94A3B8]">当前待处理任务</span>
                   <span
-                    className={`px-3 py-1 rounded-full text-sm font-bold ${
+                    className={`rounded-full px-3 py-1 text-sm font-bold ${
                       stats?.queueCount && stats.queueCount > 0
                         ? 'bg-yellow-500/20 text-yellow-400'
                         : 'bg-[#10B981]/20 text-[#10B981]'
@@ -467,15 +461,15 @@ export default function AdminPage() {
                 </div>
 
                 {stats?.queue && stats.queue.length > 0 ? (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className="max-h-48 space-y-2 overflow-y-auto">
                     {stats.queue.map((item) => (
-                      <div key={item.id} className="bg-[#0B0D17] border border-[#202B3A] p-3 rounded-lg">
-                        <div className="flex items-center justify-between mb-1">
+                      <div key={item.id} className="rounded-lg border border-[#202B3A] bg-[#0B0D17] p-3">
+                        <div className="mb-1 flex items-center justify-between">
                           <span className="text-xs text-[#00F2FE]">任务 {item.id.substring(0, 8)}</span>
                           <span className="text-xs text-yellow-400">处理中</span>
                         </div>
-                        <p className="text-sm text-white truncate">{item.prompt.substring(0, 50)}...</p>
-                        <p className="text-[10px] text-[#475569] mt-1">{formatDate(item.created_at)}</p>
+                        <p className="truncate text-sm text-white">{item.prompt.substring(0, 50)}...</p>
+                        <p className="mt-1 text-[10px] text-[#475569]">{formatDate(item.created_at)}</p>
                       </div>
                     ))}
                   </div>
@@ -487,30 +481,30 @@ export default function AdminPage() {
           )}
 
           {activeTab === 'users' && (
-            <div className="bg-[#141923] border border-[#202B3A] rounded-xl overflow-hidden">
-              <div className="p-4 border-b border-[#202B3A]">
+            <div className="overflow-hidden rounded-xl border border-[#202B3A] bg-[#141923]">
+              <div className="border-b border-[#202B3A] p-4">
                 <h3 className="text-lg font-bold text-white">用户管理</h3>
-                <p className="text-xs text-[#94A3B8] mt-1">共 {users.length} 个用户</p>
+                <p className="mt-1 text-xs text-[#94A3B8]">共 {users.length} 个用户</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="bg-[#0B0D17]">
-                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">用户 ID</th>
-                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">用户名 / 邮箱</th>
-                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">积分</th>
-                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">生成次数</th>
-                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">常用模型</th>
-                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">VIP 等级</th>
-                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">注册时间</th>
-                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">状态</th>
-                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">操作</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-[#94A3B8]">用户 ID</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-[#94A3B8]">用户名 / 邮箱</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-[#94A3B8]">积分</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-[#94A3B8]">生成次数</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-[#94A3B8]">常用模型</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-[#94A3B8]">VIP 等级</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-[#94A3B8]">注册时间</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-[#94A3B8]">状态</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-[#94A3B8]">操作</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.map((item) => (
                       <tr key={item.id} className="border-t border-[#202B3A] hover:bg-[#1a2230]">
-                        <td className="px-4 py-3 text-sm text-[#94A3B8] font-mono">{item.id.substring(0, 12)}...</td>
+                        <td className="px-4 py-3 font-mono text-sm text-[#94A3B8]">{item.id.substring(0, 12)}...</td>
                         <td className="px-4 py-3">
                           <p className="text-sm text-white">{item.username || item.email}</p>
                           {item.username && item.email && <p className="text-xs text-[#94A3B8]">{item.email}</p>}
@@ -525,7 +519,7 @@ export default function AdminPage() {
                           {item.usedModels && Object.keys(item.usedModels).length > 0 ? (
                             <div className="flex flex-wrap gap-1">
                               {Object.entries(item.usedModels).slice(0, 2).map(([model, count]) => (
-                                <span key={model} className="px-1.5 py-0.5 bg-[#202B3A] text-[10px] text-[#00F2FE] rounded">
+                                <span key={model} className="rounded bg-[#202B3A] px-1.5 py-0.5 text-[10px] text-[#00F2FE]">
                                   {model} x{count}
                                 </span>
                               ))}
@@ -539,7 +533,7 @@ export default function AdminPage() {
                         </td>
                         <td className="px-4 py-3">
                           {item.vip_level && item.vip_level > 0 ? (
-                            <span className="px-2 py-1 bg-amber-500/20 text-amber-400 text-xs font-bold rounded">
+                            <span className="rounded bg-amber-500/20 px-2 py-1 text-xs font-bold text-amber-400">
                               VIP Lv.{item.vip_level}
                             </span>
                           ) : (
@@ -549,17 +543,15 @@ export default function AdminPage() {
                         <td className="px-4 py-3 text-sm text-[#94A3B8]">{formatDate(item.created_at)}</td>
                         <td className="px-4 py-3">
                           <span
-                            className={`px-2 py-1 rounded text-xs font-bold ${
-                              item.banned
-                                ? 'bg-red-500/20 text-red-400'
-                                : 'bg-[#10B981]/20 text-[#10B981]'
+                            className={`rounded px-2 py-1 text-xs font-bold ${
+                              item.banned ? 'bg-red-500/20 text-red-400' : 'bg-[#10B981]/20 text-[#10B981]'
                             }`}
                           >
                             {item.banned ? '已禁用' : '正常'}
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex gap-2 flex-wrap">
+                          <div className="flex flex-wrap gap-2">
                             <button
                               onClick={() => {
                                 setSelectedUserId(item.id)
@@ -567,7 +559,7 @@ export default function AdminPage() {
                                 setCreditAmount(10)
                                 setShowCreditModal(true)
                               }}
-                              className="px-2 py-1 bg-[#10B981]/20 text-[#10B981] text-xs font-bold border border-[#10B981]/50 hover:bg-[#10B981]/30 transition-all rounded"
+                              className="rounded border border-[#10B981]/50 bg-[#10B981]/20 px-2 py-1 text-xs font-bold text-[#10B981] transition-all hover:bg-[#10B981]/30"
                             >
                               +积分
                             </button>
@@ -578,23 +570,23 @@ export default function AdminPage() {
                                 setCreditAmount(10)
                                 setShowCreditModal(true)
                               }}
-                              className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs font-bold border border-yellow-500/50 hover:bg-yellow-500/30 transition-all rounded"
+                              className="rounded border border-yellow-500/50 bg-yellow-500/20 px-2 py-1 text-xs font-bold text-yellow-400 transition-all hover:bg-yellow-500/30"
                             >
                               -积分
                             </button>
                             <button
                               onClick={() => handleToggleStatus(item.id)}
-                              className={`px-2 py-1 text-xs font-bold border transition-all rounded ${
+                              className={`rounded border px-2 py-1 text-xs font-bold transition-all ${
                                 item.banned
-                                  ? 'bg-[#10B981]/20 text-[#10B981] border-[#10B981]/50'
-                                  : 'bg-red-500/20 text-red-400 border-red-500/50'
+                                  ? 'border-[#10B981]/50 bg-[#10B981]/20 text-[#10B981]'
+                                  : 'border-red-500/50 bg-red-500/20 text-red-400'
                               }`}
                             >
                               {item.banned ? '解禁' : '禁用'}
                             </button>
                             <button
                               onClick={() => handleDeleteUser(item.id, item.email)}
-                              className="px-2 py-1 bg-red-600/20 text-red-500 text-xs font-bold border border-red-600/50 hover:bg-red-600/30 transition-all rounded"
+                              className="rounded border border-red-600/50 bg-red-600/20 px-2 py-1 text-xs font-bold text-red-500 transition-all hover:bg-red-600/30"
                             >
                               删除
                             </button>
@@ -611,40 +603,38 @@ export default function AdminPage() {
       </main>
 
       {showCreditModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-md bg-[#141923] border border-[#202B3A] rounded-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-md rounded-xl border border-[#202B3A] bg-[#141923]">
             <div className="p-6">
-              <h3 className="text-lg font-bold text-white mb-4">
+              <h3 className="mb-4 text-lg font-bold text-white">
                 {creditAction === 'add' ? '增加积分' : '扣除积分'}
               </h3>
               {selectedUser && (
-                <p className="text-sm text-[#94A3B8] mb-4">
+                <p className="mb-4 text-sm text-[#94A3B8]">
                   当前用户：<span className="text-white">{selectedUser.username || selectedUser.email}</span>
                 </p>
               )}
               <div className="mb-6">
-                <label className="block text-xs text-[#94A3B8] mb-2">积分数量</label>
+                <label className="mb-2 block text-xs text-[#94A3B8]">积分数量</label>
                 <input
                   type="number"
                   min="1"
                   value={creditAmount}
                   onChange={(event) => setCreditAmount(Number(event.target.value))}
-                  className="w-full px-4 py-2 bg-[#0B0D17] border border-[#202B3A] text-white text-sm focus:border-[#00F2FE] focus:outline-none rounded-lg"
+                  className="w-full rounded-lg border border-[#202B3A] bg-[#0B0D17] px-4 py-2 text-sm text-white outline-none focus:border-[#00F2FE]"
                 />
               </div>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowCreditModal(false)}
-                  className="flex-1 py-2 bg-[#0B0D17] border border-[#202B3A] text-white font-bold text-sm hover:border-[#00F2FE] transition-all rounded-lg"
+                  className="flex-1 rounded-lg border border-[#202B3A] bg-[#0B0D17] py-2 text-sm font-bold text-white transition-all hover:border-[#00F2FE]"
                 >
                   取消
                 </button>
                 <button
                   onClick={handleCreditAction}
-                  className={`flex-1 py-2 font-bold text-sm transition-all rounded-lg ${
-                    creditAction === 'add'
-                      ? 'bg-[#10B981] text-[#0A0F1D]'
-                      : 'bg-yellow-500 text-black'
+                  className={`flex-1 rounded-lg py-2 text-sm font-bold transition-all ${
+                    creditAction === 'add' ? 'bg-[#10B981] text-[#0A0F1D]' : 'bg-yellow-500 text-black'
                   }`}
                 >
                   确认操作
@@ -657,13 +647,13 @@ export default function AdminPage() {
 
       <TermsModal show={showTermsModal} onClose={() => setShowTermsModal(false)} />
 
-      <footer className="fixed bottom-0 left-0 right-0 py-2.5 bg-[#030712]/95 border-t border-[#1e293b]/50 backdrop-blur-sm z-40">
-        <div className="max-w-[1400px] mx-auto px-4 text-center">
+      <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#1e293b]/50 bg-[#030712]/95 py-2.5 backdrop-blur-sm">
+        <div className="mx-auto max-w-[1400px] px-4 text-center">
           <p className="text-sm text-gray-400">
             使用本站即表示你同意
             <button
               onClick={() => setShowTermsModal(true)}
-              className="text-[#10B981] hover:text-[#00F2FE] font-semibold underline underline-offset-2 decoration-[#10B981]/50 hover:decoration-[#00F2FE] transition-all duration-300 rounded px-1"
+              className="rounded px-1 font-semibold text-[#10B981] underline decoration-[#10B981]/50 underline-offset-2 transition-all duration-300 hover:text-[#00F2FE] hover:decoration-[#00F2FE]"
             >
               《安全合规与使用须知》
             </button>
@@ -686,10 +676,10 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2 font-bold text-sm border transition-all rounded-lg ${
+      className={`rounded-lg border px-4 py-2 text-sm font-bold transition-all ${
         active
-          ? 'bg-[#00F2FE] text-[#0A0F1D] border-[#00F2FE]'
-          : 'bg-[#141923] text-white border-[#202B3A] hover:border-[#00F2FE]'
+          ? 'border-[#00F2FE] bg-[#00F2FE] text-[#0A0F1D]'
+          : 'border-[#202B3A] bg-[#141923] text-white hover:border-[#00F2FE]'
       }`}
     >
       {children}
@@ -707,17 +697,17 @@ function MetricCard({
   accent: string
 }) {
   return (
-    <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
+    <div className="rounded-xl border border-[#202B3A] bg-[#141923] p-4">
       <span className="text-xs text-[#94A3B8]">{label}</span>
-      <p className={`text-3xl font-bold mt-3 ${accent}`}>{value}</p>
+      <p className={`mt-3 text-3xl font-bold ${accent}`}>{value}</p>
     </div>
   )
 }
 
 function StatPanel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
-      <h3 className="text-lg font-bold text-white mb-4">{title}</h3>
+    <div className="rounded-xl border border-[#202B3A] bg-[#141923] p-4">
+      <h3 className="mb-4 text-lg font-bold text-white">{title}</h3>
       {children}
     </div>
   )
@@ -736,11 +726,11 @@ function ProgressRow({
 }) {
   return (
     <div className="mb-3">
-      <div className="flex justify-between text-sm mb-1">
-        <span className="text-white font-medium">{label}</span>
+      <div className="mb-1 flex justify-between text-sm">
+        <span className="font-medium text-white">{label}</span>
         <span className="text-[#94A3B8]">{value}</span>
       </div>
-      <div className="h-2 bg-[#0B0D17] rounded-full overflow-hidden">
+      <div className="h-2 overflow-hidden rounded-full bg-[#0B0D17]">
         <div className={`h-full bg-gradient-to-r ${gradient}`} style={{ width: `${percent}%` }} />
       </div>
     </div>
@@ -748,5 +738,5 @@ function ProgressRow({
 }
 
 function EmptyState({ text }: { text: string }) {
-  return <div className="text-center py-4 text-[#94A3B8]">{text}</div>
+  return <div className="py-4 text-center text-[#94A3B8]">{text}</div>
 }

@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     if (!supabaseAdmin) {
       return NextResponse.json({
         success: false,
-        error: '系统配置未完成，请稍后重试',
+        error: '系统配置未完成，请稍后重试。',
       }, { status: 500 })
     }
 
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     console.error('Verify OTP error:', error)
     return NextResponse.json({
       success: false,
-      error: '验证码校验失败，请稍后重试',
+      error: '验证码校验失败，请稍后重试。',
     }, { status: 500 })
   }
 }

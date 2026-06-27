@@ -25,7 +25,7 @@ export default function HomePage() {
           setIsVisible(true)
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     )
 
     if (heroRef.current) {
@@ -37,209 +37,197 @@ export default function HomePage() {
 
   const features = [
     {
-      icon: 'Sparkles',
+      icon: 'AI',
       title: '智能优化生成',
-      description: '支持文本优化和图像重构，让知识卡片既有内容密度，也有视觉完成度。',
+      description: '支持长文拆解、提示词优化和成图细节增强，让知识图卡既有内容密度，也有完成度。',
     },
     {
-      icon: 'Palette',
+      icon: '风格',
       title: '拒绝廉价 AI 感',
-      description: '内置多种自媒体爆款视觉风格，排版更克制，画面更高级。',
+      description: '内置多套自媒体高转化视觉模版，适合小红书、公众号、课程封面和信息卡片。',
     },
     {
-      icon: 'KeyRound',
+      icon: '卡密',
       title: '卡密秒级激活',
-      description: '支持卡密充值与快速到账，适合个人创作和团队高频使用。',
+      description: '支持站内卡密充值与套餐兑换，个人创作者和团队账号都能快速开工。',
     },
   ]
 
   const steps = [
     {
       step: '01',
-      title: '输入内容',
-      description: '填写文案或上传参考图',
+      title: '输入主题',
+      description: '填写选题、观点或参考文案',
     },
     {
       step: '02',
       title: '选择风格',
-      description: '匹配适合的画风与版式',
+      description: '匹配适合的画风、排版和输出规格',
     },
     {
       step: '03',
-      title: '生成下载',
-      description: '一键得到可用成品',
+      title: '生成发布',
+      description: '一键导出可直接使用的成品',
     },
   ]
 
   const comparison = {
     traditional: [
-      { title: '成本偏高', description: '常见平台单张价格高，连续创作压力大。' },
-      { title: '风格单一', description: '模版感强，很难做出稳定的品牌调性。' },
-      { title: '响应较慢', description: '高峰期排队明显，影响内容发布节奏。' },
+      { title: '成本偏高', description: '单张价格波动大，高频创作时预算压力明显。' },
+      { title: '风格不稳', description: '容易出现模版感重、品牌调性不统一的问题。' },
+      { title: '响应较慢', description: '从写提示词到返工修改，整体链路长。' },
     ],
     product: [
-      { title: '高性价比', description: '按积分精细计费，适合长期、批量创作。' },
-      { title: '风格更多样', description: '支持不同自媒体场景，视觉表达更灵活。' },
-      { title: '生成更高效', description: '从文案到成图链路更短，反馈更直接。' },
+      { title: '成本更可控', description: '按积分细分消耗，适合持续产出和批量生成。' },
+      { title: '风格更统一', description: '同一主题下可以稳定保持视觉秩序和内容质感。' },
+      { title: '效率更高', description: '从输入文案到成图发布，流程更短、更直接。' },
     ],
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#030712] text-white flex flex-col relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#030712] via-[#0a0f1a] to-[#030712] pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#10B981]/10 via-transparent to-transparent pointer-events-none" />
-      <div className="absolute -top-20 left-1/4 w-[500px] h-[500px] bg-gradient-to-br from-[#10B981]/20 via-[#10B981]/5 to-transparent rounded-full blur-[120px] pointer-events-none animate-aurora-glow" />
-      <div
-        className="absolute -top-20 right-1/4 w-[450px] h-[450px] bg-gradient-to-bl from-[#00F2FE]/20 via-[#00F2FE]/5 to-transparent rounded-full blur-[100px] pointer-events-none animate-aurora-glow"
-        style={{ animationDelay: '2s' }}
-      />
-      <div
-        className="absolute top-1/2 left-1/3 w-[400px] h-[400px] bg-gradient-to-r from-[#8B5CF6]/15 via-transparent to-transparent rounded-full blur-[100px] pointer-events-none animate-aurora-glow"
-        style={{ animationDelay: '4s' }}
-      />
+    <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-[#030712] text-white">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#030712] via-[#0a0f1a] to-[#030712]" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#10B981]/10 via-transparent to-transparent" />
+      <div className="pointer-events-none absolute -top-20 left-1/4 h-[500px] w-[500px] rounded-full bg-gradient-to-br from-[#10B981]/20 via-[#10B981]/5 to-transparent blur-[120px]" />
+      <div className="pointer-events-none absolute -top-20 right-1/4 h-[450px] w-[450px] rounded-full bg-gradient-to-bl from-[#00F2FE]/20 via-[#00F2FE]/5 to-transparent blur-[100px]" />
+      <div className="pointer-events-none absolute left-1/3 top-1/2 h-[400px] w-[400px] rounded-full bg-gradient-to-r from-[#8B5CF6]/15 via-transparent to-transparent blur-[100px]" />
 
-      <header className="flex-shrink-0 border-b border-[#1e293b]/50 sticky top-0 z-[60] bg-[#030712]/95 backdrop-blur-sm relative overflow-hidden">
-        <div className="header-particles" />
-        <div className="header-glow-particles" />
+      <header className="sticky top-0 z-[60] border-b border-[#1e293b]/50 bg-[#030712]/95 backdrop-blur-sm">
+        <div className="w-full px-3 py-2 sm:px-4">
+          <div className="flex items-center justify-between gap-3">
+            <Link href="/" className="shrink-0">
+              <img src="/logo.png?v=8" alt="AI画堂" className="h-10 w-auto object-contain sm:h-16" />
+            </Link>
 
-        <div className="w-full px-3 sm:px-4 py-2 flex items-center justify-between relative z-10">
-          <Link href="/" className="flex-shrink-0">
-            <img src="/logo.png?v=8" alt="AI画堂" className="h-10 sm:h-16 w-auto object-contain" />
-          </Link>
-
-          <nav className="hidden md:flex items-center gap-2 flex-1 justify-center">
-            <Link href="/dashboard" className="px-3 py-1.5 bg-[#10B981] text-[#0B0D17] rounded-lg text-xs font-semibold shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-              创作
-            </Link>
-            <Link href="/records" className="px-3 py-1.5 bg-[#141923] text-white rounded-lg text-xs font-semibold border border-[#202B3A] hover:border-[#10B981] transition-colors">
-              记录
-            </Link>
-            <Link href="/recharge" className="px-3 py-1.5 bg-[#141923] text-white rounded-lg text-xs font-semibold border border-[#202B3A] hover:border-[#10B981] transition-colors">
-              充值
-            </Link>
-            <Link href="/announcements" className="px-3 py-1.5 bg-[#141923] text-white rounded-lg text-xs font-semibold border border-[#202B3A] hover:border-[#10B981] transition-colors">
-              公告
-            </Link>
-            {isAdmin && (
-              <Link href="/admin" className="px-3 py-1.5 bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] text-white rounded-lg text-xs font-semibold shadow-[0_0_10px_rgba(139,92,246,0.3)]">
-                管理
+            <nav className="hidden flex-1 items-center justify-center gap-2 md:flex">
+              <Link href="/dashboard" className="rounded-lg bg-[#10B981] px-3 py-1.5 text-xs font-semibold text-[#0B0D17] shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                创作台
               </Link>
-            )}
-          </nav>
-
-          <button
-            onClick={() => setMobileMenuOpen((open) => !open)}
-            className="md:hidden w-10 h-10 flex items-center justify-center bg-[#141923] border border-[#202B3A] rounded-lg"
-          >
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {mobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-          </button>
-
-          <div className="hidden md:block">
-            <Link href="/dashboard" className="px-4 py-2 bg-[#10B981] text-[#0B0D17] rounded-lg text-sm font-semibold shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-              立即开始
-            </Link>
-          </div>
-        </div>
-
-        {mobileMenuOpen && (
-          <div className="md:hidden px-3 pb-3 border-t border-[#1e293b] pt-3 bg-[#030712]">
-            <div className="flex flex-col gap-2">
-              <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 bg-[#10B981] text-[#0B0D17] rounded-lg text-sm font-bold text-center">
-                立即创作
-              </Link>
-              <Link href="/records" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 bg-[#141923] text-white rounded-lg text-sm font-semibold text-center border border-[#202B3A]">
+              <Link href="/records" className="rounded-lg border border-[#202B3A] bg-[#141923] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-[#10B981]">
                 生成记录
               </Link>
-              <Link href="/recharge" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 bg-[#141923] text-white rounded-lg text-sm font-semibold text-center border border-[#202B3A]">
-                卡密充值
+              <Link href="/recharge" className="rounded-lg border border-[#202B3A] bg-[#141923] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-[#10B981]">
+                充值中心
               </Link>
-              <Link href="/announcements" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 bg-[#141923] text-white rounded-lg text-sm font-semibold text-center border border-[#202B3A]">
+              <Link href="/announcements" className="rounded-lg border border-[#202B3A] bg-[#141923] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-[#10B981]">
                 站内公告
               </Link>
               {isAdmin && (
-                <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] text-white rounded-lg text-sm font-semibold text-center">
+                <Link href="/admin" className="rounded-lg bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] px-3 py-1.5 text-xs font-semibold text-white shadow-[0_0_10px_rgba(139,92,246,0.3)]">
                   后台管理
                 </Link>
               )}
+            </nav>
+
+            <button
+              onClick={() => setMobileMenuOpen((open) => !open)}
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#202B3A] bg-[#141923] md:hidden"
+            >
+              <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+
+            <div className="hidden md:block">
+              <Link href="/dashboard" className="rounded-lg bg-[#10B981] px-4 py-2 text-sm font-semibold text-[#0B0D17] shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                立即开始
+              </Link>
             </div>
           </div>
-        )}
+
+          {mobileMenuOpen && (
+            <div className="mt-3 border-t border-[#1e293b] pt-3 md:hidden">
+              <div className="flex flex-col gap-2">
+                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#10B981] px-4 py-3 text-center text-sm font-bold text-[#0B0D17]">
+                  立即创作
+                </Link>
+                <Link href="/records" onClick={() => setMobileMenuOpen(false)} className="rounded-lg border border-[#202B3A] bg-[#141923] px-4 py-3 text-center text-sm font-semibold text-white">
+                  生成记录
+                </Link>
+                <Link href="/recharge" onClick={() => setMobileMenuOpen(false)} className="rounded-lg border border-[#202B3A] bg-[#141923] px-4 py-3 text-center text-sm font-semibold text-white">
+                  卡密充值
+                </Link>
+                <Link href="/announcements" onClick={() => setMobileMenuOpen(false)} className="rounded-lg border border-[#202B3A] bg-[#141923] px-4 py-3 text-center text-sm font-semibold text-white">
+                  站内公告
+                </Link>
+                {isAdmin && (
+                  <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] px-4 py-3 text-center text-sm font-semibold text-white">
+                    后台管理
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </header>
 
-      <main className="flex-1 flex flex-col items-center px-3 py-4 sm:py-6 relative z-10 pt-4 pb-8">
-        <div ref={heroRef} className="text-center mb-6 sm:mb-8">
-          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold mb-2 sm:mb-3">
+      <main className="relative z-10 flex flex-1 flex-col items-center px-3 pb-8 pt-4 sm:py-6">
+        <div ref={heroRef} className="mb-6 text-center sm:mb-8">
+          <h1 className="mb-2 text-xl font-extrabold sm:mb-3 sm:text-2xl md:text-3xl lg:text-4xl">
             <span className="relative inline-block">
-              <span className="bg-gradient-to-r from-[#03F09C] via-[#00F2FE] to-[#10B981] bg-clip-text text-transparent animate-gradient-flow">
+              <span className="bg-gradient-to-r from-[#03F09C] via-[#00F2FE] to-[#10B981] bg-clip-text text-transparent">
                 AI画堂
               </span>
-              <span className="absolute -inset-1 bg-gradient-to-r from-[#03F09C] via-[#00F2FE] to-[#10B981] opacity-20 blur-md -z-10 animate-gradient-flow" />
+              <span className="absolute -inset-1 -z-10 bg-gradient-to-r from-[#03F09C] via-[#00F2FE] to-[#10B981] opacity-20 blur-md" />
             </span>
-            <span className={`text-white ${isVisible ? 'animate-title-reveal' : 'opacity-0'}`}> · 自媒体全自动知识图卡生产线</span>
+            <span className={`${isVisible ? 'opacity-100' : 'opacity-0'} text-white transition-opacity duration-700`}>
+              {' '}· 自媒体全自动知识图卡生产线
+            </span>
           </h1>
 
-          <p
-            className={`text-xs sm:text-sm text-gray-400 max-w-2xl mx-auto mb-3 sm:mb-4 leading-relaxed ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`}
-            style={{ animationDelay: '0.3s' }}
-          >
-            告别生硬 AI 感，拒绝繁琐排版。内置智能排版引擎，一句话就能重构成高密度、可直接发布的知识卡片。
+          <p className={`${isVisible ? 'opacity-100' : 'opacity-0'} mx-auto mb-3 max-w-2xl text-xs leading-relaxed text-gray-400 transition-opacity delay-200 duration-700 sm:mb-4 sm:text-sm`}>
+            告别生硬的 AI 感和繁琐排版。内置智能排版引擎，一句话就能重构成高密度、可直接发布的知识图卡。
           </p>
 
-          <p
-            className={`text-xs sm:text-sm text-[#03F09C]/80 max-w-2xl mx-auto mb-3 sm:mb-4 leading-relaxed ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`}
-            style={{ animationDelay: '0.5s' }}
-          >
-            支持标准清晰、2K 超清、4K 极清多档输出，兼顾成本与成品质量，适合小红书、抖音、公众号和课程内容高频生产。
+          <p className={`${isVisible ? 'opacity-100' : 'opacity-0'} mx-auto mb-3 max-w-2xl text-xs leading-relaxed text-[#03F09C]/80 transition-opacity delay-300 duration-700 sm:mb-4 sm:text-sm`}>
+            支持标准、2K、4K 多档输出，兼顾预算与成品质量，适合小红书、公众号、课程封面和社群分发场景。
           </p>
 
           <Link
             href="/dashboard"
-            className={`inline-flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-[#10B981] text-[#040D0A] rounded-xl text-xs sm:text-sm font-bold shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)] transition-all ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`}
-            style={{ animationDelay: '0.6s' }}
+            className={`${isVisible ? 'opacity-100' : 'opacity-0'} inline-flex items-center gap-2 rounded-xl bg-[#10B981] px-4 py-2 text-xs font-bold text-[#040D0A] shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all delay-500 duration-700 hover:shadow-[0_0_30px_rgba(16,185,129,0.6)] sm:px-6 sm:py-3 sm:text-sm`}
           >
             立即免费开启
             <span>→</span>
           </Link>
         </div>
 
-        <div className={`w-full max-w-5xl mb-6 sm:mb-8 ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`} style={{ animationDelay: '0.9s' }}>
-          <div className="text-center mb-3 sm:mb-4">
-            <h2 className="text-base sm:text-lg font-bold text-white mb-1">核心功能</h2>
+        <div className={`${isVisible ? 'opacity-100' : 'opacity-0'} mb-6 w-full max-w-5xl transition-opacity delay-700 duration-700 sm:mb-8`}>
+          <div className="mb-3 text-center sm:mb-4">
+            <h2 className="mb-1 text-base font-bold text-white sm:text-lg">核心功能</h2>
             <p className="text-xs text-[#10B981]">高效创作，一键生成</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
+          <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-3">
             {features.map((feature) => (
               <div
                 key={feature.title}
-                className="bg-[#0f172a] rounded-xl border border-[#1e293b] p-3 sm:p-4 hover:border-[#10B981] transition-all duration-300 hover:shadow-[0_0_20px_rgba(16,185,129,0.1)]"
+                className="rounded-xl border border-[#1e293b] bg-[#0f172a] p-3 transition-all duration-300 hover:border-[#10B981] hover:shadow-[0_0_20px_rgba(16,185,129,0.1)] sm:p-4"
               >
-                <div className="text-sm sm:text-base font-semibold text-[#10B981] mb-1.5 sm:mb-2">{feature.icon}</div>
-                <h3 className="text-xs sm:text-sm font-bold text-white mb-0.5">{feature.title}</h3>
-                <p className="text-xs text-gray-400 leading-relaxed">{feature.description}</p>
+                <div className="mb-1.5 text-sm font-semibold text-[#10B981] sm:mb-2 sm:text-base">{feature.icon}</div>
+                <h3 className="mb-0.5 text-xs font-bold text-white sm:text-sm">{feature.title}</h3>
+                <p className="text-xs leading-relaxed text-gray-400">{feature.description}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <div className={`w-full max-w-5xl mb-6 sm:mb-8 ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`} style={{ animationDelay: '1.4s' }}>
-          <div className="text-center mb-3 sm:mb-4">
-            <h2 className="text-base sm:text-lg font-bold text-white">为什么选择 AI画堂？</h2>
+        <div className={`${isVisible ? 'opacity-100' : 'opacity-0'} mb-6 w-full max-w-5xl transition-opacity delay-1000 duration-700 sm:mb-8`}>
+          <div className="mb-3 text-center sm:mb-4">
+            <h2 className="text-base font-bold text-white sm:text-lg">为什么选择 AI画堂？</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-2 sm:gap-3">
-            <div className="md:col-span-2 bg-[#0f172a] border border-red-900/30 rounded-xl p-3 sm:p-4">
-              <h3 className="text-xs font-bold text-red-400 mb-2">传统工具的痛点</h3>
+          <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-5">
+            <div className="rounded-xl border border-red-900/30 bg-[#0f172a] p-3 sm:p-4 md:col-span-2">
+              <h3 className="mb-2 text-xs font-bold text-red-400">传统工具的痛点</h3>
               <div className="space-y-1.5 sm:space-y-2">
                 {comparison.traditional.map((item) => (
                   <div key={item.title} className="flex items-start gap-1.5">
-                    <span className="text-red-500 text-xs mt-0.5">×</span>
+                    <span className="mt-0.5 text-xs text-red-500">×</span>
                     <div>
-                      <p className="text-xs text-red-300 font-semibold">{item.title}</p>
+                      <p className="text-xs font-semibold text-red-300">{item.title}</p>
                       <p className="text-xs text-red-400/70">{item.description}</p>
                     </div>
                   </div>
@@ -247,18 +235,18 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="hidden md:flex md:col-span-1 items-center justify-center">
-              <div className="font-black text-xl sm:text-2xl text-zinc-600">VS</div>
+            <div className="hidden items-center justify-center md:flex md:col-span-1">
+              <div className="text-xl font-black text-zinc-600 sm:text-2xl">VS</div>
             </div>
 
-            <div className="md:col-span-2 bg-[#0f172a] border border-[#10B981]/30 rounded-xl p-3 sm:p-4">
-              <h3 className="text-xs font-bold text-[#10B981] mb-2">AI画堂的优势</h3>
+            <div className="rounded-xl border border-[#10B981]/30 bg-[#0f172a] p-3 sm:p-4 md:col-span-2">
+              <h3 className="mb-2 text-xs font-bold text-[#10B981]">AI画堂的优势</h3>
               <div className="space-y-1.5 sm:space-y-2">
                 {comparison.product.map((item) => (
                   <div key={item.title} className="flex items-start gap-1.5">
-                    <span className="text-[#10B981] text-xs mt-0.5">✓</span>
+                    <span className="mt-0.5 text-xs text-[#10B981]">✓</span>
                     <div>
-                      <p className="text-xs text-[#10B981] font-semibold">{item.title}</p>
+                      <p className="text-xs font-semibold text-[#10B981]">{item.title}</p>
                       <p className="text-xs text-[#10B981]/70">{item.description}</p>
                     </div>
                   </div>
@@ -268,18 +256,18 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className={`w-full max-w-4xl mb-4 ${isVisible ? 'animate-fade-in-up' : 'opacity-0'}`} style={{ animationDelay: '1.7s' }}>
-          <div className="text-center mb-3">
-            <h2 className="text-base sm:text-lg font-bold text-white">创作流程</h2>
+        <div className={`${isVisible ? 'opacity-100' : 'opacity-0'} mb-4 w-full max-w-4xl transition-opacity delay-[1300ms] duration-700`}>
+          <div className="mb-3 text-center">
+            <h2 className="text-base font-bold text-white sm:text-lg">创作流程</h2>
             <p className="text-xs text-[#10B981]">三步完成，高频可复用</p>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {steps.map((step) => (
               <div key={step.step} className="text-center">
-                <div className="inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-[#10B981] text-[#0B0D17] rounded-xl text-xs sm:text-sm font-bold mb-1.5 sm:mb-2 border border-[#10B981]/50">
+                <div className="mb-1.5 inline-flex h-8 w-8 items-center justify-center rounded-xl border border-[#10B981]/50 bg-[#10B981] text-xs font-bold text-[#0B0D17] sm:mb-2 sm:h-10 sm:w-10 sm:text-sm">
                   {step.step}
                 </div>
-                <h3 className="text-xs sm:text-sm font-bold text-white mb-0.5">{step.title}</h3>
+                <h3 className="mb-0.5 text-xs font-bold text-white sm:text-sm">{step.title}</h3>
                 <p className="text-xs text-gray-400">{step.description}</p>
               </div>
             ))}
@@ -287,14 +275,14 @@ export default function HomePage() {
         </div>
       </main>
 
-      <footer className="fixed bottom-0 left-0 right-0 py-2 bg-[#030712]/95 border-t border-[#1e293b]/50 backdrop-blur-sm z-40">
-        <div className="max-w-[1400px] mx-auto px-4 text-center">
+      <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#1e293b]/50 bg-[#030712]/95 py-2 backdrop-blur-sm">
+        <div className="mx-auto max-w-[1400px] px-4 text-center">
           <p className="text-xs text-gray-400">
             登录或使用本站即代表您同意
             {' '}
             <button
               onClick={() => setShowTermsModal(true)}
-              className="text-[#10B981] hover:text-[#00F2FE] font-semibold underline underline-offset-2 decoration-[#10B981]/50 hover:decoration-[#00F2FE] transition-all duration-300 hover:shadow-[0_0_8px_rgba(16,185,129,0.3)] rounded px-1"
+              className="rounded px-1 font-semibold text-[#10B981] underline decoration-[#10B981]/50 underline-offset-2 transition-all duration-300 hover:text-[#00F2FE] hover:decoration-[#00F2FE]"
             >
               《安全合规与使用须知》
             </button>

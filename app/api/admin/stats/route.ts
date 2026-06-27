@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     if (!supabaseAdmin) {
       return NextResponse.json({
         success: false,
-        error: '系统配置未完成，请稍后重试',
+        error: '系统配置未完成，请稍后重试。',
       }, { status: 500 })
     }
 
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
     console.error('Admin stats error:', error)
     return NextResponse.json({
       success: false,
-      error: '获取统计数据失败，请稍后重试',
+      error: '获取统计数据失败，请稍后重试。',
     }, { status: 500 })
   }
 }

@@ -10,19 +10,19 @@ export async function POST(request: NextRequest) {
       console.error('[Auth/Login] Supabase admin not configured')
       return NextResponse.json({
         success: false,
-        error: '系统配置未完成，请稍后重试',
+        error: '系统配置未完成，请稍后重试。',
       }, { status: 500 })
     }
 
     if (!email || !password) {
       return NextResponse.json({
         success: false,
-        error: '邮箱/用户名和密码不能为空',
+        error: '邮箱或用户名和密码不能为空。',
       }, { status: 400 })
     }
 
-    const isEmail = email.includes('@')
-    let loginEmail = email
+    const isEmail = String(email).includes('@')
+    let loginEmail = String(email)
 
     if (!isEmail) {
       const { data: profile, error: profileError } = await supabaseAdmin
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       if (profileError || !profile) {
         return NextResponse.json({
           success: false,
-          error: '用户名不存在',
+          error: '用户名不存在。',
         }, { status: 401 })
       }
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     if (error || !data.user) {
       return NextResponse.json({
         success: false,
-        error: '账号未注册或密码错误，请检查后重试',
+        error: '账号未注册或密码错误，请检查后重试。',
       }, { status: 401 })
     }
 
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     console.error('[Auth/Login] Error:', error.message, error.stack)
     return NextResponse.json({
       success: false,
-      error: '登录失败，请稍后重试',
+      error: '登录失败，请稍后重试。',
     }, { status: 500 })
   }
 }

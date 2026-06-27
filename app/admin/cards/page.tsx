@@ -61,7 +61,7 @@ export default function CardsAdminPage() {
       }
     }
 
-    fetchData()
+    void fetchData()
   }, [router])
 
   const handleGenerateCards = async () => {
@@ -128,7 +128,7 @@ export default function CardsAdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#030712] flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-[#030712]">
         <div className="text-white">加载中...</div>
       </div>
     )
@@ -136,11 +136,11 @@ export default function CardsAdminPage() {
 
   return (
     <div className="min-h-screen bg-[#030712] text-white">
-      <header className="bg-[#030712]/95 border-b border-[#1e293b] sticky top-0 z-50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-50 border-b border-[#1e293b] bg-[#030712]/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-4">
-            <Link href="/admin" className="text-[#10B981] hover:text-[#00F2FE] transition-colors">
-              ← 返回管理后台
+            <Link href="/admin" className="text-[#10B981] transition-colors hover:text-[#00F2FE]">
+              返回管理后台
             </Link>
             <h1 className="text-xl font-bold">卡密管理系统</h1>
           </div>
@@ -148,30 +148,30 @@ export default function CardsAdminPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-6">
-          <h2 className="text-lg font-bold mb-4 text-[#10B981]">生成新卡密</h2>
+      <main className="mx-auto max-w-7xl space-y-6 px-4 py-6">
+        <div className="rounded-xl border border-[#1e293b] bg-[#0f172a] p-6">
+          <h2 className="mb-4 text-lg font-bold text-[#10B981]">生成新卡密</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
-              <label className="block text-sm text-gray-400 mb-2">生成数量</label>
+              <label className="mb-2 block text-sm text-gray-400">生成数量</label>
               <input
                 type="number"
                 value={cardCount}
                 onChange={(e) => setCardCount(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 1)))}
-                className="w-full px-4 py-3 bg-[#1e293b] border border-[#334155] text-white rounded-lg focus:border-[#10B981] focus:outline-none"
+                className="w-full rounded-lg border border-[#334155] bg-[#1e293b] px-4 py-3 text-white focus:border-[#10B981] focus:outline-none"
                 min="1"
                 max="100"
               />
-              <p className="text-xs text-gray-500 mt-1">范围：1 - 100</p>
+              <p className="mt-1 text-xs text-gray-500">范围：1 - 100</p>
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">卡密面额 / 积分</label>
+              <label className="mb-2 block text-sm text-gray-400">卡密面额 / 积分</label>
               <select
                 value={cardCredits}
                 onChange={(e) => setCardCredits(parseInt(e.target.value, 10))}
-                className="w-full px-4 py-3 bg-[#1e293b] border border-[#334155] text-white rounded-lg focus:border-[#10B981] focus:outline-none"
+                className="w-full rounded-lg border border-[#334155] bg-[#1e293b] px-4 py-3 text-white focus:border-[#10B981] focus:outline-none"
               >
                 <option value={100}>100 积分（10 元）</option>
                 <option value={320}>320 积分（29 元）</option>
@@ -184,9 +184,9 @@ export default function CardsAdminPage() {
               <button
                 onClick={handleGenerateCards}
                 disabled={generating}
-                className={`w-full py-3 px-6 font-bold rounded-lg transition-all ${
+                className={`w-full rounded-lg px-6 py-3 font-bold transition-all ${
                   generating
-                    ? 'bg-[#334155] text-gray-500 cursor-not-allowed'
+                    ? 'cursor-not-allowed bg-[#334155] text-gray-500'
                     : 'bg-gradient-to-r from-[#10B981] to-[#059669] text-white hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]'
                 }`}
               >
@@ -196,14 +196,14 @@ export default function CardsAdminPage() {
           </div>
         </div>
 
-        <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="rounded-xl border border-[#1e293b] bg-[#0f172a] p-6">
+          <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold text-[#10B981]">卡密列表</h2>
 
             <div className="flex gap-2">
               <button
                 onClick={() => setFilterStatus('all')}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-all ${
+                className={`rounded-lg px-3 py-1.5 text-sm transition-all ${
                   filterStatus === 'all'
                     ? 'bg-[#10B981] text-[#030712]'
                     : 'bg-[#1e293b] text-gray-400 hover:bg-[#334155]'
@@ -213,7 +213,7 @@ export default function CardsAdminPage() {
               </button>
               <button
                 onClick={() => setFilterStatus('unused')}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-all ${
+                className={`rounded-lg px-3 py-1.5 text-sm transition-all ${
                   filterStatus === 'unused'
                     ? 'bg-[#10B981] text-[#030712]'
                     : 'bg-[#1e293b] text-gray-400 hover:bg-[#334155]'
@@ -223,7 +223,7 @@ export default function CardsAdminPage() {
               </button>
               <button
                 onClick={() => setFilterStatus('used')}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-all ${
+                className={`rounded-lg px-3 py-1.5 text-sm transition-all ${
                   filterStatus === 'used'
                     ? 'bg-[#10B981] text-[#030712]'
                     : 'bg-[#1e293b] text-gray-400 hover:bg-[#334155]'
@@ -235,28 +235,28 @@ export default function CardsAdminPage() {
           </div>
 
           {filteredCards.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">暂无卡密记录</div>
+            <div className="py-8 text-center text-gray-500">暂无卡密记录</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[#1e293b] text-left">
-                    <th className="py-3 px-2 text-gray-400 font-medium">卡密</th>
-                    <th className="py-3 px-2 text-gray-400 font-medium">积分</th>
-                    <th className="py-3 px-2 text-gray-400 font-medium">状态</th>
-                    <th className="py-3 px-2 text-gray-400 font-medium">创建时间</th>
-                    <th className="py-3 px-2 text-gray-400 font-medium">使用信息</th>
-                    <th className="py-3 px-2 text-gray-400 font-medium">操作</th>
+                    <th className="px-2 py-3 font-medium text-gray-400">卡密</th>
+                    <th className="px-2 py-3 font-medium text-gray-400">积分</th>
+                    <th className="px-2 py-3 font-medium text-gray-400">状态</th>
+                    <th className="px-2 py-3 font-medium text-gray-400">创建时间</th>
+                    <th className="px-2 py-3 font-medium text-gray-400">使用信息</th>
+                    <th className="px-2 py-3 font-medium text-gray-400">操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredCards.slice(0, 100).map((card) => (
-                    <tr key={card.id} className="border-b border-[#1e293b]/50 hover:bg-[#1e293b]/30 transition-colors">
-                      <td className="py-3 px-2 font-mono text-[#10B981]">{card.code}</td>
-                      <td className="py-3 px-2 text-white">{card.credits}</td>
-                      <td className="py-3 px-2">
+                    <tr key={card.id} className="border-b border-[#1e293b]/50 transition-colors hover:bg-[#1e293b]/30">
+                      <td className="px-2 py-3 font-mono text-[#10B981]">{card.code}</td>
+                      <td className="px-2 py-3 text-white">{card.credits}</td>
+                      <td className="px-2 py-3">
                         <span
-                          className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          className={`rounded px-2 py-0.5 text-xs font-medium ${
                             card.is_used
                               ? 'bg-red-500/20 text-red-400'
                               : 'bg-green-500/20 text-green-400'
@@ -265,16 +265,16 @@ export default function CardsAdminPage() {
                           {card.is_used ? '已使用' : '未使用'}
                         </span>
                       </td>
-                      <td className="py-3 px-2 text-gray-400">
+                      <td className="px-2 py-3 text-gray-400">
                         {new Date(card.created_at).toLocaleString('zh-CN')}
                       </td>
-                      <td className="py-3 px-2 text-gray-400 text-xs">
+                      <td className="px-2 py-3 text-xs text-gray-400">
                         {card.used_by ? `用户 ID：${card.used_by}` : '-'}
                       </td>
-                      <td className="py-3 px-2">
+                      <td className="px-2 py-3">
                         <button
                           onClick={() => handleCopySingleCard(card.code)}
-                          className="px-2 py-1 text-xs bg-[#10B981]/20 text-[#10B981] hover:bg-[#10B981]/30 rounded transition-colors"
+                          className="rounded bg-[#10B981]/20 px-2 py-1 text-xs text-[#10B981] transition-colors hover:bg-[#10B981]/30"
                         >
                           复制
                         </button>
@@ -285,7 +285,7 @@ export default function CardsAdminPage() {
               </table>
 
               {filteredCards.length > 100 && (
-                <p className="text-center py-3 text-gray-500 text-sm">
+                <p className="py-3 text-center text-sm text-gray-500">
                   当前仅显示前 100 条，请先筛选后再查看。
                 </p>
               )}
@@ -295,32 +295,32 @@ export default function CardsAdminPage() {
       </main>
 
       {showResult && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-6 w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[#1e293b] bg-[#0f172a] p-6">
+            <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-bold text-[#10B981]">卡密生成成功</h3>
               <button
                 onClick={() => setShowResult(false)}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="text-gray-400 transition-colors hover:text-white"
               >
                 ×
               </button>
             </div>
 
-            <p className="text-gray-400 mb-4">
+            <p className="mb-4 text-gray-400">
               本次共生成 {generatedCards.length} 张卡密，每张 {cardCredits} 积分。
             </p>
 
-            <div className="flex-1 overflow-y-auto bg-[#1e293b] rounded-lg p-4 mb-4">
+            <div className="mb-4 flex-1 overflow-y-auto rounded-lg bg-[#1e293b] p-4">
               <div className="space-y-2">
                 {generatedCards.map((card, index) => (
-                  <div key={`${card.code}-${index}`} className="flex items-center justify-between bg-[#0f172a] px-3 py-2 rounded">
+                  <div key={`${card.code}-${index}`} className="flex items-center justify-between rounded bg-[#0f172a] px-3 py-2">
                     <span className="font-mono text-[#10B981]">{card.code}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-white text-sm">{card.credits} 积分</span>
+                      <span className="text-sm text-white">{card.credits} 积分</span>
                       <button
                         onClick={() => handleCopySingleCard(card.code)}
-                        className="px-2 py-0.5 text-xs bg-[#10B981]/20 text-[#10B981] hover:bg-[#10B981]/30 rounded transition-colors"
+                        className="rounded bg-[#10B981]/20 px-2 py-0.5 text-xs text-[#10B981] transition-colors hover:bg-[#10B981]/30"
                       >
                         复制
                       </button>
@@ -333,13 +333,13 @@ export default function CardsAdminPage() {
             <div className="flex gap-3">
               <button
                 onClick={handleCopyCards}
-                className="flex-1 py-3 bg-[#10B981] text-[#030712] font-bold rounded-lg hover:bg-[#059669] transition-colors"
+                className="flex-1 rounded-lg bg-[#10B981] py-3 font-bold text-[#030712] transition-colors hover:bg-[#059669]"
               >
                 复制全部
               </button>
               <button
                 onClick={() => setShowResult(false)}
-                className="flex-1 py-3 bg-[#334155] text-white font-bold rounded-lg hover:bg-[#475569] transition-colors"
+                className="flex-1 rounded-lg bg-[#334155] py-3 font-bold text-white transition-colors hover:bg-[#475569]"
               >
                 关闭
               </button>
@@ -348,14 +348,14 @@ export default function CardsAdminPage() {
         </div>
       )}
 
-      <footer className="fixed bottom-0 left-0 right-0 py-2.5 bg-[#030712]/95 border-t border-[#1e293b]/50 backdrop-blur-sm z-40">
-        <div className="max-w-[1400px] mx-auto px-4 text-center">
+      <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#1e293b]/50 bg-[#030712]/95 py-2.5 backdrop-blur-sm">
+        <div className="mx-auto max-w-[1400px] px-4 text-center">
           <p className="text-sm text-gray-400">
             登录或使用本站即代表您同意
             {' '}
             <button
               onClick={() => setShowTermsModal(true)}
-              className="text-[#10B981] hover:text-[#00F2FE] font-semibold underline underline-offset-2 decoration-[#10B981]/50 hover:decoration-[#00F2FE] transition-all duration-300 hover:shadow-[0_0_8px_rgba(16,185,129,0.3)] rounded px-1"
+              className="rounded px-1 font-semibold text-[#10B981] underline decoration-[#10B981]/50 underline-offset-2 transition-all duration-300 hover:text-[#00F2FE] hover:decoration-[#00F2FE]"
             >
               《安全合规与使用须知》
             </button>

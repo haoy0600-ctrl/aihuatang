@@ -15,6 +15,19 @@ export function ChangePasswordModal({ show, onClose }: ChangePasswordProps) {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
+  const resetForm = () => {
+    setOldPassword('')
+    setNewPassword('')
+    setConfirmNewPassword('')
+    setError('')
+    setIsLoading(false)
+  }
+
+  const handleClose = () => {
+    resetForm()
+    onClose()
+  }
+
   const handleSubmit = async () => {
     setError('')
 
@@ -29,114 +42,114 @@ export function ChangePasswordModal({ show, onClose }: ChangePasswordProps) {
     }
 
     if (newPassword.length < 6) {
-      setError('密码长度至少6位')
+      setError('密码长度至少 6 位')
       return
     }
 
     if (newPassword !== confirmNewPassword) {
-      setError('两次输入的密码不一致')
+      setError('两次输入的新密码不一致')
       return
     }
 
     if (oldPassword === newPassword) {
-      setError('新密码不能与原密码相同')
+      setError('新密码不能和原密码相同')
+      return
+    }
+
+    const session = getStoredSession()
+    if (!session) {
+      setError('登录状态已失效，请重新登录')
       return
     }
 
     setIsLoading(true)
 
     try {
-      const session = getStoredSession()
-      if (!session) {
-        setError('请先登录')
-        return
-      }
-
       const response = await fetch('/api/auth/change-password', {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           oldPassword,
-          newPassword 
-        })
+          newPassword,
+        }),
       })
 
       const data = await response.json()
-
-      if (!data.success) {
+      if (!response.ok || !data.success) {
         setError(data.error || '修改密码失败')
-      } else {
-        onClose()
-        alert('密码修改成功！下次登录请使用新密码')
+        setIsLoading(false)
+        return
       }
-    } catch (err) {
-      setError('修改密码失败，请重试')
-    } finally {
+
+      handleClose()
+      alert('密码修改成功，下次登录请使用新密码')
+    } catch (submitError) {
+      console.error('Change password error:', submitError)
+      setError('修改密码失败，请稍后重试')
       setIsLoading(false)
-      setOldPassword('')
-      setNewPassword('')
-      setConfirmNewPassword('')
     }
   }
 
-  if (!show) return null
+  if (!show) {
+    return null
+  }
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-      <div className="w-full max-w-md bg-[#141923] border border-[#202B3A] p-8 rounded-lg">
-        <h3 className="text-xl font-bold text-white mb-6 text-center">🔐 修改密码</h3>
-        
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="w-full max-w-md rounded-lg border border-[#202B3A] bg-[#141923] p-8">
+        <h3 className="mb-6 text-center text-xl font-bold text-white">修改密码</h3>
+
         {error && (
-          <div className="mb-4 p-3 bg-red-500/20 border border-red-500 text-red-400 text-sm">
+          <div className="mb-4 rounded-lg border border-red-500 bg-red-500/20 p-3 text-sm text-red-400">
             {error}
           </div>
         )}
 
         <div className="mb-4">
-          <label className="text-xs text-[#00F2FE] mb-1.5 block">原密码</label>
+          <label className="mb-1.5 block text-xs text-[#00F2FE]">原密码</label>
           <input
             type="password"
             value={oldPassword}
-            onChange={(e) => setOldPassword(e.target.value)}
+            onChange={(event) => setOldPassword(event.target.value)}
             placeholder="请输入原密码"
-            className="w-full px-4 py-3 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none placeholder-[#ABC4FF]"
+            className="w-full rounded-lg border border-[#202B3A] bg-[#0B0D17] px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-[#ABC4FF] focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE]"
           />
         </div>
 
         <div className="mb-4">
-          <label className="text-xs text-[#00F2FE] mb-1.5 block">新密码</label>
+          <label className="mb-1.5 block text-xs text-[#00F2FE]">新密码</label>
           <input
             type="password"
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="请输入新密码（至少6位）"
-            className="w-full px-4 py-3 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none placeholder-[#ABC4FF]"
+            onChange={(event) => setNewPassword(event.target.value)}
+            placeholder="请输入新密码（至少 6 位）"
+            className="w-full rounded-lg border border-[#202B3A] bg-[#0B0D17] px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-[#ABC4FF] focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE]"
           />
         </div>
 
         <div className="mb-6">
-          <label className="text-xs text-[#00F2FE] mb-1.5 block">确认新密码</label>
+          <label className="mb-1.5 block text-xs text-[#00F2FE]">确认新密码</label>
           <input
             type="password"
             value={confirmNewPassword}
-            onChange={(e) => setConfirmNewPassword(e.target.value)}
+            onChange={(event) => setConfirmNewPassword(event.target.value)}
             placeholder="请再次输入新密码"
-            className="w-full px-4 py-3 bg-[#0B0D17] border border-[#202B3A] text-sm text-white focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE] focus:outline-none placeholder-[#ABC4FF]"
+            className="w-full rounded-lg border border-[#202B3A] bg-[#0B0D17] px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-[#ABC4FF] focus:border-[#00F2FE] focus:ring-1 focus:ring-[#00F2FE]"
           />
         </div>
 
         <div className="flex gap-3">
           <button
-            onClick={onClose}
-            className="flex-1 py-3 bg-[#0B0D17] border border-[#202B3A] text-white font-bold text-sm hover:border-[#00F2FE] transition-all"
+            onClick={handleClose}
+            className="flex-1 rounded-lg border border-[#202B3A] bg-[#0B0D17] py-3 text-sm font-bold text-white transition-all hover:border-[#00F2FE]"
           >
             取消
           </button>
           <button
             onClick={handleSubmit}
             disabled={isLoading}
-            className={`flex-1 py-3 bg-[#00E676] text-[#0A0F1D] font-bold text-sm border border-[#202B3A] shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all ${
-              isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-[0_0_20px_rgba(0,230,118,0.6)]'
+            className={`flex-1 rounded-lg border border-[#202B3A] bg-[#00E676] py-3 text-sm font-bold text-[#0A0F1D] shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all ${
+              isLoading ? 'cursor-not-allowed opacity-50' : 'hover:shadow-[0_0_20px_rgba(0,230,118,0.6)]'
             }`}
           >
             {isLoading ? '保存中...' : '确认修改'}

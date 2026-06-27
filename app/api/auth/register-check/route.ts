@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
 
     if (!email) {
       return NextResponse.json(
-        { success: false, error: '邮箱地址不能为空' },
-        { status: 400 }
+        { success: false, error: '邮箱地址不能为空。' },
+        { status: 400 },
       )
     }
 
@@ -26,9 +26,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: '注册频繁：同一网络环境 24 小时内最多注册 2 个账号，请稍后再试。',
+          error: '注册过于频繁：同一网络环境 24 小时内最多注册 2 个账号，请稍后再试。',
         },
-        { status: 429 }
+        { status: 429 },
       )
     }
 
@@ -39,8 +39,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[RegisterCheck] POST error:', error)
     return NextResponse.json(
-      { success: false, error: '系统繁忙，请稍后再试' },
-      { status: 500 }
+      { success: false, error: '系统繁忙，请稍后再试。' },
+      { status: 500 },
     )
   }
 }
@@ -63,8 +63,8 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     console.error('[RegisterCheck] PUT error:', error)
     return NextResponse.json(
-      { success: false, error: '系统繁忙' },
-      { status: 500 }
+      { success: false, error: '系统繁忙。' },
+      { status: 500 },
     )
   }
 }

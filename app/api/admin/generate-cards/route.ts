@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: '系统配置未完成，请稍后重试。',
         },
-        { status: 500 }
+        { status: 500 },
       )
     }
 
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: '生成数量必须在 1 到 100 之间。',
         },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: '卡密积分必须大于 0。',
         },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
               success: false,
               error: '生成卡密失败，重复校验次数过多。',
             },
-            { status: 500 }
+            { status: 500 },
           )
         }
 
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
             success: false,
             error: '生成卡密失败。',
           },
-          { status: 500 }
+          { status: 500 },
         )
       }
 
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: '生成卡密失败，请稍后重试。',
       },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }

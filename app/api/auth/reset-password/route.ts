@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     if (!supabaseAdmin) {
       return NextResponse.json({
         success: false,
-        error: '系统配置未完成，请稍后重试',
+        error: '系统配置未完成，请稍后重试。',
       }, { status: 500 })
     }
 
@@ -25,13 +25,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: '重置密码链接已发送到您的邮箱',
+      message: '重置密码链接已发送到您的邮箱。',
     })
   } catch (error) {
     console.error('Reset password error:', error)
     return NextResponse.json({
       success: false,
-      error: '发送失败，请稍后重试',
+      error: '发送失败，请稍后重试。',
     }, { status: 500 })
   }
 }
