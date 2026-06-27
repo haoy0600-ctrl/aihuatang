@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { TermsModal } from '@/components/TermsModal'
+import { isAdminEmail } from '@/lib/auth'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
 
 interface Announcement {
@@ -40,7 +41,7 @@ export default function AdminAnnouncementsPage() {
       return
     }
 
-    if (session.email !== '50923561@qq.com') {
+    if (!isAdminEmail(session.email)) {
       router.push('/dashboard')
       return
     }

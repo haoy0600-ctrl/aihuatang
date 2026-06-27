@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { HANDDRAWN_STYLES } from '@/config/styles'
-import { requireAuthenticatedUser, ADMIN_EMAIL } from '@/lib/auth'
+import { isAdminEmail, requireAuthenticatedUser } from '@/lib/auth'
+import { isUserCurrentlyBanned, recordSensitiveWordViolation } from '@/lib/security'
 
 export const maxDuration = 300
 
@@ -205,99 +206,6 @@ function detectSensitiveWords(prompt: string): boolean {
   }
   
   return false
-}
-
-async function logMaliciousRequest(userId: string, ip: string, prompt: string): Promise<void> {
-  if (!supabaseAdmin) return
-  
-  try {
-    await supabaseAdmin
-      .from('security_logs')
-      .insert({
-        user_id: userId,
-        ip_address: ip,
-        prompt: prompt.substring(0, 500),
-        type: 'sensitive_word',
-        created_at: new Date().toISOString(),
-      })
-  } catch (error) {
-    console.error('[Security] Failed to log malicious request:', error)
-  }
-}
-
-async function checkAndRecordViolation(userId: string, ip: string): Promise<boolean> {
-  if (!supabaseAdmin) return false
-  
-  const now = new Date()
-  const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000)
-  
-  try {
-    const { data: userViolations } = await supabaseAdmin
-      .from('security_logs')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('type', 'sensitive_word')
-      .gte('created_at', fiveMinutesAgo.toISOString())
-    
-    const { data: ipViolations } = await supabaseAdmin
-      .from('security_logs')
-      .select('id')
-      .eq('ip_address', ip)
-      .eq('type', 'sensitive_word')
-      .gte('created_at', fiveMinutesAgo.toISOString())
-    
-    const userCount = userViolations?.length || 0
-    const ipCount = ipViolations?.length || 0
-    
-    if (userCount >= 3 || ipCount >= 3) {
-      await supabaseAdmin
-        .from('profiles')
-        .update({ 
-          banned: true, 
-          banned_until: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-          banned_reason: '恶意刷词触发安全锁'
-        })
-        .eq('id', userId)
-      
-      console.error('[Security] User banned:', userId, 'IP:', ip, 'violations:', userCount, '/', ipCount)
-      return true
-    }
-    
-    return false
-  } catch (error) {
-    console.error('[Security] Failed to check violations:', error)
-    return false
-  }
-}
-
-async function isUserBanned(userId: string): Promise<boolean> {
-  if (!supabaseAdmin) return false
-  
-  try {
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('banned, banned_until')
-      .eq('id', userId)
-      .single()
-    
-    if (!profile || !profile.banned) return false
-    
-    if (profile.banned_until) {
-      const banEnd = new Date(profile.banned_until)
-      if (new Date() > banEnd) {
-        await supabaseAdmin
-          .from('profiles')
-          .update({ banned: false, banned_until: null })
-          .eq('id', userId)
-        return false
-      }
-    }
-    
-    return true
-  } catch (error) {
-    console.error('[Security] Failed to check ban status:', error)
-    return false
-  }
 }
 
 async function submitGrsTask(
@@ -560,7 +468,7 @@ async function checkVipPermission(userId: string): Promise<boolean> {
       return false
     }
 
-    if (profileData.email === ADMIN_EMAIL) {
+    if (isAdminEmail(profileData.email)) {
       console.log('[VIP] Admin user detected, granting VIP access')
       return true
     }
@@ -707,7 +615,7 @@ export async function POST(request: NextRequest) {
     const allPrompts = isTextMode ? inputContents.join('\n') : '[Image Mode]'
 
     // ===== 第一层：核心防御层 - 防恶意刷词安全锁 =====
-    const isBanned = await isUserBanned(userId)
+    const isBanned = await isUserCurrentlyBanned(userId)
     if (isBanned) {
       return NextResponse.json(
         { success: false, error: '账号因恶意刷词已触发安全锁，限制访问 24 小时' },
@@ -716,12 +624,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (detectSensitiveWords(allPrompts)) {
-      await logMaliciousRequest(userId, ip, allPrompts)
-      
+      const shouldBan = await recordSensitiveWordViolation({
+        userId,
+        ipAddress: ip,
+        prompt: allPrompts,
+      })
+
       await deductCredits(userId, 2)
-      
-      const shouldBan = await checkAndRecordViolation(userId, ip)
-      
+
       const errorMsg = shouldBan 
         ? '检测到违禁词汇，生成失败。恶意刷词系统将自动封禁账号'
         : '检测到违禁词汇，生成失败。恶意刷词系统将自动封禁账号'

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 
-export const ADMIN_EMAIL = '50923561@qq.com'
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '50923561@qq.com')
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean)
 
 type AuthUser = {
   id: string
@@ -14,6 +17,11 @@ export function unauthorized(message = '请先登录') {
 
 export function forbidden(message = '权限不足') {
   return NextResponse.json({ success: false, error: message }, { status: 403 })
+}
+
+export function isAdminEmail(email?: string | null) {
+  if (!email) return false
+  return ADMIN_EMAILS.includes(email.trim().toLowerCase())
 }
 
 function getBearerToken(request: NextRequest): string | null {
@@ -43,6 +51,7 @@ export async function requireAuthenticatedUser(request: NextRequest) {
   if (!user) {
     return { user: null, response: unauthorized() }
   }
+
   return { user, response: null }
 }
 
@@ -50,7 +59,7 @@ export async function requireAdminUser(request: NextRequest) {
   const auth = await requireAuthenticatedUser(request)
   if (auth.response || !auth.user) return auth
 
-  if (auth.user.email !== ADMIN_EMAIL) {
+  if (!isAdminEmail(auth.user.email)) {
     return { user: null, response: forbidden() }
   }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { isAdminEmail } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
 
@@ -49,8 +50,6 @@ export default function AdminCardGeneratorPage() {
     return () => clearInterval(interval)
   }, [])
 
-  // 管理员白名单
-  const ADMIN_EMAIL = '50923561@qq.com'
   const [isAdmin, setIsAdmin] = useState(false)
   const [showNoPermission, setShowNoPermission] = useState(false)
 
@@ -62,7 +61,7 @@ export default function AdminCardGeneratorPage() {
         return
       }
 
-      const adminCheck = session.email === ADMIN_EMAIL
+      const adminCheck = isAdminEmail(session.email)
       setUser({ email: session.email })
       setIsAdmin(adminCheck)
       

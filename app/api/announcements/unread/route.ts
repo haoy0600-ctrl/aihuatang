@@ -6,6 +6,13 @@ import { requireAuthenticatedUser } from '@/lib/auth'
 // POST: 标记公告为已读
 export async function GET(request: NextRequest) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json({
+        success: false,
+        error: 'Supabase 未配置'
+      }, { status: 500 })
+    }
+
     const auth = await requireAuthenticatedUser(request)
     if (auth.response || !auth.user) return auth.response
 
@@ -57,6 +64,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json({
+        success: false,
+        error: 'Supabase 未配置'
+      }, { status: 500 })
+    }
+
     const auth = await requireAuthenticatedUser(request)
     if (auth.response || !auth.user) return auth.response
 

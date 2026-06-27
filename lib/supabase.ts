@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -13,24 +13,28 @@ const isValidUrl = (url: string): boolean => {
   }
 }
 
-export const supabase = isValidUrl(supabaseUrl) && supabaseAnonKey && !supabaseAnonKey.startsWith('your_')
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: false,
-        detectSessionInUrl: false,
-        autoRefreshToken: false,
-      },
-      global: {
-        headers: {
-          'X-Client-Version': 'v1.0.0',
+export const supabase: SupabaseClient | null =
+  isValidUrl(supabaseUrl) && supabaseAnonKey && !supabaseAnonKey.startsWith('your_')
+    ? createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          persistSession: false,
+          detectSessionInUrl: false,
+          autoRefreshToken: false,
         },
-      },
-    })
-  : createClient('http://localhost', 'fake-key')
+        global: {
+          headers: {
+            'X-Client-Version': 'v1.0.0',
+          },
+        },
+      })
+    : null
 
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-})
+export const supabaseAdmin: SupabaseClient | null =
+  isValidUrl(supabaseUrl) && supabaseServiceRoleKey && !supabaseServiceRoleKey.startsWith('your_')
+    ? createClient(supabaseUrl, supabaseServiceRoleKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      })
+    : null

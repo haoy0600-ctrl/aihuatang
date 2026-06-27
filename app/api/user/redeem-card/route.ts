@@ -1,34 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
 import { requireAuthenticatedUser } from '@/lib/auth'
+import { supabaseAdmin } from '@/lib/supabase'
+import { countRecentIpEvents, getClientIP, logSecurityEvent } from '@/lib/security'
 
-const errorIpCache = new Map<string, { count: number; lastTime: number }>()
+const REDEEM_ERROR_LIMIT = 3
+const REDEEM_BLOCK_WINDOW_MS = 24 * 60 * 60 * 1000
 
-function getClientIP(request: NextRequest): string {
-  const forwarded = request.headers.get('x-forwarded-for')
-  if (forwarded) return forwarded.split(',')[0].trim()
-  return request.headers.get('x-real-ip') || 'unknown'
+async function getRecentRedeemErrorCount(ipAddress: string) {
+  return countRecentIpEvents('redeem_card_invalid', ipAddress, REDEEM_BLOCK_WINDOW_MS)
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = getClientIP(request)
-    const now = Date.now()
-
-    const ipLog = errorIpCache.get(ip)
-    if (ipLog && ipLog.count >= 3 && now - ipLog.lastTime < 24 * 60 * 60 * 1000) {
-      console.warn('[RedeemCard] IP blocked:', ip, 'errors:', ipLog.count)
-      return NextResponse.json({
-        success: false,
-        message: "⚠️ 安全检测：您尝试的错误次数过多，账号已触发防撞库保护，请 24 小时后再试或联系主理人微信！"
-      }, { status: 429 })
-    }
+    const ipAddress = getClientIP(request)
 
     if (!supabaseAdmin) {
       console.error('[RedeemCard] Supabase admin not configured')
       return NextResponse.json(
-        { success: false, message: "服务暂不可用，请稍后再试！" },
+        { success: false, message: '服务暂不可用，请稍后再试。' },
         { status: 503 }
+      )
+    }
+
+    const recentErrorCount = await getRecentRedeemErrorCount(ipAddress)
+    if (recentErrorCount >= REDEEM_ERROR_LIMIT) {
+      console.warn('[RedeemCard] IP blocked by recent invalid attempts:', { ipAddress, recentErrorCount })
+      return NextResponse.json(
+        {
+          success: false,
+          message: '安全检测：错误次数过多，请 24 小时后再试。',
+        },
+        { status: 429 }
       )
     }
 
@@ -36,20 +38,20 @@ export async function POST(request: NextRequest) {
     if (auth.response || !auth.user) return auth.response
 
     const body = await request.json()
-    const { cardCode } = body
+    const cardCode = typeof body.cardCode === 'string' ? body.cardCode.trim().toUpperCase() : ''
     const userId = auth.user.id
 
     if (!cardCode) {
-      return NextResponse.json({ success: false, message: "激活码不能为空！" }, { status: 400 })
+      return NextResponse.json(
+        { success: false, message: '激活码不能为空。' },
+        { status: 400 }
+      )
     }
-
-    const cleanCode = cardCode.trim().toUpperCase()
-    console.log('[RedeemCard] Processing card:', cleanCode.substring(0, 8) + '***')
 
     const { data: cardData, error: cardError } = await supabaseAdmin
       .from('card_codes')
       .select('id, code, credits, status, used_by, used_email, used_at')
-      .eq('code', cleanCode)
+      .eq('code', cardCode)
       .single()
 
     if (cardError && cardError.code !== 'PGRST116') {
@@ -57,21 +59,34 @@ export async function POST(request: NextRequest) {
     }
 
     if (!cardData) {
-      const currentCount = ipLog ? ipLog.count + 1 : 1
-      errorIpCache.set(ip, { count: currentCount, lastTime: now })
-      console.warn('[RedeemCard] Invalid card:', cleanCode, 'IP:', ip, 'count:', currentCount)
-      return NextResponse.json({ success: false, message: "无效的激活码！" }, { status: 400 })
+      await logSecurityEvent({
+        type: 'redeem_card_invalid',
+        userId,
+        ipAddress,
+        prompt: cardCode,
+      })
+
+      const updatedErrorCount = await getRecentRedeemErrorCount(ipAddress)
+      console.warn('[RedeemCard] Invalid card attempt:', { ipAddress, updatedErrorCount })
+
+      return NextResponse.json(
+        { success: false, message: '无效的激活码。' },
+        { status: 400 }
+      )
     }
 
     if (cardData.status === 'used') {
       const usedTime = cardData.used_at
         ? new Date(cardData.used_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
-        : "未知时间"
-      console.warn('[RedeemCard] Card already used:', cleanCode, 'by:', cardData.used_email, 'at:', usedTime)
-      return NextResponse.json({
-        success: false,
-        message: `⚠️ 该卡密已被使用！已于 ${usedTime} 被账号 ${cardData.used_email || "其他用户"} 兑换走。`
-      }, { status: 400 })
+        : '未知时间'
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: `该卡密已于 ${usedTime} 被 ${cardData.used_email || '其他用户'} 使用。`,
+        },
+        { status: 400 }
+      )
     }
 
     const { data: profile, error: profileError } = await supabaseAdmin
@@ -81,8 +96,11 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (profileError || !profile) {
-      console.error('[RedeemCard] Profile not found:', userId, profileError)
-      return NextResponse.json({ success: false, message: "用户不存在！" }, { status: 404 })
+      console.error('[RedeemCard] Profile not found:', { userId, profileError })
+      return NextResponse.json(
+        { success: false, message: '用户不存在。' },
+        { status: 404 }
+      )
     }
 
     const { data: usedCard, error: markUsedError } = await supabaseAdmin
@@ -100,14 +118,17 @@ export async function POST(request: NextRequest) {
 
     if (markUsedError) {
       console.error('[RedeemCard] Mark used failed:', markUsedError)
-      return NextResponse.json({ success: false, message: "该卡密已被使用或暂不可兑换，请刷新后重试！" }, { status: 409 })
+      return NextResponse.json(
+        { success: false, message: '该卡密已被使用，请刷新后重试。' },
+        { status: 409 }
+      )
     }
 
     const creditsToAdd = usedCard?.credits || cardData.credits || 0
     let newCredits = (profile.credits || 0) + creditsToAdd
-    let updateError = null
+    let updateError: unknown = null
 
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
       const { data: latestProfile, error: latestProfileError } = await supabaseAdmin
         .from('profiles')
         .select('credits')
@@ -147,24 +168,26 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', cardData.id)
         .eq('used_by', userId)
-      return NextResponse.json({ success: false, message: "系统对账繁忙，请稍后再试！" }, { status: 500 })
+
+      return NextResponse.json(
+        { success: false, message: '系统繁忙，请稍后再试。' },
+        { status: 500 }
+      )
     }
 
-    errorIpCache.delete(ip)
-    console.log('[RedeemCard] Success:', creditsToAdd, 'credits added to', userId, 'total:', newCredits)
+    console.log('[RedeemCard] Success:', { userId, creditsToAdd, totalCredits: newCredits })
 
     return NextResponse.json({
       success: true,
-      message: `🎉 兑换成功！已为您满血注入 ${creditsToAdd} 积分。`,
+      message: `兑换成功，已为您充值 ${creditsToAdd} 积分。`,
       credits: creditsToAdd,
       totalCredits: newCredits,
     })
-
   } catch (error: any) {
-    console.error('[RedeemCard] Unknown error:', error.message, error.stack)
-    return NextResponse.json({
-      success: false,
-      message: "系统对账繁忙，请稍后再试或联系主理人！"
-    }, { status: 500 })
+    console.error('[RedeemCard] Unknown error:', error?.message, error?.stack)
+    return NextResponse.json(
+      { success: false, message: '系统繁忙，请稍后再试。' },
+      { status: 500 }
+    )
   }
 }

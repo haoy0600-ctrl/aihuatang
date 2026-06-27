@@ -6,6 +6,13 @@ import { requireAdminUser } from '@/lib/auth'
 // POST: 创建公告（仅管理员）
 export async function GET(request: NextRequest) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json({
+        success: false,
+        error: 'Supabase 未配置'
+      }, { status: 500 })
+    }
+
     const { data: announcements, error } = await supabaseAdmin
       .from('announcements')
       .select('*')
@@ -36,6 +43,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json({
+        success: false,
+        error: 'Supabase 未配置'
+      }, { status: 500 })
+    }
+
     const auth = await requireAdminUser(request)
     if (auth.response || !auth.user) return auth.response
 
