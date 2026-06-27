@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { TermsModal } from '@/components/TermsModal'
 import { isAdminEmail } from '@/lib/auth'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
@@ -14,7 +14,7 @@ interface User {
   created_at: string
   banned?: boolean
   vip_level?: number
-  username?: string
+  username?: string | null
   generationCount?: number
   totalImages?: number
   usedModels?: Record<string, number>
@@ -26,6 +26,18 @@ interface QueueItem {
   prompt: string
   status: string
   created_at: string
+}
+
+interface GenerationRecord {
+  id: string
+  user_id: string
+  model: string
+  resolution: string
+  image_count: number
+  status: string
+  created_at: string
+  userEmail?: string
+  username?: string | null
 }
 
 interface Stats {
@@ -42,34 +54,19 @@ interface Stats {
   activeUsers: number
 }
 
-interface GenerationRecord {
-  id: string
-  user_id: string
-  model: string
-  resolution: string
-  image_count: number
-  status: string
-  created_at: string
-  userEmail?: string
-  username?: string
-}
+type TabKey = 'dashboard' | 'users'
 
 export default function AdminPage() {
   const router = useRouter()
   const [currentTime, setCurrentTime] = useState('')
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<{ email: string } | null>(null)
   const [stats, setStats] = useState<Stats | null>(null)
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeTab, setActiveTab] = useState<TabKey>('dashboard')
   const [showUserMenu, setShowUserMenu] = useState(false)
-  const [cardModalOpen, setCardModalOpen] = useState(false)
-  const [cardCount, setCardCount] = useState(10)
-  const [cardCredits, setCardCredits] = useState(10)
-  const [generatedCards, setGeneratedCards] = useState<string[]>([])
-  const [showCardResult, setShowCardResult] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
-  const [creditAmount, setCreditAmount] = useState(0)
+  const [creditAmount, setCreditAmount] = useState(10)
   const [showCreditModal, setShowCreditModal] = useState(false)
   const [creditAction, setCreditAction] = useState<'add' | 'subtract'>('add')
   const [showTermsModal, setShowTermsModal] = useState(false)
@@ -77,14 +74,12 @@ export default function AdminPage() {
   useEffect(() => {
     const updateTime = () => {
       const now = new Date()
-      const hours = String(now.getHours()).padStart(2, '0')
-      const minutes = String(now.getMinutes()).padStart(2, '0')
-      const seconds = String(now.getSeconds()).padStart(2, '0')
-      setCurrentTime(`${hours}:${minutes}:${seconds}`)
+      setCurrentTime(now.toLocaleTimeString('zh-CN', { hour12: false }))
     }
+
     updateTime()
-    const interval = setInterval(updateTime, 1000)
-    return () => clearInterval(interval)
+    const timer = setInterval(updateTime, 1000)
+    return () => clearInterval(timer)
   }, [])
 
   useEffect(() => {
@@ -107,13 +102,13 @@ export default function AdminPage() {
           fetch('/api/admin/stats', {
             method: 'POST',
             headers: authHeaders(),
-            body: JSON.stringify({})
+            body: JSON.stringify({}),
           }),
           fetch('/api/admin/users', {
             method: 'POST',
             headers: authHeaders(),
-            body: JSON.stringify({})
-          })
+            body: JSON.stringify({}),
+          }),
         ])
 
         const statsData = await statsResponse.json()
@@ -126,57 +121,27 @@ export default function AdminPage() {
         if (usersData.success) {
           setUsers(usersData.users)
         }
-      } catch (error) {
-        console.error('Fetch admin data error:', error)
+      } catch (fetchError) {
+        console.error('Fetch admin data error:', fetchError)
+      } finally {
+        setLoading(false)
       }
-
-      setLoading(false)
     }
 
     fetchData()
-
-    const interval = setInterval(fetchData, 30000)
-    return () => clearInterval(interval)
+    const timer = setInterval(fetchData, 30000)
+    return () => clearInterval(timer)
   }, [router])
 
-  const handleGenerateCards = async () => {
-    if (cardCount <= 0 || cardCount > 100) {
-      alert('生成数量必须在1-100之间')
-      return
-    }
-    if (cardCredits <= 0) {
-      alert('卡密积分必须大于0')
-      return
-    }
-
-    const response = await fetch('/api/admin/generate-cards', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({
-        count: cardCount,
-        credits: cardCredits
-      })
-    })
-
-    const data = await response.json()
-
-    if (data.success) {
-      setGeneratedCards(data.cards.map((c: any) => `${c.code} (${c.credits}积分)`))
-      setShowCardResult(true)
-    } else {
-      alert(data.error || '生成失败')
-    }
-  }
-
-  const handleCopyCards = async () => {
-    await navigator.clipboard.writeText(generatedCards.join('\n'))
-    alert('卡密列表已复制到剪贴板！')
-  }
+  const selectedUser = useMemo(
+    () => users.find((item) => item.id === selectedUserId) || null,
+    [selectedUserId, users],
+  )
 
   const handleCreditAction = async () => {
     if (!selectedUserId) return
     if (creditAmount <= 0) {
-      alert('积分数量必须大于0')
+      alert('积分数量必须大于 0')
       return
     }
 
@@ -186,47 +151,49 @@ export default function AdminPage() {
       body: JSON.stringify({
         userId: selectedUserId,
         action: creditAction === 'add' ? 'add_credits' : 'subtract_credits',
-        amount: creditAmount
-      })
+        amount: creditAmount,
+      }),
     })
 
     const data = await response.json()
 
     if (data.success) {
-      setUsers(users.map(u => 
-        u.id === selectedUserId ? { ...u, credits: data.newCredits } : u
-      ))
+      setUsers((currentUsers) =>
+        currentUsers.map((item) => (item.id === selectedUserId ? { ...item, credits: data.newCredits } : item)),
+      )
       setShowCreditModal(false)
       alert(data.message)
-    } else {
-      alert(data.error || '操作失败')
+      return
     }
+
+    alert(data.error || '操作失败')
   }
 
-  const handleToggleStatus = async (userId: string, currentStatus: boolean) => {
+  const handleToggleStatus = async (userId: string) => {
     const response = await fetch('/api/admin/update-user', {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({
-        userId: userId,
-        action: 'toggle_status'
-      })
+        userId,
+        action: 'toggle_status',
+      }),
     })
 
     const data = await response.json()
 
     if (data.success) {
-      setUsers(users.map(u => 
-        u.id === userId ? { ...u, banned: data.banned } : u
-      ))
+      setUsers((currentUsers) =>
+        currentUsers.map((item) => (item.id === userId ? { ...item, banned: data.banned } : item)),
+      )
       alert(data.message)
-    } else {
-      alert(data.error || '操作失败')
+      return
     }
+
+    alert(data.error || '操作失败')
   }
 
   const handleDeleteUser = async (userId: string, email: string) => {
-    if (!confirm(`确定要删除用户 "${email}" 吗？此操作无法撤销！`)) {
+    if (!confirm(`确定要删除用户“${email}”吗？此操作不可恢复。`)) {
       return
     }
 
@@ -234,27 +201,25 @@ export default function AdminPage() {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({
-        userId: userId,
-        action: 'delete'
-      })
+        userId,
+        action: 'delete',
+      }),
     })
 
     const data = await response.json()
 
     if (data.success) {
-      setUsers(users.filter(u => u.id !== userId))
+      setUsers((currentUsers) => currentUsers.filter((item) => item.id !== userId))
       alert(data.message)
-    } else {
-      alert(data.error || '删除失败')
+      return
     }
+
+    alert(data.error || '删除失败')
   }
 
-  const formatDate = (dateStr: string): string => {
+  const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}/${month}/${day}`
+    return date.toLocaleDateString('zh-CN')
   }
 
   const handleLogout = () => {
@@ -266,7 +231,7 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen bg-[#0B0D17] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 bg-[#00F2FE] border border-[#00F2FE] mx-auto mb-4 animate-pulse"></div>
+          <div className="w-12 h-12 bg-[#00F2FE] border border-[#00F2FE] mx-auto mb-4 animate-pulse rounded-lg" />
           <p className="text-[#00F2FE]">加载中...</p>
         </div>
       </div>
@@ -280,50 +245,30 @@ export default function AdminPage() {
           <div className="flex justify-between items-center w-full py-2 sm:py-3">
             <div className="flex items-center gap-4">
               <Link href="/" className="flex items-center select-none hover:opacity-80 transition-opacity">
-                <img 
-                  src="/logo.png?v=6" 
-                  alt="AI画堂" 
-                  className="h-16 w-16 object-contain"
-                />
+                <img src="/logo.png?v=6" alt="AI画堂" className="h-16 w-16 object-contain" />
               </Link>
               <div>
-                <h1 className="text-xl font-bold text-white">🔧 后台管理系统</h1>
+                <h1 className="text-xl font-bold text-white">后台管理系统</h1>
                 <p className="text-xs text-[#00F2FE]">管理员专属控制台</p>
               </div>
             </div>
 
             <nav className="hidden md:flex items-center gap-2">
-              {[
-                { key: 'dashboard', label: '数据看板' },
-                { key: 'users', label: '用户管理' },
-                { key: 'cards', label: '🔑 卡密管理', href: '/admin/cards' },
-                { key: 'announcements', label: '📢 公告管理', href: '/admin/announcements' }
-              ].map(tab => {
-                if (tab.href) {
-                  return (
-                    <Link
-                      key={tab.key}
-                      href={tab.href}
-                      className="px-3 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
-                    >
-                      {tab.label}
-                    </Link>
-                  )
-                }
-                return (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab.key)}
-                    className={`px-4 py-2 font-bold text-sm border transition-all rounded-lg ${
-                      activeTab === tab.key
-                        ? 'bg-[#00F2FE] text-[#0A0F1D] border-[#00F2FE]'
-                        : 'bg-[#141923] text-white border-[#202B3A] hover:border-[#00F2FE]'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                )
-              })}
+              <TabButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')}>
+                数据看板
+              </TabButton>
+              <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')}>
+                用户管理
+              </TabButton>
+              <Link href="/admin/cards" className="px-3 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors">
+                卡密管理
+              </Link>
+              <Link
+                href="/admin/announcements"
+                className="px-3 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+              >
+                公告管理
+              </Link>
             </nav>
 
             <div className="flex items-center gap-2 sm:gap-4">
@@ -332,20 +277,20 @@ export default function AdminPage() {
                 <span className="text-white font-mono font-bold text-sm">{currentTime}</span>
               </div>
               <div className="relative">
-                <button 
-                  onClick={() => setShowUserMenu(!showUserMenu)}
+                <button
+                  onClick={() => setShowUserMenu((prev) => !prev)}
                   className="w-8 h-8 sm:w-9 sm:h-9 bg-[#141923] border border-[#202B3A] flex items-center justify-center hover:border-[#00F2FE] transition-colors rounded-lg"
                 >
                   <span className="text-white font-bold text-sm">AD</span>
                 </button>
                 {showUserMenu && (
-                  <div className="absolute right-0 top-10 w-48 bg-[#141923] border border-[#202B3A] shadow-lg z-50 rounded-xl overflow-hidden">
+                  <div className="absolute right-0 top-10 w-52 bg-[#141923] border border-[#202B3A] shadow-lg z-50 rounded-xl overflow-hidden">
                     <div className="p-3 border-b border-[#202B3A]">
                       <p className="text-xs text-[#00F2FE] mb-1">管理员账号</p>
                       <p className="text-sm text-white font-medium truncate">{user?.email}</p>
                     </div>
                     <div className="p-2">
-                      <button 
+                      <button
                         onClick={handleLogout}
                         className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#1a2230] transition-colors rounded-lg"
                       >
@@ -365,163 +310,127 @@ export default function AdminPage() {
           {activeTab === 'dashboard' && (
             <>
               <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
-                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-[#94A3B8]">总用户数</span>
-                    <span className="text-2xl">👥</span>
-                  </div>
-                  <p className="text-3xl font-bold text-white">{stats?.totalUsers || 0}</p>
-                </div>
-                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-[#94A3B8]">总生成数</span>
-                    <span className="text-2xl">🎨</span>
-                  </div>
-                  <p className="text-3xl font-bold text-white">{stats?.totalGenerations || 0}</p>
-                </div>
-                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-[#94A3B8]">累计消耗积分</span>
-                    <span className="text-2xl">⚡</span>
-                  </div>
-                  <p className="text-3xl font-bold text-[#00F2FE]">{stats?.totalConsumed || 0}</p>
-                </div>
-                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-[#94A3B8]">生成成功率</span>
-                    <span className="text-2xl">✅</span>
-                  </div>
-                  <p className="text-3xl font-bold text-[#10B981]">{stats?.successRate}%</p>
-                </div>
-                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-[#94A3B8]">处理中任务</span>
-                    <span className="text-2xl">⏳</span>
-                  </div>
-                  <p className="text-3xl font-bold text-yellow-400">{stats?.queueCount || 0}</p>
-                </div>
-                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-[#94A3B8]">活跃用户(近7天)</span>
-                    <span className="text-2xl">🔥</span>
-                  </div>
-                  <p className="text-3xl font-bold text-amber-500">{stats?.activeUsers || 0}</p>
-                </div>
+                <MetricCard label="总用户数" value={stats?.totalUsers || 0} accent="text-white" />
+                <MetricCard label="总生成次数" value={stats?.totalGenerations || 0} accent="text-white" />
+                <MetricCard label="累计消耗积分" value={stats?.totalConsumed || 0} accent="text-[#00F2FE]" />
+                <MetricCard label="生成成功率" value={`${stats?.successRate || 0}%`} accent="text-[#10B981]" />
+                <MetricCard label="处理中任务" value={stats?.queueCount || 0} accent="text-yellow-400" />
+                <MetricCard label="近 7 天活跃用户" value={stats?.activeUsers || 0} accent="text-amber-500" />
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
-                  <h3 className="text-lg font-bold text-white mb-4">🤖 模型使用统计</h3>
-                  <div className="space-y-3">
-                    {Object.entries(stats?.modelStats || {}).map(([model, data]) => (
-                      <div key={model}>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-[#00F2FE] font-medium">{model}</span>
-                          <span className="text-white">{data.count}次 / {data.totalImages}张</span>
-                        </div>
-                        <div className="h-2 bg-[#0B0D17] rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-[#00F2FE] to-[#10B981] transition-all duration-500"
-                            style={{ width: `${(data.count / (stats?.totalGenerations || 1)) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    {Object.keys(stats?.modelStats || {}).length === 0 && (
-                      <div className="text-center py-4 text-[#94A3B8]">暂无数据</div>
-                    )}
-                  </div>
-                </div>
+                <StatPanel title="模型使用统计">
+                  {Object.entries(stats?.modelStats || {}).length > 0 ? (
+                    Object.entries(stats?.modelStats || {}).map(([model, data]) => (
+                      <ProgressRow
+                        key={model}
+                        label={model}
+                        value={`${data.count} 次 / ${data.totalImages} 张`}
+                        percent={(data.count / (stats?.totalGenerations || 1)) * 100}
+                        gradient="from-[#00F2FE] to-[#10B981]"
+                      />
+                    ))
+                  ) : (
+                    <EmptyState text="暂无模型数据" />
+                  )}
+                </StatPanel>
 
-                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
-                  <h3 className="text-lg font-bold text-white mb-4">📐 分辨率分布</h3>
-                  <div className="space-y-3">
-                    {Object.entries(stats?.resolutionStats || {}).map(([resolution, data]) => {
+                <StatPanel title="分辨率分布">
+                  {Object.entries(stats?.resolutionStats || {}).length > 0 ? (
+                    Object.entries(stats?.resolutionStats || {}).map(([resolution, data]) => {
                       const colors: Record<string, string> = {
                         '1K': 'from-blue-500 to-blue-400',
                         '2K': 'from-purple-500 to-purple-400',
                         '4K': 'from-amber-500 to-amber-400',
                       }
+
                       return (
-                        <div key={resolution}>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-white font-medium">{resolution}</span>
-                            <span className="text-[#94A3B8]">{data.count}次 / {data.totalImages}张</span>
-                          </div>
-                          <div className="h-2 bg-[#0B0D17] rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full bg-gradient-to-r ${colors[resolution] || 'from-gray-500'} transition-all duration-500`}
-                              style={{ width: `${(data.count / (stats?.totalGenerations || 1)) * 100}%` }}
-                            />
-                          </div>
-                        </div>
+                        <ProgressRow
+                          key={resolution}
+                          label={resolution}
+                          value={`${data.count} 次 / ${data.totalImages} 张`}
+                          percent={(data.count / (stats?.totalGenerations || 1)) * 100}
+                          gradient={colors[resolution] || 'from-gray-500 to-gray-400'}
+                        />
                       )
-                    })}
-                    {Object.keys(stats?.resolutionStats || {}).length === 0 && (
-                      <div className="text-center py-4 text-[#94A3B8]">暂无数据</div>
-                    )}
-                  </div>
-                </div>
+                    })
+                  ) : (
+                    <EmptyState text="暂无分辨率数据" />
+                  )}
+                </StatPanel>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
-                  <h3 className="text-lg font-bold text-white mb-4">📝 最近生成记录</h3>
+                <StatPanel title="最近生成记录">
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {stats?.recentGenerations && stats.recentGenerations.length > 0 ? (
                       stats.recentGenerations.map((item) => (
                         <div key={item.id} className="bg-[#0B0D17] border border-[#202B3A] p-3 rounded-lg">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-xs text-[#00F2FE] font-medium">{item.model}</span>
-                            <span className={`text-xs font-bold ${
-                              item.status === 'success' ? 'text-[#10B981]' : 
-                              item.status === 'failed' ? 'text-red-400' : 'text-yellow-400'
-                            }`}>
-                              {item.status === 'success' ? '✓ 成功' : item.status === 'failed' ? '✗ 失败' : '⏳ 处理中'}
+                            <span
+                              className={`text-xs font-bold ${
+                                item.status === 'success'
+                                  ? 'text-[#10B981]'
+                                  : item.status === 'failed'
+                                    ? 'text-red-400'
+                                    : 'text-yellow-400'
+                              }`}
+                            >
+                              {item.status === 'success' ? '成功' : item.status === 'failed' ? '失败' : '处理中'}
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-xs text-[#94A3B8] mb-1">
-                            <span>{item.resolution} / {item.image_count}张</span>
+                            <span>
+                              {item.resolution} / {item.image_count} 张
+                            </span>
                             <span>{formatDate(item.created_at)}</span>
                           </div>
                           <div className="text-xs text-amber-400 truncate">
-                            用户: {item.username || item.userEmail || '未知'}
+                            用户：{item.username || item.userEmail || '未知'}
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-4 text-[#94A3B8]">暂无数据</div>
+                      <EmptyState text="暂无记录" />
                     )}
                   </div>
-                </div>
+                </StatPanel>
 
-                <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
-                  <h3 className="text-lg font-bold text-white mb-4">🏆 活跃用户排行（TOP 10）</h3>
+                <StatPanel title="活跃用户排行（TOP 10）">
                   <div className="space-y-2">
                     {stats?.topUsers && stats.topUsers.length > 0 ? (
-                      stats.topUsers.map((user, index) => (
-                        <div key={user.id} className="flex items-center gap-3 bg-[#0B0D17] border border-[#202B3A] p-3 rounded-lg">
-                          <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${
-                            index === 0 ? 'bg-amber-500 text-black' :
-                            index === 1 ? 'bg-gray-400 text-black' :
-                            index === 2 ? 'bg-amber-700 text-white' :
-                            'bg-[#202B3A] text-white'
-                          }`}>
+                      stats.topUsers.map((item, index) => (
+                        <div key={item.id} className="flex items-center gap-3 bg-[#0B0D17] border border-[#202B3A] p-3 rounded-lg">
+                          <span
+                            className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${
+                              index === 0
+                                ? 'bg-amber-500 text-black'
+                                : index === 1
+                                  ? 'bg-gray-400 text-black'
+                                  : index === 2
+                                    ? 'bg-amber-700 text-white'
+                                    : 'bg-[#202B3A] text-white'
+                            }`}
+                          >
                             {index + 1}
                           </span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-white truncate">{user.username || user.email}</p>
+                            <p className="text-sm text-white truncate">{item.username || item.email}</p>
                             <div className="flex items-center gap-2 text-xs text-[#94A3B8]">
-                              <span>{formatDate(user.created_at)}注册</span>
+                              <span>{formatDate(item.created_at)} 注册</span>
                               <span className="text-[#10B981]">|</span>
-                              <span className="text-[#00F2FE]">生成 {user.generationCount || 0} 次</span>
+                              <span className="text-[#00F2FE]">生成 {item.generationCount || 0} 次</span>
                               <span className="text-[#10B981]">|</span>
-                              <span className="text-amber-400">{user.totalImages || 0} 张</span>
+                              <span className="text-amber-400">{item.totalImages || 0} 张</span>
                             </div>
-                            {user.usedModels && Object.keys(user.usedModels).length > 0 && (
-                              <div className="flex gap-1 mt-1">
-                                {Object.entries(user.usedModels).slice(0, 3).map(([model, count]) => (
-                                  <span key={model} className="px-1.5 py-0.5 bg-[#202B3A] text-[10px] text-[#00F2FE] rounded">
+                            {item.usedModels && Object.keys(item.usedModels).length > 0 && (
+                              <div className="flex gap-1 mt-1 flex-wrap">
+                                {Object.entries(item.usedModels).slice(0, 3).map(([model, count]) => (
+                                  <span
+                                    key={model}
+                                    className="px-1.5 py-0.5 bg-[#202B3A] text-[10px] text-[#00F2FE] rounded"
+                                  >
                                     {model} x{count}
                                   </span>
                                 ))}
@@ -529,38 +438,41 @@ export default function AdminPage() {
                             )}
                           </div>
                           <div className="text-right">
-                            <span className="text-sm font-bold text-[#00F2FE]">{user.credits} 积分</span>
-                            {user.vip_level && user.vip_level > 0 && (
-                              <div className="text-[10px] text-amber-400">VIP Lv.{user.vip_level}</div>
+                            <span className="text-sm font-bold text-[#00F2FE]">{item.credits} 积分</span>
+                            {item.vip_level && item.vip_level > 0 && (
+                              <div className="text-[10px] text-amber-400">VIP Lv.{item.vip_level}</div>
                             )}
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-4 text-[#94A3B8]">暂无数据</div>
+                      <EmptyState text="暂无排行数据" />
                     )}
                   </div>
-                </div>
+                </StatPanel>
               </div>
 
-              <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
+              <StatPanel title="实时生成队列监控">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-white">📊 实时生成队列监控</h3>
-                  <span className={`px-3 py-1 rounded-full text-sm font-bold ${
-                    stats?.queueCount && stats.queueCount > 0 
-                      ? 'bg-yellow-500/20 text-yellow-400' 
-                      : 'bg-[#10B981]/20 text-[#10B981]'
-                  }`}>
+                  <span className="text-sm text-[#94A3B8]">当前待处理任务</span>
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-bold ${
+                      stats?.queueCount && stats.queueCount > 0
+                        ? 'bg-yellow-500/20 text-yellow-400'
+                        : 'bg-[#10B981]/20 text-[#10B981]'
+                    }`}
+                  >
                     {stats?.queueCount || 0} 个任务
                   </span>
                 </div>
+
                 {stats?.queue && stats.queue.length > 0 ? (
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {stats.queue.map((item) => (
                       <div key={item.id} className="bg-[#0B0D17] border border-[#202B3A] p-3 rounded-lg">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs text-[#00F2FE]">任务 {item.id.substring(0, 8)}</span>
-                          <span className="text-xs text-yellow-400">⏳ 处理中</span>
+                          <span className="text-xs text-yellow-400">处理中</span>
                         </div>
                         <p className="text-sm text-white truncate">{item.prompt.substring(0, 50)}...</p>
                         <p className="text-[10px] text-[#475569] mt-1">{formatDate(item.created_at)}</p>
@@ -568,94 +480,89 @@ export default function AdminPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-[#94A3B8]">
-                    <span className="text-3xl mb-2 block">🎉</span>
-                    <p>当前没有正在处理的任务</p>
-                  </div>
+                  <EmptyState text="当前没有正在处理的任务" />
                 )}
-              </div>
+              </StatPanel>
             </>
           )}
 
           {activeTab === 'users' && (
             <div className="bg-[#141923] border border-[#202B3A] rounded-xl overflow-hidden">
               <div className="p-4 border-b border-[#202B3A]">
-                <h3 className="text-lg font-bold text-white">👥 用户管理</h3>
+                <h3 className="text-lg font-bold text-white">用户管理</h3>
                 <p className="text-xs text-[#94A3B8] mt-1">共 {users.length} 个用户</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="bg-[#0B0D17]">
-                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">用户ID</th>
-                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">用户名/邮箱</th>
+                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">用户 ID</th>
+                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">用户名 / 邮箱</th>
                       <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">积分</th>
                       <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">生成次数</th>
-                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">使用模型</th>
-                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">VIP等级</th>
+                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">常用模型</th>
+                      <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">VIP 等级</th>
                       <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">注册时间</th>
                       <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">状态</th>
                       <th className="px-4 py-3 text-left text-xs text-[#94A3B8] font-bold">操作</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((user) => (
-                      <tr key={user.id} className="border-t border-[#202B3A] hover:bg-[#1a2230]">
-                        <td className="px-4 py-3 text-sm text-[#94A3B8] font-mono">
-                          {user.id.substring(0, 12)}...
+                    {users.map((item) => (
+                      <tr key={item.id} className="border-t border-[#202B3A] hover:bg-[#1a2230]">
+                        <td className="px-4 py-3 text-sm text-[#94A3B8] font-mono">{item.id.substring(0, 12)}...</td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm text-white">{item.username || item.email}</p>
+                          {item.username && item.email && <p className="text-xs text-[#94A3B8]">{item.email}</p>}
                         </td>
                         <td className="px-4 py-3">
-                          <p className="text-sm text-white">{user.username || user.email}</p>
-                          {user.username && user.email && (
-                            <p className="text-xs text-[#94A3B8]">{user.email}</p>
-                          )}
+                          <span className="text-sm font-bold text-[#00F2FE]">{item.credits}</span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm font-bold text-[#00F2FE]">{user.credits}</span>
+                          <span className="text-sm text-[#10B981]">{item.generationCount || 0} 次</span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm text-[#10B981]">{user.generationCount || 0} 次</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          {user.usedModels && Object.keys(user.usedModels).length > 0 ? (
+                          {item.usedModels && Object.keys(item.usedModels).length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {Object.entries(user.usedModels).slice(0, 2).map(([model, count]) => (
+                              {Object.entries(item.usedModels).slice(0, 2).map(([model, count]) => (
                                 <span key={model} className="px-1.5 py-0.5 bg-[#202B3A] text-[10px] text-[#00F2FE] rounded">
                                   {model} x{count}
                                 </span>
                               ))}
-                              {Object.keys(user.usedModels).length > 2 && (
-                                <span className="text-[10px] text-[#94A3B8]">+{Object.keys(user.usedModels).length - 2}</span>
+                              {Object.keys(item.usedModels).length > 2 && (
+                                <span className="text-[10px] text-[#94A3B8]">+{Object.keys(item.usedModels).length - 2}</span>
                               )}
                             </div>
                           ) : (
-                            <span className="text-xs text-[#64748B]">未使用</span>
+                            <span className="text-xs text-[#64748B]">暂无</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          {user.vip_level && user.vip_level > 0 ? (
+                          {item.vip_level && item.vip_level > 0 ? (
                             <span className="px-2 py-1 bg-amber-500/20 text-amber-400 text-xs font-bold rounded">
-                              VIP Lv.{user.vip_level}
+                              VIP Lv.{item.vip_level}
                             </span>
                           ) : (
                             <span className="text-xs text-[#64748B]">普通</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#94A3B8]">{formatDate(user.created_at)}</td>
+                        <td className="px-4 py-3 text-sm text-[#94A3B8]">{formatDate(item.created_at)}</td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${
-                            user.banned === true 
-                              ? 'bg-red-500/20 text-red-400' 
-                              : 'bg-[#10B981]/20 text-[#10B981]'
-                          }`}>
-                            {user.banned === true ? '已禁用' : '正常'}
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-bold ${
+                              item.banned
+                                ? 'bg-red-500/20 text-red-400'
+                                : 'bg-[#10B981]/20 text-[#10B981]'
+                            }`}
+                          >
+                            {item.banned ? '已禁用' : '正常'}
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
                             <button
                               onClick={() => {
-                                setSelectedUserId(user.id)
+                                setSelectedUserId(item.id)
                                 setCreditAction('add')
                                 setCreditAmount(10)
                                 setShowCreditModal(true)
@@ -666,7 +573,7 @@ export default function AdminPage() {
                             </button>
                             <button
                               onClick={() => {
-                                setSelectedUserId(user.id)
+                                setSelectedUserId(item.id)
                                 setCreditAction('subtract')
                                 setCreditAmount(10)
                                 setShowCreditModal(true)
@@ -676,17 +583,17 @@ export default function AdminPage() {
                               -积分
                             </button>
                             <button
-                              onClick={() => handleToggleStatus(user.id, user.banned !== true)}
+                              onClick={() => handleToggleStatus(item.id)}
                               className={`px-2 py-1 text-xs font-bold border transition-all rounded ${
-                                user.banned === true
+                                item.banned
                                   ? 'bg-[#10B981]/20 text-[#10B981] border-[#10B981]/50'
                                   : 'bg-red-500/20 text-red-400 border-red-500/50'
                               }`}
                             >
-                              {user.banned === true ? '解禁' : '禁用'}
+                              {item.banned ? '解禁' : '禁用'}
                             </button>
                             <button
-                              onClick={() => handleDeleteUser(user.id, user.email)}
+                              onClick={() => handleDeleteUser(item.id, item.email)}
                               className="px-2 py-1 bg-red-600/20 text-red-500 text-xs font-bold border border-red-600/50 hover:bg-red-600/30 transition-all rounded"
                             >
                               删除
@@ -700,77 +607,6 @@ export default function AdminPage() {
               </div>
             </div>
           )}
-
-          {activeTab === 'cards' && (
-            <div className="bg-[#141923] border border-[#202B3A] rounded-xl overflow-hidden">
-              <div className="p-4 border-b border-[#202B3A]">
-                <h3 className="text-lg font-bold text-white">🔑 卡密一键生成</h3>
-                <p className="text-xs text-[#94A3B8] mt-1">批量生成随机卡密</p>
-              </div>
-              <div className="p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  <div>
-                    <label className="block text-xs text-[#94A3B8] mb-2">生成数量</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={cardCount}
-                      onChange={(e) => setCardCount(Number(e.target.value))}
-                      className="w-full px-4 py-2 bg-[#0B0D17] border border-[#202B3A] text-white text-sm focus:border-[#00F2FE] focus:outline-none rounded-lg"
-                    />
-                    <p className="text-[10px] text-[#475569] mt-1">1-100之间</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-[#94A3B8] mb-2">单张卡密积分</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={cardCredits}
-                      onChange={(e) => setCardCredits(Number(e.target.value))}
-                      className="w-full px-4 py-2 bg-[#0B0D17] border border-[#202B3A] text-white text-sm focus:border-[#00F2FE] focus:outline-none rounded-lg"
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={handleGenerateCards}
-                  className="w-full py-3 bg-[#00F2FE] text-[#0A0F1D] font-bold text-sm hover:bg-[#33f5ff] transition-all rounded-lg"
-                >
-                  🚀 开始生成卡密
-                </button>
-
-                {showCardResult && (
-                  <div className="mt-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-bold text-white">生成结果</h4>
-                      <button
-                        onClick={() => {
-                          setShowCardResult(false)
-                          setGeneratedCards([])
-                        }}
-                        className="text-xs text-[#94A3B8] hover:text-white"
-                      >
-                        关闭
-                      </button>
-                    </div>
-                    <div className="bg-[#0B0D17] border border-[#202B3A] p-4 rounded-lg max-h-64 overflow-y-auto mb-3">
-                      {generatedCards.map((card, index) => (
-                        <p key={index} className="text-sm text-[#00F2FE] font-mono mb-1">
-                          {card}
-                        </p>
-                      ))}
-                    </div>
-                    <button
-                      onClick={handleCopyCards}
-                      className="w-full py-2 bg-[#10B981]/20 text-[#10B981] font-bold text-sm border border-[#10B981]/50 hover:bg-[#10B981]/30 transition-all rounded-lg"
-                    >
-                      📋 一键复制所有卡密
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </main>
 
@@ -779,15 +615,20 @@ export default function AdminPage() {
           <div className="w-full max-w-md bg-[#141923] border border-[#202B3A] rounded-xl">
             <div className="p-6">
               <h3 className="text-lg font-bold text-white mb-4">
-                {creditAction === 'add' ? '➕ 增加积分' : '➖ 扣除积分'}
+                {creditAction === 'add' ? '增加积分' : '扣除积分'}
               </h3>
+              {selectedUser && (
+                <p className="text-sm text-[#94A3B8] mb-4">
+                  当前用户：<span className="text-white">{selectedUser.username || selectedUser.email}</span>
+                </p>
+              )}
               <div className="mb-6">
                 <label className="block text-xs text-[#94A3B8] mb-2">积分数量</label>
                 <input
                   type="number"
                   min="1"
                   value={creditAmount}
-                  onChange={(e) => setCreditAmount(Number(e.target.value))}
+                  onChange={(event) => setCreditAmount(Number(event.target.value))}
                   className="w-full px-4 py-2 bg-[#0B0D17] border border-[#202B3A] text-white text-sm focus:border-[#00F2FE] focus:outline-none rounded-lg"
                 />
               </div>
@@ -814,18 +655,15 @@ export default function AdminPage() {
         </div>
       )}
 
-      <TermsModal
-        show={showTermsModal}
-        onClose={() => setShowTermsModal(false)}
-      />
+      <TermsModal show={showTermsModal} onClose={() => setShowTermsModal(false)} />
 
       <footer className="fixed bottom-0 left-0 right-0 py-2.5 bg-[#030712]/95 border-t border-[#1e293b]/50 backdrop-blur-sm z-40">
         <div className="max-w-[1400px] mx-auto px-4 text-center">
           <p className="text-sm text-gray-400">
-            登录或使用本站即代表您同意{' '}
-            <button 
+            使用本站即表示你同意
+            <button
               onClick={() => setShowTermsModal(true)}
-              className="text-[#10B981] hover:text-[#00F2FE] font-semibold underline underline-offset-2 decoration-[#10B981]/50 hover:decoration-[#00F2FE] transition-all duration-300 hover:shadow-[0_0_8px_rgba(16,185,129,0.3)] rounded px-1"
+              className="text-[#10B981] hover:text-[#00F2FE] font-semibold underline underline-offset-2 decoration-[#10B981]/50 hover:decoration-[#00F2FE] transition-all duration-300 rounded px-1"
             >
               《安全合规与使用须知》
             </button>
@@ -834,4 +672,81 @@ export default function AdminPage() {
       </footer>
     </div>
   )
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 font-bold text-sm border transition-all rounded-lg ${
+        active
+          ? 'bg-[#00F2FE] text-[#0A0F1D] border-[#00F2FE]'
+          : 'bg-[#141923] text-white border-[#202B3A] hover:border-[#00F2FE]'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function MetricCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string
+  value: string | number
+  accent: string
+}) {
+  return (
+    <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
+      <span className="text-xs text-[#94A3B8]">{label}</span>
+      <p className={`text-3xl font-bold mt-3 ${accent}`}>{value}</p>
+    </div>
+  )
+}
+
+function StatPanel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-[#141923] border border-[#202B3A] p-4 rounded-xl">
+      <h3 className="text-lg font-bold text-white mb-4">{title}</h3>
+      {children}
+    </div>
+  )
+}
+
+function ProgressRow({
+  label,
+  value,
+  percent,
+  gradient,
+}: {
+  label: string
+  value: string
+  percent: number
+  gradient: string
+}) {
+  return (
+    <div className="mb-3">
+      <div className="flex justify-between text-sm mb-1">
+        <span className="text-white font-medium">{label}</span>
+        <span className="text-[#94A3B8]">{value}</span>
+      </div>
+      <div className="h-2 bg-[#0B0D17] rounded-full overflow-hidden">
+        <div className={`h-full bg-gradient-to-r ${gradient}`} style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function EmptyState({ text }: { text: string }) {
+  return <div className="text-center py-4 text-[#94A3B8]">{text}</div>
 }
