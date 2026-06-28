@@ -206,7 +206,7 @@ export default function ProfilePage() {
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-2 sm:py-3">
             <Link href="/" className="flex items-center select-none transition-opacity hover:opacity-80">
-              <img src="/logo.svg?v=2" alt="AI画堂" className="h-20 w-20 object-contain" />
+              <img src="/logo.svg?v=3" alt="AI画堂" className="h-20 w-20 object-contain" />
             </Link>
 
             <nav className="hidden items-center gap-4 md:flex">

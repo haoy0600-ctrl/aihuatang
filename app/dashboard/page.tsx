@@ -27,6 +27,8 @@ type GenerationMode = 'text' | 'image'
 type GenerationStatus = 'idle' | 'loading' | 'success'
 type ModelType = 'GPT-Image-2' | 'NanoBanana2'
 const PENDING_GENERATION_KEY = 'ai_huatang_pending_generation_request'
+const STYLE_STORAGE_VERSION_KEY = 'ai_huatang_style_storage_version'
+const CURRENT_STYLE_STORAGE_VERSION = '2026-06-28-v2'
 
 const ASPECT_RATIOS = [
   { label: 'auto', value: 'auto', note: '自动适配' },
@@ -62,6 +64,8 @@ const getStoredJson = <T,>(key: string, fallback: T): T => {
     return fallback
   }
 }
+
+const isLegacySystemStyleName = (value: string) => /^系统风格\s*\d+$/i.test(value.trim())
 
 const sanitizeDisplayText = (value: string) =>
   value
@@ -194,7 +198,45 @@ export default function DashboardPage() {
   }, [router])
 
   useEffect(() => {
-    setCustomStylesList(getStoredJson<CustomStyle[]>('customStyles', []))
+    if (typeof window === 'undefined') return
+
+    const savedVersion = localStorage.getItem(STYLE_STORAGE_VERSION_KEY)
+    const storedCustomStyles = getStoredJson<CustomStyle[]>('customStyles', [])
+
+    const normalizedCustomStyles = storedCustomStyles.filter(
+      (item) =>
+        item &&
+        typeof item.id === 'number' &&
+        typeof item.name === 'string' &&
+        item.name.trim().length > 0 &&
+        !isLegacySystemStyleName(item.name),
+    )
+
+    if (
+      savedVersion !== CURRENT_STYLE_STORAGE_VERSION ||
+      normalizedCustomStyles.length !== storedCustomStyles.length
+    ) {
+      localStorage.setItem(STYLE_STORAGE_VERSION_KEY, CURRENT_STYLE_STORAGE_VERSION)
+      localStorage.setItem('customStyles', JSON.stringify(normalizedCustomStyles))
+
+      const currentStyleName = localStorage.getItem('ai_huatang_draft_customStyleName') || ''
+      const currentStyleId = localStorage.getItem('ai_huatang_draft_styleId') || ''
+
+      if (isLegacySystemStyleName(currentStyleName)) {
+        localStorage.removeItem('ai_huatang_draft_customStyleName')
+      }
+
+      if (currentStyleId) {
+        const styleIdNum = Number(currentStyleId)
+        const stillExists = HANDDRAWN_STYLES.some((item) => item.id === styleIdNum) ||
+          normalizedCustomStyles.some((item) => item.id === styleIdNum)
+        if (!stillExists) {
+          localStorage.removeItem('ai_huatang_draft_styleId')
+        }
+      }
+    }
+
+    setCustomStylesList(normalizedCustomStyles)
   }, [])
 
   useEffect(() => {
@@ -743,7 +785,7 @@ export default function DashboardPage() {
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-1 sm:py-2">
             <Link href="/" className="flex items-center transition-opacity hover:opacity-80">
-              <img src="/logo.svg?v=2" alt="AI画堂" className="h-20 w-20 object-contain" />
+              <img src="/logo.svg?v=3" alt="AI画堂" className="h-20 w-20 object-contain" />
             </Link>
 
             <nav className="hidden items-center gap-4 md:flex">
@@ -885,7 +927,6 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[1fr,1fr,1.2fr]">
             <section className="rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
               <div className="mb-3 flex items-center gap-2">
-                <span className="text-lg">参数</span>
                 <h3 className="text-base font-bold text-white">参数配置</h3>
               </div>
 
@@ -1099,20 +1140,19 @@ export default function DashboardPage() {
 
             <section className="rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
               <div className="mb-3 flex items-center gap-2">
-                <span className="text-lg">风格</span>
-                <h3 className="text-base font-bold text-white">风格设定</h3>
+                <h3 className="text-base font-bold text-white">风格配置</h3>
               </div>
 
               <div className="space-y-3">
                 <div>
-                  <label className="mb-1.5 block text-xs text-[#10B981]">选择风格</label>
+                  <label className="mb-1.5 block text-xs text-[#10B981]">风格选择</label>
                   <select
                     value={selectedStyleId || ''}
                     onChange={(event) => handleStyleChange(Number(event.target.value))}
                     className="w-full cursor-pointer appearance-none rounded-lg border border-[#142D24] bg-[#091511]/60 px-3 py-3 text-sm text-white outline-none transition-colors focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
                   >
                     <option value="" className="bg-[#091511]">
-                      选择风格...
+                      请选择风格
                     </option>
                     {customStylesList.length > 0 && (
                       <optgroup label="我的自定义风格" className="bg-[#091511]">
@@ -1124,7 +1164,7 @@ export default function DashboardPage() {
                       </optgroup>
                     )}
                     <optgroup label="系统风格" className="bg-[#091511]">
-                      {HANDDRAWN_STYLES.map((style, index) => (
+                      {HANDDRAWN_STYLES.map((style) => (
                         <option key={style.id} value={style.id} className="bg-[#091511]">
                           {systemStyleLabel(style)}
                         </option>
@@ -1134,7 +1174,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs text-[#10B981]">当前风格名称</label>
+                  <label className="mb-1.5 block text-xs text-[#10B981]">风格名称</label>
                   <input
                     type="text"
                     value={customStyleName}
@@ -1239,7 +1279,6 @@ export default function DashboardPage() {
             <section className="flex flex-col rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">预览</span>
                   <h3 className="text-base font-bold text-white">生成预览</h3>
                   {generatedImages.length > 0 && (
                     <span className="rounded-full bg-[#10B981]/10 px-2 py-0.5 text-xs text-[#10B981]">

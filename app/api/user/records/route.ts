@@ -4,10 +4,14 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
+type RecordsRequest = {
+  status?: 'all' | 'success' | 'failed'
+  page?: number
+  limit?: number
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { status, page, limit } = await request.json()
-
     if (!supabaseAdmin) {
       return NextResponse.json(
         {
@@ -23,9 +27,12 @@ export async function POST(request: NextRequest) {
       return auth.response
     }
 
-    const pageNum = Number(page) || 1
-    const limitNum = Number(limit) || 20
-    const offset = (pageNum - 1) * limitNum
+    const body = (await request.json()) as RecordsRequest
+    const status = body.status || 'all'
+    const page = Math.max(1, Number(body.page) || 1)
+    const limit = Math.min(50, Math.max(1, Number(body.limit) || 20))
+    const from = (page - 1) * limit
+    const to = from + limit - 1
 
     let query = supabaseAdmin
       .from('generation_records')
@@ -39,36 +46,36 @@ export async function POST(request: NextRequest) {
       query = query.in('status', ['failed', 'error'])
     }
 
-    const { data: records, error, count } = await query.range(offset, offset + limitNum - 1)
+    const { data, error, count } = await query.range(from, to)
 
     if (error) {
-      console.error('[Records] Fetch records failed:', error)
+      console.error('[Records] Query failed:', error)
       return NextResponse.json(
         {
           success: false,
-          error: '获取记录失败。',
+          error: '获取生成记录失败，请稍后重试。',
         },
         { status: 500 },
       )
     }
 
+    const records = Array.isArray(data) ? data : []
     const total = count || 0
-    const currentCount = records?.length || 0
 
     return NextResponse.json({
       success: true,
-      records: records || [],
+      records,
       total,
-      page: pageNum,
-      limit: limitNum,
-      hasMore: offset + currentCount < total,
+      page,
+      limit,
+      hasMore: to + 1 < total,
     })
   } catch (error) {
     console.error('[Records] API error:', error)
     return NextResponse.json(
       {
         success: false,
-        error: '获取记录失败，请稍后重试。',
+        error: '获取生成记录失败，请稍后重试。',
       },
       { status: 500 },
     )

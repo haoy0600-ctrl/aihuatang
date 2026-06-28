@@ -31,7 +31,7 @@ export const HANDDRAWN_STYLES: HanddrawnStyle[] = [
   {
     id: 3,
     name: '玻璃拟态信息卡',
-    category: '高转化热门',
+    category: '科技产品',
     purpose: '适合科技、工具、效率类内容。',
     styleKeywords:
       'Glassmorphism interface, translucent frosted panels, subtle cyan glow, high-end UI design, futuristic but minimal, clean data-card presentation, elegant lighting, premium digital feel',

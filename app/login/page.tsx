@@ -334,7 +334,7 @@ export default function LoginPage() {
 
         <div className="relative z-10 text-center">
           <div className="mx-auto mb-6 h-24 w-24 sm:h-28 sm:w-28">
-            <img src="/logo.svg?v=2" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
+            <img src="/logo.svg?v=3" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
           </div>
 
           <p className="mx-auto mb-8 max-w-md text-lg text-[#64748B]">
@@ -353,7 +353,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="mb-6 text-center md:hidden">
             <div className="mx-auto mb-3 h-36 w-36">
-              <img src="/logo.svg?v=2" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
+              <img src="/logo.svg?v=3" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
             </div>
             <p className="text-sm text-[#64748B]">自媒体知识图卡与视觉排版工作台</p>
           </div>

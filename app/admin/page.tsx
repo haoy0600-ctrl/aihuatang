@@ -227,7 +227,7 @@ export default function AdminPage() {
           <div className="flex w-full items-center justify-between py-3">
             <div className="flex items-center gap-4">
               <Link href="/" className="flex select-none items-center transition-opacity hover:opacity-80">
-                <img src="/logo.svg?v=2" alt="AI画堂" className="h-16 w-16 object-contain" />
+                <img src="/logo.svg?v=3" alt="AI画堂" className="h-16 w-16 object-contain" />
               </Link>
               <div>
                 <h1 className="text-xl font-bold text-white">后台管理系统</h1>

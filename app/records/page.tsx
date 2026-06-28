@@ -143,9 +143,26 @@ export default function RecordsPage() {
             limit: PAGE_SIZE,
           }),
         })
-        const recordsData = await recordsResponse.json()
+        const rawText = await recordsResponse.text()
+        let recordsData: any
 
-        if (!recordsData.success) {
+        try {
+          recordsData = JSON.parse(rawText)
+        } catch (error) {
+          console.error('[RecordsPage] Invalid JSON response:', {
+            status: recordsResponse.status,
+            bodyPreview: rawText.slice(0, 300),
+          })
+          setErrorMessage('记录接口返回异常，请稍后刷新重试。')
+          if (reset) {
+            setRecords([])
+            setTotalRecords(0)
+            setHasMore(false)
+          }
+          return
+        }
+
+        if (!recordsResponse.ok || !recordsData.success) {
           setErrorMessage(recordsData.error || '获取生成记录失败。')
           if (reset) {
             setRecords([])
@@ -435,7 +452,7 @@ export default function RecordsPage() {
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-2 sm:py-3">
             <Link href="/" className="flex items-center select-none transition-opacity hover:opacity-80">
-              <img src="/logo.svg?v=2" alt="AI画堂" className="h-20 w-20 object-contain" />
+              <img src="/logo.svg?v=3" alt="AI画堂" className="h-20 w-20 object-contain" />
             </Link>
 
             <nav className="hidden items-center gap-4 md:flex">
@@ -895,7 +912,8 @@ function LoadingState() {
     <div className="py-20 text-center">
       <div className="animate-pulse">
         <div className="mx-auto mb-4 h-12 w-12 rounded-full border border-[#202B3A] bg-[#10B981]" />
-        <p className="text-[#00F2FE]">加载中...</p>
+        <p className="text-[#00F2FE]">正在读取生成记录...</p>
+        <p className="mt-2 text-xs text-[#6B7D97]">如果持续超过 10 秒，请刷新页面重新获取。</p>
       </div>
       <div className="mx-auto mt-8 flex max-w-6xl gap-3 px-4">
         {[1, 2, 3, 4, 5].map((column) => (

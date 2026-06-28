@@ -6,8 +6,14 @@ const MAX_FILE_SIZE = 2 * 1024 * 1024
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
 const ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp']
 
+function normalizeMimeType(mime: string) {
+  return mime === 'image/jpg' ? 'image/jpeg' : mime
+}
+
 function matchesImageSignature(buffer: Uint8Array, detectedType: string): boolean {
-  if (detectedType === 'image/png') {
+  const mime = normalizeMimeType(detectedType)
+
+  if (mime === 'image/png') {
     return (
       buffer.length >= 8 &&
       buffer[0] === 0x89 &&
@@ -21,11 +27,11 @@ function matchesImageSignature(buffer: Uint8Array, detectedType: string): boolea
     )
   }
 
-  if (detectedType === 'image/jpeg' || detectedType === 'image/jpg') {
+  if (mime === 'image/jpeg') {
     return buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff
   }
 
-  if (detectedType === 'image/webp') {
+  if (mime === 'image/webp') {
     return (
       buffer.length >= 12 &&
       buffer[0] === 0x52 &&
@@ -60,13 +66,23 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData()
-    const file = formData.get('file') as File
+    const file = formData.get('file')
 
-    if (!file) {
+    if (!(file instanceof File)) {
       return NextResponse.json(
         {
           success: false,
-          error: '文件不能为空。',
+          error: '请选择一张图片后再上传。',
+        },
+        { status: 400 },
+      )
+    }
+
+    if (file.size <= 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '上传文件为空，请重新选择图片。',
         },
         { status: 400 },
       )
@@ -76,7 +92,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: `文件大小不能超过 2MB，当前为 ${(file.size / 1024 / 1024).toFixed(2)}MB。`,
+          error: `图片不能超过 2MB，当前 ${(file.size / 1024 / 1024).toFixed(2)}MB。`,
         },
         { status: 400 },
       )
@@ -87,18 +103,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: '仅支持 PNG、JPG、JPEG、WebP 格式图片。',
+          error: '仅支持 PNG、JPG、JPEG、WebP 图片。',
         },
         { status: 400 },
       )
     }
 
-    const detectedType = file.type.toLowerCase()
-    if (!ALLOWED_TYPES.includes(detectedType)) {
+    const detectedType = normalizeMimeType(String(file.type || '').toLowerCase())
+    if (!ALLOWED_TYPES.map(normalizeMimeType).includes(detectedType)) {
       return NextResponse.json(
         {
           success: false,
-          error: '文件类型不正确，仅支持 PNG、JPG、JPEG、WebP。',
+          error: '图片格式不正确，请上传 PNG、JPG、JPEG 或 WebP。',
         },
         { status: 400 },
       )
@@ -106,18 +122,21 @@ export async function POST(request: NextRequest) {
 
     const arrayBuffer = await file.arrayBuffer()
     const buffer = new Uint8Array(arrayBuffer)
+
     if (!matchesImageSignature(buffer, detectedType)) {
       return NextResponse.json(
         {
           success: false,
-          error: '文件内容与扩展名或 MIME 类型不匹配，请重新选择合法图片。',
+          error: '图片文件内容与格式不匹配，请重新导出后再上传。',
         },
         { status: 400 },
       )
     }
 
     const safeFileName = `${auth.user.id}_${Date.now()}.${fileExtension}`
-    const { error: uploadError } = await supabaseAdmin.storage.from('avatars').upload(safeFileName, buffer, {
+    const storage = supabaseAdmin.storage.from('avatars')
+
+    const { error: uploadError } = await storage.upload(safeFileName, buffer, {
       contentType: detectedType,
       cacheControl: '3600',
       upsert: true,
@@ -130,19 +149,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            error: '头像存储桶不存在，请先在 Supabase Storage 中创建 avatars 桶。',
+            error: '头像存储桶 avatars 不存在，请先在 Supabase Storage 中创建。',
           },
           { status: 500 },
-        )
-      }
-
-      if (uploadError.message?.includes('permission')) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: '头像上传权限不足，请刷新页面后重试。',
-          },
-          { status: 403 },
         )
       }
 
@@ -155,12 +164,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data: publicUrlData } = supabaseAdmin.storage.from('avatars').getPublicUrl(safeFileName)
-    if (!publicUrlData?.publicUrl) {
+    const { data: publicUrlData } = storage.getPublicUrl(safeFileName)
+    const avatarUrl = publicUrlData?.publicUrl
+
+    if (!avatarUrl) {
       return NextResponse.json(
         {
           success: false,
-          error: '获取头像链接失败。',
+          error: '获取头像链接失败，请稍后重试。',
         },
         { status: 500 },
       )
@@ -168,7 +179,7 @@ export async function POST(request: NextRequest) {
 
     const { error: updateError } = await supabaseAdmin
       .from('profiles')
-      .update({ avatar_url: publicUrlData.publicUrl })
+      .update({ avatar_url: avatarUrl })
       .eq('id', auth.user.id)
 
     if (updateError) {
@@ -176,7 +187,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: '更新头像信息失败。',
+          error: '头像保存失败，请稍后重试。',
         },
         { status: 500 },
       )
@@ -185,9 +196,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: '头像上传成功。',
-      avatarUrl: publicUrlData.publicUrl,
+      avatarUrl,
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('[UploadAvatar] API error:', error)
     return NextResponse.json(
       {

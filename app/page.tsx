@@ -58,7 +58,7 @@ export default function HomePage() {
       <header className="sticky top-0 z-50 border-b border-white/6 bg-[#050816]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1320px] items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/" className="flex items-center">
-            <img src="/logo.svg?v=2" alt="AI画堂" className="h-12 w-auto object-contain sm:h-14" />
+            <img src="/logo.svg?v=3" alt="AI画堂" className="h-12 w-auto object-contain sm:h-14" />
           </Link>
 
           <nav className="hidden items-center gap-2 md:flex">

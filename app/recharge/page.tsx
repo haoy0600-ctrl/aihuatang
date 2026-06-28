@@ -149,14 +149,14 @@ export default function RechargePage() {
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-2 sm:py-3">
             <Link href="/" className="flex items-center select-none transition-opacity hover:opacity-80">
-              <img src="/logo.svg?v=2" alt="AI画堂" className="h-20 w-20 object-contain" />
+              <img src="/logo.svg?v=3" alt="AI画堂" className="h-20 w-20 object-contain" />
             </Link>
 
             <nav className="hidden items-center gap-4 md:flex">
               <NavLink href="/dashboard">创作中心</NavLink>
               <NavLink href="/records">生成记录</NavLink>
               <NavLink href="/recharge" active>
-                卡密兑换
+                充值中心
               </NavLink>
             </nav>
 
@@ -220,13 +220,15 @@ export default function RechargePage() {
 
           <div className="rounded-3xl border border-[#10B981]/30 bg-gradient-to-br from-[#10B981]/5 to-[#06B6D4]/5 p-6 shadow-xl">
             <div className="mb-6 text-center">
-              <h1 className="text-2xl font-black text-white">官方卡密兑换中心</h1>
+              <h1 className="text-2xl font-black text-white">充值与卡密兑换</h1>
               <p className="mt-2 text-sm text-[#10B981]">
-                当前余额：<span className="font-bold text-[#00E676]">{profile?.credits ?? 0}</span> 积分
+                当前积分：<span className="font-bold text-[#00E676]">{profile?.credits ?? 0}</span>
               </p>
             </div>
 
-            <p className="mb-4 text-xs text-[#10B981]">请输入以 `AHT-` 开头的官方卡密激活码</p>
+            <p className="mb-4 text-xs text-[#10B981]">
+              请输入以 `AHT-` 开头的官方卡密；如需充值，请联系官方客服购买卡密后再兑换。
+            </p>
 
             <div className="flex flex-col gap-3">
               <input
@@ -239,7 +241,7 @@ export default function RechargePage() {
                     void handleRedeemCard()
                   }
                 }}
-                placeholder="请输入以 AHT- 开头的官方卡密激活码"
+                placeholder="请输入以 AHT- 开头的官方卡密"
                 className="w-full rounded-lg border border-[#142D24] bg-[#040D0A] px-4 py-3 text-sm font-mono text-white outline-none transition-all placeholder:text-[#64748B] focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/30"
               />
 
@@ -267,10 +269,16 @@ export default function RechargePage() {
             </p>
           </div>
 
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <button
+              onClick={() => setShowWechatModal(true)}
+              className="rounded-lg border border-[#10B981]/40 bg-[#091511] px-4 py-2.5 text-center text-sm font-bold text-[#9AF7D2] transition-all hover:border-[#10B981] hover:text-white"
+            >
+              联系客服购买卡密
+            </button>
             <Link
               href="/dashboard"
-              className="flex-1 rounded-lg border border-[#142D24] bg-[#091511] px-4 py-2.5 text-center text-sm font-bold text-white transition-all hover:border-[#10B981] hover:text-[#10B981]"
+              className="rounded-lg border border-[#142D24] bg-[#091511] px-4 py-2.5 text-center text-sm font-bold text-white transition-all hover:border-[#10B981] hover:text-[#10B981]"
             >
               返回创作
             </Link>
@@ -283,6 +291,9 @@ export default function RechargePage() {
           <div className="w-full max-w-sm rounded-2xl border border-[#142D24] bg-[#091511] p-6 text-center">
             <h3 className="text-lg font-bold text-white">联系官方客服</h3>
             <p className="mt-3 text-sm text-gray-300">微信号：YH509235</p>
+            <p className="mt-2 text-xs leading-6 text-[#8FA7A0]">
+              目前网站采用卡密兑换充值方式。联系客服购买卡密后，回到本页输入卡密即可到账。
+            </p>
             <div className="mt-5 flex gap-3">
               <button
                 onClick={handleCopyWechat}
