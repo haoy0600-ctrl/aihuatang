@@ -21,6 +21,9 @@ coverage/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+output.log
+build-*.log
+nohup.out
 
 # Vercel
 .vercel
