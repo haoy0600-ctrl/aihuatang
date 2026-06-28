@@ -26,6 +26,7 @@ interface CustomStyle {
 type GenerationMode = 'text' | 'image'
 type GenerationStatus = 'idle' | 'loading' | 'success'
 type ModelType = 'GPT-Image-2' | 'NanoBanana2'
+type ResolutionLevel = '1K' | '2K' | '4K'
 const PENDING_GENERATION_KEY = 'ai_huatang_pending_generation_request'
 const STYLE_STORAGE_VERSION_KEY = 'ai_huatang_style_storage_version'
 const CURRENT_STYLE_STORAGE_VERSION = '2026-06-28-v2'
@@ -115,9 +116,15 @@ export default function DashboardPage() {
     if (typeof window === 'undefined') return '9:16'
     return localStorage.getItem('ai_huatang_draft_ratio') || '9:16'
   })
-  const [selectedResolution, setSelectedResolution] = useState(() => {
+  const [selectedResolution, setSelectedResolution] = useState<ResolutionLevel>(() => {
     if (typeof window === 'undefined') return '2K'
-    return localStorage.getItem('ai_huatang_draft_resolution') || '2K'
+    const saved = localStorage.getItem('ai_huatang_draft_resolution')
+    return saved === '1K' || saved === '2K' || saved === '4K' ? saved : '2K'
+  })
+  const [currentResolutionLevel, setCurrentResolutionLevel] = useState<ResolutionLevel>(() => {
+    if (typeof window === 'undefined') return '2K'
+    const saved = localStorage.getItem('ai_huatang_current_resolution_level')
+    return saved === '1K' || saved === '2K' || saved === '4K' ? saved : '2K'
   })
   const [selectedStyleId, setSelectedStyleId] = useState<number | null>(() => {
     if (typeof window === 'undefined') return null
@@ -250,6 +257,7 @@ export default function DashboardPage() {
     localStorage.setItem('ai_huatang_draft_model', selectedModel)
     localStorage.setItem('ai_huatang_draft_ratio', selectedRatio)
     localStorage.setItem('ai_huatang_draft_resolution', selectedResolution)
+    localStorage.setItem('ai_huatang_current_resolution_level', currentResolutionLevel)
     localStorage.setItem('ai_huatang_draft_customStyleName', customStyleName)
     localStorage.setItem('ai_huatang_draft_customStylePrompt', customStylePrompt)
     localStorage.setItem('ai_huatang_draft_status', generationStatus)
@@ -268,6 +276,7 @@ export default function DashboardPage() {
     selectedModel,
     selectedRatio,
     selectedResolution,
+    currentResolutionLevel,
     selectedStyleId,
     textSegments,
     totalTabs,
@@ -330,7 +339,7 @@ export default function DashboardPage() {
     [textSegments, totalTabs],
   )
 
-  const getResolutionPrice = (resolution: string) => {
+  const getResolutionPrice = (resolution: ResolutionLevel) => {
     switch (resolution) {
       case '1K':
         return 2
@@ -626,7 +635,7 @@ export default function DashboardPage() {
     try {
       const clientRequestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       localStorage.setItem(PENDING_GENERATION_KEY, clientRequestId)
-      const resolutionMap: Record<string, string> = {
+      const resolutionMap: Record<ResolutionLevel, string> = {
         '1K': '1024x1024',
         '2K': '2048x2048',
         '4K': '4096x4096',
@@ -645,6 +654,7 @@ export default function DashboardPage() {
           aspectRatio: selectedRatio,
           modelType: selectedModel,
           resolution: selectedResolution,
+          ResolutionLevel: selectedResolution,
           imageSize,
           mode: genMode,
           clientRequestId,
@@ -696,6 +706,7 @@ export default function DashboardPage() {
 
       const nextImages = data.imageUrls || (data.imageUrl ? [data.imageUrl] : [])
       setProgress(100)
+      setCurrentResolutionLevel(selectedResolution)
       setGeneratedImages(nextImages)
       setGenerationStatus('success')
       localStorage.removeItem(PENDING_GENERATION_KEY)
@@ -750,24 +761,80 @@ export default function DashboardPage() {
     void executeActualGeneration()
   }
 
-  const handleDownload = async (url: string, index: number) => {
+  const handleDownloadWithCanvas = async (
+    url: string,
+    index: number,
+    resolutionLevel: ResolutionLevel = currentResolutionLevel,
+  ) => {
+    const resolutionScaleMap: Record<ResolutionLevel, number> = {
+      '1K': 1,
+      '2K': 2,
+      '4K': 4,
+    }
+    const resolutionLabelMap: Record<ResolutionLevel, string> = {
+      '1K': '1K高清',
+      '2K': '2K超清',
+      '4K': '4K至臻超清',
+    }
+
+    const scale = resolutionScaleMap[resolutionLevel] || 1
+
     try {
-      const response = await fetch(url)
-      const blob = await response.blob()
+      const image = new Image()
+      image.crossOrigin = 'anonymous'
+
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve()
+        image.onerror = () => reject(new Error('图片加载失败，暂时无法导出超清文件。'))
+        image.src = `${url}${url.includes('?') ? '&' : '?'}download_ts=${Date.now()}`
+      })
+
+      const sourceWidth = image.naturalWidth || image.width
+      const sourceHeight = image.naturalHeight || image.height
+      if (!sourceWidth || !sourceHeight) {
+        throw new Error('原图尺寸异常，无法执行下载。')
+      }
+
+      const canvas = document.createElement('canvas')
+      canvas.width = sourceWidth * scale
+      canvas.height = sourceHeight * scale
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        throw new Error('浏览器画布初始化失败。')
+      }
+
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((result) => {
+          if (result) {
+            resolve(result)
+            return
+          }
+          reject(new Error('超清图片导出失败，请稍后重试。'))
+        }, 'image/png')
+      })
+
       const blobUrl = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = blobUrl
-      link.download = `handdrawn-${Date.now()}-${index + 1}.png`
+      link.download = `AI画堂_${resolutionLabelMap[resolutionLevel]}生成_${index + 1}.png`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(blobUrl)
     } catch (error) {
-      console.error('Download failed:', error)
+      console.error('Canvas download failed:', error)
       const link = document.createElement('a')
       link.href = url
-      link.download = `handdrawn-${Date.now()}-${index + 1}.png`
+      link.download = `AI画堂_${resolutionLabelMap[resolutionLevel]}生成_${index + 1}.png`
+      document.body.appendChild(link)
       link.click()
+      document.body.removeChild(link)
+      alert(error instanceof Error ? error.message : '超清导出失败，已回退为原图下载。')
     }
   }
 
@@ -1120,7 +1187,7 @@ export default function DashboardPage() {
                 <div>
                   <label className="mb-1 block text-xs text-[#10B981]">分辨率</label>
                   <div className="flex gap-2">
-                    {['1K', '2K', '4K'].map((resolution) => (
+                    {(['1K', '2K', '4K'] as ResolutionLevel[]).map((resolution) => (
                       <button
                         key={resolution}
                         onClick={() => setSelectedResolution(resolution)}
@@ -1130,7 +1197,7 @@ export default function DashboardPage() {
                             : 'border border-[#142D24] bg-[#091511]/60 text-white hover:bg-[#142D24]'
                         }`}
                       >
-                        {resolution} ({getResolutionPrice(resolution)} 积分)
+                        {resolution} ({getResolutionPrice(resolution)}积分)
                       </button>
                     ))}
                   </div>
@@ -1292,7 +1359,7 @@ export default function DashboardPage() {
                     onClick={() =>
                       generatedImages.forEach((url, index) =>
                         setTimeout(() => {
-                          void handleDownload(url, index)
+                          void handleDownloadWithCanvas(url, index)
                         }, index * 250),
                       )
                     }
@@ -1349,7 +1416,7 @@ export default function DashboardPage() {
                             <button
                               onClick={(event) => {
                                 event.stopPropagation()
-                                void handleDownload(url, index)
+                                void handleDownloadWithCanvas(url, index)
                               }}
                               className="rounded-lg bg-[#10B981] px-3 py-1.5 text-xs font-bold text-[#040D0A] shadow-lg transition-all hover:shadow-[0_0_15px_rgba(16,185,129,0.6)]"
                             >
@@ -1368,7 +1435,7 @@ export default function DashboardPage() {
                 {generationStatus === 'success' && generatedImages.length === 1 && (
                   <div className="mt-3 flex gap-2">
                     <button
-                      onClick={() => void handleDownload(generatedImages[0], 0)}
+                      onClick={() => void handleDownloadWithCanvas(generatedImages[0], 0)}
                       className="flex-1 rounded-lg border border-[#142D24] bg-[#10B981] py-2.5 text-sm font-bold text-[#040D0A] shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all hover:shadow-[0_0_25px_rgba(16,185,129,0.6)]"
                     >
                       下载图片

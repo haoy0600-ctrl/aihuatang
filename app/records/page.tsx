@@ -22,6 +22,7 @@ interface GenerationRecord {
   status: string
   created_at: string
   image_url_4k?: string | null
+  resolution?: '1K' | '2K' | '4K' | null
 }
 
 interface UserProfile {
@@ -30,6 +31,7 @@ interface UserProfile {
 }
 
 type FilterStatus = 'all' | 'success' | 'failed'
+type ResolutionLevel = '1K' | '2K' | '4K'
 
 const COLUMN_COUNT = 5
 const PAGE_SIZE = 20
@@ -280,27 +282,80 @@ export default function RecordsPage() {
     return sentences[0]?.trim() || text.substring(0, 30)
   }
 
-  const handleDownload = async (url: string, index: number) => {
+  const handleDownloadWithCanvas = async (
+    url: string,
+    index: number,
+    resolutionLevel: ResolutionLevel = '1K',
+  ) => {
+    const scaleMap: Record<ResolutionLevel, number> = {
+      '1K': 1,
+      '2K': 2,
+      '4K': 4,
+    }
+    const nameMap: Record<ResolutionLevel, string> = {
+      '1K': '1K高清',
+      '2K': '2K超清',
+      '4K': '4K至臻超清',
+    }
+
     try {
-      const response = await fetch(url, { mode: 'cors' })
-      const blob = await response.blob()
+      const image = new Image()
+      image.crossOrigin = 'anonymous'
+
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve()
+        image.onerror = () => reject(new Error('图片加载失败，暂时无法导出超清文件。'))
+        image.src = `${url}${url.includes('?') ? '&' : '?'}download_ts=${Date.now()}`
+      })
+
+      const sourceWidth = image.naturalWidth || image.width
+      const sourceHeight = image.naturalHeight || image.height
+      if (!sourceWidth || !sourceHeight) {
+        throw new Error('原图尺寸异常，无法执行下载。')
+      }
+
+      const scale = scaleMap[resolutionLevel] || 1
+      const canvas = document.createElement('canvas')
+      canvas.width = sourceWidth * scale
+      canvas.height = sourceHeight * scale
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        throw new Error('浏览器画布初始化失败。')
+      }
+
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((result) => {
+          if (result) {
+            resolve(result)
+            return
+          }
+          reject(new Error('超清图片导出失败，请稍后重试。'))
+        }, 'image/png')
+      })
+
       const blobUrl = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = blobUrl
-      link.download = `AI画堂_${Date.now()}_${index + 1}.png`
+      link.download = `AI画堂_${nameMap[resolutionLevel]}生成_${index + 1}.png`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(blobUrl)
     } catch (error) {
-      console.error('Download failed:', error)
+      console.error('Canvas download failed:', error)
       const link = document.createElement('a')
       link.href = url
-      link.download = `AI画堂_${Date.now()}_${index + 1}.png`
+      link.download = `AI画堂_${nameMap[resolutionLevel]}生成_${index + 1}.png`
       link.target = '_blank'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
+      alert(error instanceof Error ? error.message : '超清导出失败，已回退为原图下载。')
     }
   }
 
@@ -414,11 +469,11 @@ export default function RecordsPage() {
     }
   }
 
-  const downloadAllImages = async (urls: string[]) => {
+  const downloadAllImages = async (urls: string[], resolutionLevel: ResolutionLevel = '1K') => {
     if (urls.length === 0) return
 
     if (urls.length === 1) {
-      await handleDownload(urls[0], 0)
+      await handleDownloadWithCanvas(urls[0], 0, resolutionLevel)
       return
     }
 
@@ -426,17 +481,50 @@ export default function RecordsPage() {
       const zip = new JSZip()
       await Promise.all(
         urls.map(async (url, index) => {
-          const response = await fetch(url)
-          const blob = await response.blob()
-          zip.file(`AI画堂_图片_${index + 1}.png`, blob)
+          const image = new Image()
+          image.crossOrigin = 'anonymous'
+
+          await new Promise<void>((resolve, reject) => {
+            image.onload = () => resolve()
+            image.onerror = () => reject(new Error('批量下载时有图片加载失败。'))
+            image.src = `${url}${url.includes('?') ? '&' : '?'}download_ts=${Date.now()}_${index}`
+          })
+
+          const sourceWidth = image.naturalWidth || image.width
+          const sourceHeight = image.naturalHeight || image.height
+          const scale = resolutionLevel === '4K' ? 4 : resolutionLevel === '2K' ? 2 : 1
+          const canvas = document.createElement('canvas')
+          canvas.width = sourceWidth * scale
+          canvas.height = sourceHeight * scale
+          const ctx = canvas.getContext('2d')
+
+          if (!ctx) {
+            throw new Error('批量下载初始化失败。')
+          }
+
+          ctx.imageSmoothingEnabled = true
+          ctx.imageSmoothingQuality = 'high'
+          ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+
+          const blob = await new Promise<Blob>((resolve, reject) => {
+            canvas.toBlob((result) => {
+              if (result) {
+                resolve(result)
+                return
+              }
+              reject(new Error('批量下载导出失败。'))
+            }, 'image/png')
+          })
+
+          zip.file(`AI画堂_${resolutionLevel}_${index + 1}.png`, blob)
         }),
       )
       const content = await zip.generateAsync({ type: 'blob' })
-      saveAs(content, `AI画堂_记录_${Date.now()}.zip`)
+      saveAs(content, `AI画堂_${resolutionLevel}_记录_${Date.now()}.zip`)
     } catch (error) {
       console.error('Batch download failed:', error)
       for (let index = 0; index < urls.length; index += 1) {
-        await handleDownload(urls[index], index)
+        await handleDownloadWithCanvas(urls[index], index, resolutionLevel)
       }
     }
   }
@@ -597,6 +685,10 @@ export default function RecordsPage() {
                 <div key={colIndex} className="flex-1 space-y-3">
                   {column.map((record) => {
                     const imageUrls = parseImageUrls(record.image_urls)
+                    const recordResolution: ResolutionLevel =
+                      record.resolution === '1K' || record.resolution === '2K' || record.resolution === '4K'
+                        ? record.resolution
+                        : '1K'
                     const coverUrl = image4kUrls[record.id] || record.image_url_4k || imageUrls[0] || ''
                     const totalCost = getModelPrice() * Math.max(1, record.image_count || 1)
                     const firstSentence = getFirstSentence(record.prompt)
@@ -623,7 +715,10 @@ export default function RecordsPage() {
                                 <ActionButton onClick={() => setPreviewImageUrl(coverUrl)} tone="green">
                                   预览
                                 </ActionButton>
-                                <ActionButton onClick={() => void handleDownload(coverUrl, 0)} tone="blue">
+                                <ActionButton
+                                  onClick={() => void handleDownloadWithCanvas(coverUrl, 0, recordResolution)}
+                                  tone="blue"
+                                >
                                   下载
                                 </ActionButton>
                                 <ActionButton onClick={() => void handleCopyLink(coverUrl)} tone="white">
@@ -761,8 +856,27 @@ export default function RecordsPage() {
           onClose={() => setSelectedRecord(null)}
           onCopyPrompt={handleCopyPrompt}
           onPreview={(url) => setPreviewImageUrl(url)}
-          onDownload={handleDownload}
-          onDownloadAll={downloadAllImages}
+          onDownload={(url, index) =>
+            void handleDownloadWithCanvas(
+              url,
+              index,
+              selectedRecord.resolution === '1K' ||
+                selectedRecord.resolution === '2K' ||
+                selectedRecord.resolution === '4K'
+                ? selectedRecord.resolution
+                : '1K',
+            )
+          }
+          onDownloadAll={(urls) =>
+            void downloadAllImages(
+              urls,
+              selectedRecord.resolution === '1K' ||
+                selectedRecord.resolution === '2K' ||
+                selectedRecord.resolution === '4K'
+                ? selectedRecord.resolution
+                : '1K',
+            )
+          }
           onUpscale={handleUpscale}
           onDelete={async () => {
             if (window.confirm('确定要删除这条记录吗？')) {

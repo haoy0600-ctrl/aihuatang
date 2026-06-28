@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { HANDDRAWN_STYLES } from '@/config/styles'
-import { isAdminEmail, requireAuthenticatedUser } from '@/lib/auth'
+import { requireAuthenticatedUser } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getClientIP, isUserCurrentlyBanned, recordSensitiveWordViolation } from '@/lib/security'
 
@@ -8,9 +8,7 @@ export const maxDuration = 300
 
 const GRS_API_KEY = process.env.GRSAI_API_KEY || ''
 const GRS_API_BASE_URL = (process.env.GRS_API_BASE_URL || 'https://grsapiapi.com').replace(/\/+$/, '')
-const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN || ''
-const REPLICATE_MODEL_VERSION = '5035f3f00af141105492fe913bab5ec9e9b0821815b67cd13d31d1461cc452fe'
-
+const REPLICATE_API_TOKEN = ''
 const SENSITIVE_WORDS = [
   '台独',
   '港独',
@@ -65,6 +63,7 @@ type GenerateRequest = {
   aspectRatio?: string
   modelType?: string
   resolution?: '1K' | '2K' | '4K'
+  ResolutionLevel?: '1K' | '2K' | '4K'
   imageSize?: string
   mode?: 'text' | 'image'
   clientRequestId?: string
@@ -188,33 +187,19 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
   }
 }
 
-async function submitGrsTask(
-  prompt: string,
-  imageSize: string,
-  modelName: string,
-  modelType: string,
-  resolution: string,
-  referenceImage?: string,
-) {
+async function submitGrsTask(prompt: string, imageSize: string, referenceImage?: string) {
   if (!GRS_API_KEY) {
     throw new Error('绘图服务尚未配置，请联系管理员补全 GRS API。')
   }
 
-  const isBanana = modelType.toLowerCase().includes('banana')
   const isImageMode = Boolean(referenceImage)
-  const endpoint = isBanana
-    ? `${GRS_API_BASE_URL}/v1/draw/nano-banana`
-    : `${GRS_API_BASE_URL}/v1/draw/completions`
+  const endpoint = `${GRS_API_BASE_URL}/v1/draw/completions`
 
   const payload: Record<string, any> = {
-    model: modelName,
+    model: 'gpt-image-2',
     prompt,
     imageSize,
     webHook: '-1',
-  }
-
-  if (isBanana && resolution === '4K') {
-    payload.imageSize = '4K'
   }
 
   if (isImageMode && referenceImage) {
@@ -298,69 +283,12 @@ async function pollGrsResult(taskId: string) {
   throw new Error('生成任务超时，请稍后到记录页查看结果。')
 }
 
-async function upscaleImage(imageUrl: string, scale: number) {
-  if (!REPLICATE_API_TOKEN) {
-    return imageUrl
-  }
-
-  const createResponse = await fetch('https://api.replicate.com/v1/predictions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Token ${REPLICATE_API_TOKEN}`,
-    },
-    body: JSON.stringify({
-      version: REPLICATE_MODEL_VERSION,
-      input: {
-        image: imageUrl,
-        scale,
-        face_enhance: true,
-      },
-    }),
-  })
-
-  const createData = await createResponse.json()
-  if (!createData?.id) {
-    return imageUrl
-  }
-
-  let status = createData.status
-  let outputUrl = ''
-
-  while (status !== 'succeeded' && status !== 'failed' && status !== 'canceled') {
-    await new Promise((resolve) => setTimeout(resolve, 3000))
-    const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${createData.id}`, {
-      headers: { Authorization: `Token ${REPLICATE_API_TOKEN}` },
-    })
-    const statusData = await statusResponse.json()
-    status = statusData.status
-
-    if (status === 'succeeded') {
-      outputUrl = Array.isArray(statusData.output) ? statusData.output[0] : statusData.output || ''
-    }
-  }
-
-  return outputUrl || imageUrl
+async function upscaleImage(imageUrl: string, _scale: number) {
+  return imageUrl
 }
 
-async function checkVipPermission(userId: string) {
-  if (!supabaseAdmin) return false
-
-  const { data, error } = await supabaseAdmin
-    .from('profiles')
-    .select('vip_level, credits, email')
-    .eq('id', userId)
-    .single()
-
-  if (error || !data) {
-    return false
-  }
-
-  if (isAdminEmail(data.email)) {
-    return true
-  }
-
-  return (data.vip_level || 0) >= 1 || (data.credits || 0) >= 8
+async function checkVipPermission(_userId: string) {
+  return true
 }
 
 async function deductCredits(userId: string, amount: number) {
@@ -451,7 +379,7 @@ export async function POST(request: NextRequest) {
     const customStyle = String(body.customStyle || '').trim()
     const aspectRatio = String(body.aspectRatio || '9:16')
     const modelType = String(body.modelType || 'GPT-Image-2')
-    const resolution = String(body.resolution || '1K')
+    const resolution = String(body.ResolutionLevel || body.resolution || '1K')
     const clientRequestId = body.clientRequestId || null
     const ipAddress = getClientIP(request)
 
@@ -509,19 +437,6 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 },
       )
-    }
-
-    if (resolution === '4K') {
-      const canUse4k = await checkVipPermission(auth.user.id)
-      if (!canUse4k) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: '当前账号没有 4K 权限，请先充值高级卡密后再使用。',
-          },
-          { status: 403 },
-        )
-      }
     }
 
     const costPerImage = getResolutionPrice(resolution)
@@ -594,10 +509,7 @@ export async function POST(request: NextRequest) {
           finalPrompts.push(finalPrompt)
           const taskId = await submitGrsTask(
             finalPrompt,
-            getImageSizeByResolution(resolution, aspectRatio),
-            'gpt-image-2',
-            modelType,
-            resolution,
+            getImageSizeByResolution('1K', aspectRatio),
           )
           const imageUrl = await pollGrsResult(taskId)
           imageUrls.push(imageUrl)
@@ -608,10 +520,7 @@ export async function POST(request: NextRequest) {
           finalPrompts.push(finalPrompt)
           const taskId = await submitGrsTask(
             finalPrompt,
-            getImageSizeByResolution(resolution, aspectRatio),
-            'gpt-image-2',
-            modelType,
-            resolution,
+            getImageSizeByResolution('1K', aspectRatio),
             referenceImages[index],
           )
           const imageUrl = await pollGrsResult(taskId)
