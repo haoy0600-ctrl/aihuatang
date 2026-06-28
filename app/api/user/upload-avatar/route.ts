@@ -61,7 +61,6 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData()
     const file = formData.get('file') as File
-    const userId = auth.user.id
 
     if (!file) {
       return NextResponse.json(
@@ -99,16 +98,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: '文件 MIME 类型不正确，仅支持 PNG、JPG、JPEG、WebP。',
+          error: '文件类型不正确，仅支持 PNG、JPG、JPEG、WebP。',
         },
         { status: 400 },
       )
     }
 
-    const safeFileName = `${userId}_${Date.now()}.${fileExtension}`
     const arrayBuffer = await file.arrayBuffer()
     const buffer = new Uint8Array(arrayBuffer)
-
     if (!matchesImageSignature(buffer, detectedType)) {
       return NextResponse.json(
         {
@@ -119,6 +116,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const safeFileName = `${auth.user.id}_${Date.now()}.${fileExtension}`
     const { error: uploadError } = await supabaseAdmin.storage.from('avatars').upload(safeFileName, buffer, {
       contentType: detectedType,
       cacheControl: '3600',
@@ -126,13 +124,13 @@ export async function POST(request: NextRequest) {
     })
 
     if (uploadError) {
-      console.error('Upload avatar StorageApiError:', uploadError)
+      console.error('[UploadAvatar] Storage upload failed:', uploadError)
 
       if (uploadError.message?.includes('Bucket not found')) {
         return NextResponse.json(
           {
             success: false,
-            error: '存储配置异常，请联系管理员。',
+            error: '头像存储桶不存在，请先在 Supabase Storage 中创建 avatars 桶。',
           },
           { status: 500 },
         )
@@ -142,7 +140,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            error: '上传权限不足，请刷新页面后重试。',
+            error: '头像上传权限不足，请刷新页面后重试。',
           },
           { status: 403 },
         )
@@ -158,12 +156,11 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: publicUrlData } = supabaseAdmin.storage.from('avatars').getPublicUrl(safeFileName)
-
     if (!publicUrlData?.publicUrl) {
       return NextResponse.json(
         {
           success: false,
-          error: '获取图片链接失败。',
+          error: '获取头像链接失败。',
         },
         { status: 500 },
       )
@@ -172,10 +169,10 @@ export async function POST(request: NextRequest) {
     const { error: updateError } = await supabaseAdmin
       .from('profiles')
       .update({ avatar_url: publicUrlData.publicUrl })
-      .eq('id', userId)
+      .eq('id', auth.user.id)
 
     if (updateError) {
-      console.error('Update profile error:', updateError)
+      console.error('[UploadAvatar] Update profile failed:', updateError)
       return NextResponse.json(
         {
           success: false,
@@ -191,18 +188,7 @@ export async function POST(request: NextRequest) {
       avatarUrl: publicUrlData.publicUrl,
     })
   } catch (error: any) {
-    console.error('Upload avatar API error:', error)
-
-    if (error?.name === 'TypeError' && error?.message?.includes('file')) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: '文件数据异常，请重新选择图片。',
-        },
-        { status: 400 },
-      )
-    }
-
+    console.error('[UploadAvatar] API error:', error)
     return NextResponse.json(
       {
         success: false,

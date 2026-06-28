@@ -39,7 +39,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | undefined
-
     if (countdown > 0) {
       timer = setInterval(() => {
         setCountdown((prev) => (prev <= 1 ? 0 : prev - 1))
@@ -128,7 +127,6 @@ export default function LoginPage() {
     }
 
     setIsSending(true)
-
     try {
       const response = await fetch('/api/auth/send-code', {
         method: 'POST',
@@ -167,7 +165,6 @@ export default function LoginPage() {
     }
 
     setIsSubmitting(true)
-
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -176,14 +173,8 @@ export default function LoginPage() {
       })
 
       const data = await response.json()
-      if (!data.success) {
-        setError(`登录失败：${data.error}`)
-        setIsSubmitting(false)
-        return
-      }
-
-      if (!data.user || !data.session?.accessToken) {
-        setError('登录失败：未获取到有效会话。')
+      if (!data.success || !data.user || !data.session?.accessToken) {
+        setError(data.error || '登录失败，请稍后重试。')
         setIsSubmitting(false)
         return
       }
@@ -234,7 +225,6 @@ export default function LoginPage() {
     }
 
     setIsSubmitting(true)
-
     try {
       const verifyResponse = await fetch('/api/auth/verify-otp', {
         method: 'POST',
@@ -243,14 +233,8 @@ export default function LoginPage() {
       })
 
       const verifyData = await verifyResponse.json()
-      if (!verifyData.success) {
-        setError('验证码错误或已过期，请重新获取。')
-        setIsSubmitting(false)
-        return
-      }
-
-      if (!verifyData.user || !verifyData.session?.accessToken) {
-        setError('注册失败：未获取到有效会话。')
+      if (!verifyData.success || !verifyData.user || !verifyData.session?.accessToken) {
+        setError(verifyData.error || '验证码错误或已过期，请重新获取。')
         setIsSubmitting(false)
         return
       }
@@ -299,7 +283,6 @@ export default function LoginPage() {
     }
 
     setIsSendingReset(true)
-
     try {
       const response = await fetch('/api/auth/reset-password', {
         method: 'POST',
@@ -347,21 +330,9 @@ export default function LoginPage() {
           </p>
 
           <div className="mx-auto max-w-sm space-y-4 text-left">
-            <FeatureCard
-              icon="AI"
-              title="高效生成"
-              description="输入主题与要点，快速生成可直接发布的知识图卡。"
-            />
-            <FeatureCard
-              icon="风格"
-              title="多种视觉风格"
-              description="覆盖简约、商业、科普、课程封面等常用内容模板。"
-            />
-            <FeatureCard
-              icon="同步"
-              title="多端协同"
-              description="支持手机、平板和电脑连续创作，不必反复切换设备。"
-            />
+            <FeatureCard icon="AI" title="高效生成" description="输入主题与要点，快速生成可直接发布的知识图卡。" />
+            <FeatureCard icon="风格" title="多种视觉风格" description="覆盖简约、商业、科普、课程封面等常用内容模板。" />
+            <FeatureCard icon="同步" title="多端协同" description="支持手机、平板和电脑连续创作，不必反复切换设备。" />
           </div>
         </div>
       </div>
@@ -530,7 +501,7 @@ export default function LoginPage() {
                     onChange={setPassword}
                     visible={showPassword}
                     onToggleVisible={() => setShowPassword((prev) => !prev)}
-                    placeholder="请输入密码（至少 6 位）"
+                    placeholder="请输入密码"
                     disabled={isSubmitting}
                   />
                 </div>
@@ -554,7 +525,7 @@ export default function LoginPage() {
                     isSubmitting ? 'cursor-not-allowed opacity-50' : 'hover:shadow-[0_0_25px_rgba(0,230,118,0.6)]'
                   }`}
                 >
-                  {isSubmitting ? '注册中...' : '注册'}
+                  {isSubmitting ? '注册中...' : '注册并进入'}
                 </button>
               </div>
 
@@ -580,56 +551,42 @@ export default function LoginPage() {
       {showForgotPassword && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md border border-[#334155] bg-[#1E293B] p-6">
-            <h3 className="mb-4 text-xl font-bold text-white">找回密码</h3>
+            <h3 className="text-lg font-bold text-white">找回密码</h3>
+            <p className="mt-1 text-sm text-[#64748B]">我们会把重置链接发送到你的 QQ 邮箱</p>
 
             {forgotError && <MessageBox tone="error">{forgotError}</MessageBox>}
+            {resetSent && <MessageBox tone="success">重置链接已发送，请查收邮箱。</MessageBox>}
 
-            {resetSent ? (
-              <div className="text-center">
-                <div className="mb-4 text-5xl">✓</div>
-                <p className="mb-4 text-[#00E676]">重置密码邮件已发送，请前往邮箱查收。</p>
-                <p className="mb-4 text-sm text-[#64748B]">打开邮件中的链接后即可重新设置密码。</p>
-                <button
-                  onClick={() => {
-                    setShowForgotPassword(false)
-                    setResetSent(false)
-                  }}
-                  className="w-full bg-[#00E676] py-3 font-bold text-[#0D111A]"
-                >
-                  我知道了
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="mb-4">
-                  <FieldLabel>QQ 邮箱</FieldLabel>
-                  <input
-                    type="email"
-                    value={forgotEmail}
-                    onChange={(event) => setForgotEmail(event.target.value)}
-                    placeholder="请输入注册时使用的 QQ 邮箱"
-                    className="w-full border border-[#334155] bg-[#0D111A] px-4 py-3 text-white outline-none placeholder:text-[#475569] focus:border-[#00E676]"
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowForgotPassword(false)}
-                    className="flex-1 bg-[#334155] py-3 font-medium text-white"
-                  >
-                    取消
-                  </button>
-                  <button
-                    onClick={handleForgotPassword}
-                    disabled={isSendingReset}
-                    className={`flex-1 py-3 font-bold ${
-                      isSendingReset ? 'bg-[#334155] text-[#64748B]' : 'bg-[#00E676] text-[#0D111A]'
-                    }`}
-                  >
-                    {isSendingReset ? '发送中...' : '发送重置邮件'}
-                  </button>
-                </div>
-              </>
-            )}
+            <div className="mt-4">
+              <FieldLabel>QQ 邮箱</FieldLabel>
+              <input
+                type="email"
+                value={forgotEmail}
+                onChange={(event) => setForgotEmail(event.target.value)}
+                placeholder="请输入 QQ 邮箱"
+                className="w-full border border-[#334155] bg-[#0D111A] px-4 py-3 text-white outline-none transition-all placeholder:text-[#475569] focus:border-[#00E676]"
+              />
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(false)}
+                className="flex-1 border border-[#334155] px-4 py-3 text-sm font-medium text-[#CBD5E1]"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={isSendingReset}
+                className={`flex-1 bg-[#00E676] px-4 py-3 text-sm font-bold text-[#0D111A] ${
+                  isSendingReset ? 'opacity-60' : ''
+                }`}
+              >
+                {isSendingReset ? '发送中...' : '发送重置链接'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -637,35 +594,35 @@ export default function LoginPage() {
   )
 }
 
-function FeatureCard({ icon, title, description }: { icon: string; title: string; description: string }) {
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <label className="mb-2 block text-sm font-medium text-[#CBD5E1]">{children}</label>
+}
+
+function MessageBox({ children, tone }: { children: React.ReactNode; tone: 'error' | 'success' }) {
+  const toneClass =
+    tone === 'error'
+      ? 'border-red-500/40 bg-red-500/10 text-red-300'
+      : 'border-[#00E676]/40 bg-[#00E676]/10 text-[#86EFAC]'
+
+  return <div className={`mb-4 border px-4 py-3 text-sm ${toneClass}`}>{children}</div>
+}
+
+function FeatureCard({
+  icon,
+  title,
+  description,
+}: {
+  icon: string
+  title: string
+  description: string
+}) {
   return (
-    <div className="flex items-center gap-3 border border-[#334155] bg-[#1E293B]/50 p-3">
-      <span className="min-w-[36px] text-xs font-bold text-[#00E676]">{icon}</span>
-      <div>
-        <h3 className="text-sm font-bold text-white">{title}</h3>
-        <p className="text-xs text-[#64748B]">{description}</p>
-      </div>
+    <div className="border border-[#334155] bg-[#111827]/50 px-6 py-4">
+      <div className="mb-2 text-sm font-bold text-[#00E676]">{icon}</div>
+      <div className="text-base font-semibold text-white">{title}</div>
+      <p className="mt-1 text-sm leading-6 text-[#64748B]">{description}</p>
     </div>
   )
-}
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="mb-2 block text-sm font-medium text-[#94A3B8]">{children}</label>
-}
-
-function MessageBox({
-  tone,
-  children,
-}: {
-  tone: 'error' | 'success'
-  children: React.ReactNode
-}) {
-  const className =
-    tone === 'error'
-      ? 'mb-6 border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400'
-      : 'mb-6 border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-400'
-
-  return <div className={className}>{children}</div>
 }
 
 function PasswordInput({
@@ -690,34 +647,15 @@ function PasswordInput({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full border border-[#334155] bg-[#0D111A] px-4 py-3 pr-10 text-white outline-none transition-all placeholder:text-[#475569] focus:border-[#00E676]"
+        className="w-full border border-[#334155] bg-[#0D111A] px-4 py-3 pr-12 text-white outline-none transition-all placeholder:text-[#475569] focus:border-[#00E676]"
         disabled={disabled}
       />
       <button
         type="button"
         onClick={onToggleVisible}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] transition-colors hover:text-[#00E676]"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-white"
       >
-        {visible ? (
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-            />
-          </svg>
-        ) : (
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-            />
-          </svg>
-        )}
+        {visible ? '隐藏' : '显示'}
       </button>
     </div>
   )

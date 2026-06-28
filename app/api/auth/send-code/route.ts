@@ -26,28 +26,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data: existingUser } = await supabaseAdmin
+    const { data: existingProfiles } = await supabaseAdmin
       .from('profiles')
-      .select('id, email')
+      .select('id')
       .eq('email', normalizedEmail)
       .limit(1)
 
-    if (existingUser && existingUser.length > 0) {
+    if (existingProfiles && existingProfiles.length > 0) {
       return NextResponse.json(
         {
           success: false,
-          error: '该邮箱已注册，请直接登录或使用找回密码功能。',
+          error: '该邮箱已注册，请直接登录或找回密码。',
           alreadyRegistered: true,
         },
         { status: 400 },
       )
     }
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://aihuatang.top'
     const { data, error } = await supabaseAdmin.auth.signInWithOtp({
       email: normalizedEmail,
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://aihuatang.top'}/login`,
+        emailRedirectTo: `${appUrl}/login`,
       },
     })
 

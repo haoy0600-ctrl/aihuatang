@@ -71,6 +71,8 @@ const sanitizeDisplayText = (value: string) =>
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 export default function DashboardPage() {
   const router = useRouter()
   const abortController = useRef<AbortController | null>(null)
@@ -424,6 +426,75 @@ export default function DashboardPage() {
     setCustomStylePrompt(style.styleKeywords)
   }
 
+  const pollLatestGeneratedRecord = async (requestId: string, maxAttempts = 24) => {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const response = await fetch('/api/user/records', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ status: 'all', page: 1, limit: 20 }),
+      })
+
+      const data = await response.json()
+      if (!response.ok || !data.success) {
+        await sleep(2500)
+        continue
+      }
+
+      const matched = (data.records || []).find((record: any) => {
+        const meta = record?.input_content
+        if (!meta) return false
+        if (typeof meta === 'object') {
+          return meta.clientRequestId === requestId
+        }
+        try {
+          const parsed = JSON.parse(meta)
+          return parsed?.clientRequestId === requestId
+        } catch {
+          return false
+        }
+      })
+
+      if (matched?.status === 'success') {
+        const imageUrls = (() => {
+          if (Array.isArray(matched.image_urls)) {
+            return matched.image_urls
+          }
+          try {
+            const parsed = JSON.parse(matched.image_urls || '[]')
+            return Array.isArray(parsed) ? parsed : []
+          } catch {
+            return matched.image_urls ? [matched.image_urls] : []
+          }
+        })()
+
+        return {
+          success: true,
+          imageUrls,
+        }
+      }
+
+      if (matched?.status === 'failed') {
+        let errorMessage = '生成失败，请稍后重试。'
+        const meta = matched.input_content
+        if (meta && typeof meta === 'object' && meta.errorMessage) {
+          errorMessage = meta.errorMessage
+        }
+
+        return {
+          success: false,
+          error: errorMessage,
+        }
+      }
+
+      await sleep(2500)
+    }
+
+    return {
+      success: false,
+      error: '图片可能已经在生成成功，但当前轮询超时，请到生成记录页查看最新结果。',
+    }
+  }
+
   const executeActualGeneration = async () => {
     if (!selectedStyleId) {
       alert('请先选择一个风格。')
@@ -475,6 +546,7 @@ export default function DashboardPage() {
     const timeoutId = setTimeout(() => abortController.current?.abort(), 300000)
 
     try {
+      const clientRequestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       const resolutionMap: Record<string, string> = {
         '1K': '1024x1024',
         '2K': '2048x2048',
@@ -496,6 +568,7 @@ export default function DashboardPage() {
           resolution: selectedResolution,
           imageSize,
           mode: genMode,
+          clientRequestId,
         }),
         signal: abortController.current.signal,
       })
@@ -510,7 +583,18 @@ export default function DashboardPage() {
           status: response.status,
           bodyPreview: rawText.slice(0, 400),
         })
-        throw new Error(`服务返回异常：${parseError.message}`)
+
+        const fallback = await pollLatestGeneratedRecord(clientRequestId)
+        if (fallback.success) {
+          const nextImages = fallback.imageUrls || []
+          setProgress(100)
+          setGeneratedImages(nextImages)
+          setGenerationStatus('success')
+          window.dispatchEvent(new Event('ai-huatang-generation-complete'))
+          return
+        }
+
+        throw new Error(fallback.error || `服务返回异常：${parseError.message}`)
       }
 
       if (!response.ok || !data.success) {

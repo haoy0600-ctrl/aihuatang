@@ -4,10 +4,10 @@ import { supabaseAdmin } from '@/lib/supabase'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password } = body
+    const rawAccount = String(body.email || '').trim()
+    const password = String(body.password || '')
 
     if (!supabaseAdmin) {
-      console.error('[Auth/Login] Supabase admin not configured')
       return NextResponse.json(
         {
           success: false,
@@ -17,27 +17,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!email || !password) {
+    if (!rawAccount || !password) {
       return NextResponse.json(
         {
           success: false,
-          error: '邮箱或用户名和密码不能为空。',
+          error: '邮箱/用户名和密码不能为空。',
         },
         { status: 400 },
       )
     }
 
-    const isEmail = String(email).includes('@')
-    let loginEmail = String(email)
+    let loginEmail = rawAccount.toLowerCase()
+    const isEmail = rawAccount.includes('@')
 
     if (!isEmail) {
       const { data: profile, error: profileError } = await supabaseAdmin
         .from('profiles')
         .select('email')
-        .eq('username', email)
+        .eq('username', rawAccount)
         .single()
 
-      if (profileError || !profile) {
+      if (profileError || !profile?.email) {
         return NextResponse.json(
           {
             success: false,
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      loginEmail = profile.email
+      loginEmail = String(profile.email).trim().toLowerCase()
     }
 
     const { data, error } = await supabaseAdmin.auth.signInWithPassword({
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
         : null,
     })
   } catch (error: any) {
-    console.error('[Auth/Login] Error:', error.message, error.stack)
+    console.error('[Auth/Login] Error:', error)
     return NextResponse.json(
       {
         success: false,

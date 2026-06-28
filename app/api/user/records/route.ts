@@ -9,10 +9,13 @@ export async function POST(request: NextRequest) {
     const { status, page, limit } = await request.json()
 
     if (!supabaseAdmin) {
-      return NextResponse.json({
-        success: false,
-        error: '系统配置未完成，请稍后重试',
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: '系统配置未完成，请稍后重试。',
+        },
+        { status: 500 },
+      )
     }
 
     const auth = await requireAuthenticatedUser(request)
@@ -39,11 +42,14 @@ export async function POST(request: NextRequest) {
     const { data: records, error, count } = await query.range(offset, offset + limitNum - 1)
 
     if (error) {
-      console.error('Fetch records error:', error)
-      return NextResponse.json({
-        success: false,
-        error: '获取记录失败',
-      }, { status: 500 })
+      console.error('[Records] Fetch records failed:', error)
+      return NextResponse.json(
+        {
+          success: false,
+          error: '获取记录失败。',
+        },
+        { status: 500 },
+      )
     }
 
     const total = count || 0
@@ -58,10 +64,13 @@ export async function POST(request: NextRequest) {
       hasMore: offset + currentCount < total,
     })
   } catch (error) {
-    console.error('Records API error:', error)
-    return NextResponse.json({
-      success: false,
-      error: '获取记录失败，请稍后重试',
-    }, { status: 500 })
+    console.error('[Records] API error:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: '获取记录失败，请稍后重试。',
+      },
+      { status: 500 },
+    )
   }
 }

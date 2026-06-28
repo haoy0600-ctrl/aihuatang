@@ -5,6 +5,7 @@ export async function POST(request: NextRequest) {
   try {
     const { email, token } = await request.json()
     const normalizedEmail = String(email || '').trim().toLowerCase()
+    const normalizedToken = String(token || '').trim()
 
     if (!supabaseAdmin) {
       return NextResponse.json(
@@ -16,17 +17,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data, error } = await supabaseAdmin.auth.verifyOtp({
-      email: normalizedEmail,
-      token,
-      type: 'email',
-    })
-
-    if (error) {
+    if (!normalizedEmail || !normalizedToken) {
       return NextResponse.json(
         {
           success: false,
-          error: error.message,
+          error: '邮箱和验证码不能为空。',
+        },
+        { status: 400 },
+      )
+    }
+
+    const { data, error } = await supabaseAdmin.auth.verifyOtp({
+      email: normalizedEmail,
+      token: normalizedToken,
+      type: 'email',
+    })
+
+    if (error || !data.user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: error?.message || '验证码错误或已过期。',
         },
         { status: 400 },
       )
@@ -35,10 +46,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       user: {
-        id: data.user?.id,
-        email: data.user?.email,
-        createdAt: data.user?.created_at,
-        emailConfirmedAt: data.user?.email_confirmed_at,
+        id: data.user.id,
+        email: data.user.email,
       },
       session: data.session
         ? {
