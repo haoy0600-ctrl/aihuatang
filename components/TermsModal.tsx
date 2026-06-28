@@ -41,7 +41,7 @@ export function TermsModal({ show, onClose }: TermsModalProps) {
         className="relative max-h-[80vh] w-full max-w-2xl rounded-2xl border border-[#142D24] bg-[#091511] shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-[#142D24] p-4">
-          <h3 className="text-lg font-bold text-white">AI画堂安全合规与使用须知</h3>
+          <h3 className="text-lg font-bold text-white">安全合规与使用须知</h3>
           <button
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-[#142D24] text-white transition-colors hover:bg-[#10B981] hover:text-[#040D0A]"
@@ -79,7 +79,7 @@ export function TermsModal({ show, onClose }: TermsModalProps) {
             title="积分消耗说明"
             color="text-sky-400"
             items={[
-              '1K 生成默认消耗 2 积分/次，2K 消耗 4 积分/次，4K 消耗 8 积分/次。',
+              '1K 生成默认消耗 2 积分/张，2K 消耗 4 积分/张，4K 消耗 8 积分/张。',
               '如一次生成多张图片，实际消耗会按生成张数累计。',
               '若遇到平台侧报错或生成失败，积分会按规则自动退回。',
             ]}

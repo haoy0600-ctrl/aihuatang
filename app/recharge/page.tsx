@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useEffect, useRef, useState } from 'react'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
@@ -47,7 +47,7 @@ export default function RechargePage() {
     const fetchProfile = async () => {
       const session = getStoredSession()
       if (!session) {
-        setProfile({ credits: 3 })
+        setProfile({ credits: 0 })
         return
       }
 
@@ -61,18 +61,18 @@ export default function RechargePage() {
         const data = await response.json()
 
         if (!data.success) {
-          setProfile({ credits: 3 })
+          setProfile({ credits: 0 })
           return
         }
 
         setUser(data.user)
         setProfile({
-          credits: data.profile?.credits ?? 3,
+          credits: data.profile?.credits ?? 0,
           avatar_url: data.profile?.avatar_url,
         })
       } catch (error) {
         console.error('Profile fetch error:', error)
-        setProfile({ credits: 3 })
+        setProfile({ credits: 0 })
       }
     }
 
@@ -99,18 +99,6 @@ export default function RechargePage() {
       const session = getStoredSession()
       if (!session) {
         showToast('请先登录。', 'error')
-        return
-      }
-
-      const meResponse = await fetch('/api/auth/me', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({}),
-      })
-      const meData = await meResponse.json()
-
-      if (!meData.success || !meData.user) {
-        showToast('登录状态已失效，请重新登录。', 'error')
         return
       }
 
@@ -146,7 +134,7 @@ export default function RechargePage() {
       showToast('微信号已复制，去微信添加客服即可。', 'success')
     } catch (error) {
       console.error('Copy wechat error:', error)
-      showToast('复制失败，请手动添加微信号 YH509235。', 'error')
+      showToast('复制失败，请手动添加微信号：YH509235。', 'error')
     }
   }
 
@@ -161,7 +149,7 @@ export default function RechargePage() {
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-2 sm:py-3">
             <Link href="/" className="flex items-center select-none transition-opacity hover:opacity-80">
-              <img src="/logo.svg?v=1" alt="AI画堂" className="h-20 w-20 object-contain" />
+              <img src="/logo.svg?v=2" alt="AI画堂" className="h-20 w-20 object-contain" />
             </Link>
 
             <nav className="hidden items-center gap-4 md:flex">
@@ -171,15 +159,6 @@ export default function RechargePage() {
                 卡密兑换
               </NavLink>
             </nav>
-
-            <button
-              onClick={() => setShowUserMenu((prev) => !prev)}
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#142D24] bg-[#091511]/60 transition-colors hover:border-[#10B981] md:hidden"
-            >
-              <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
 
             <div className="hidden items-center gap-4 md:flex">
               <div className="hidden items-center gap-2 text-xs text-[#10B981] sm:flex">
@@ -208,20 +187,12 @@ export default function RechargePage() {
                       <p className="truncate text-sm font-medium text-white">{user?.email || '未登录'}</p>
                     </div>
                     <div className="p-2">
-                      <MenuButton onClick={() => { window.location.href = '/dashboard'; setShowUserMenu(false) }}>
-                        创作中心
-                      </MenuButton>
-                      <MenuButton onClick={() => { window.location.href = '/records'; setShowUserMenu(false) }}>
-                        生成记录
-                      </MenuButton>
-                      <MenuButton onClick={() => { window.location.href = '/profile'; setShowUserMenu(false) }}>
-                        个人中心
-                      </MenuButton>
-                      <MenuButton onClick={() => { setShowChangePassword(true); setShowUserMenu(false) }}>
-                        修改密码
-                      </MenuButton>
+                      <MenuButton onClick={() => (window.location.href = '/dashboard')}>创作中心</MenuButton>
+                      <MenuButton onClick={() => (window.location.href = '/records')}>生成记录</MenuButton>
+                      <MenuButton onClick={() => (window.location.href = '/profile')}>个人中心</MenuButton>
+                      <MenuButton onClick={() => setShowChangePassword(true)}>修改密码</MenuButton>
                       <div className="my-1 border-t border-[#142D24]" />
-                      <MenuButton danger onClick={() => { handleLogout(); setShowUserMenu(false) }}>
+                      <MenuButton danger onClick={handleLogout}>
                         退出登录
                       </MenuButton>
                     </div>
@@ -247,19 +218,12 @@ export default function RechargePage() {
             </div>
           )}
 
-          <div className="mb-6 flex flex-col items-center justify-center">
-            <div>
-              <h2 className="text-center text-xl font-bold text-white">官方卡密兑换中心</h2>
-              <p className="mt-1 text-center text-sm text-[#10B981]">
+          <div className="rounded-3xl border border-[#10B981]/30 bg-gradient-to-br from-[#10B981]/5 to-[#06B6D4]/5 p-6 shadow-xl">
+            <div className="mb-6 text-center">
+              <h1 className="text-2xl font-black text-white">官方卡密兑换中心</h1>
+              <p className="mt-2 text-sm text-[#10B981]">
                 当前余额：<span className="font-bold text-[#00E676]">{profile?.credits ?? 0}</span> 积分
               </p>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-[#10B981]/30 bg-gradient-to-br from-[#10B981]/5 to-[#06B6D4]/5 p-6 shadow-xl">
-            <div className="mb-4 flex items-center gap-2">
-              <span className="text-xl text-[#10B981]">卡密</span>
-              <h3 className="text-base font-bold text-white">兑换激活</h3>
             </div>
 
             <p className="mb-4 text-xs text-[#10B981]">请输入以 `AHT-` 开头的官方卡密激活码</p>
@@ -276,7 +240,7 @@ export default function RechargePage() {
                   }
                 }}
                 placeholder="请输入以 AHT- 开头的官方卡密激活码"
-                className="w-full rounded-lg border border-[#142D24] bg-[#040D0A] px-4 py-3 text-sm font-mono text-white outline-none transition-all placeholder-[#64748B] focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/30"
+                className="w-full rounded-lg border border-[#142D24] bg-[#040D0A] px-4 py-3 text-sm font-mono text-white outline-none transition-all placeholder:text-[#64748B] focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/30"
               />
 
               <button
@@ -301,10 +265,6 @@ export default function RechargePage() {
                 点击联系官方客服
               </button>
             </p>
-
-            <p className="mt-3 text-center text-xs text-[#10B981]">
-              支持连续多次激活。兑换成功后会自动清空输入框，方便继续下一张。
-            </p>
           </div>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -319,40 +279,23 @@ export default function RechargePage() {
       </main>
 
       {showWechatModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowWechatModal(false)} />
-          <div className="relative w-full max-w-sm rounded-2xl border border-[#142D24] bg-[#091511] p-6 shadow-2xl">
-            <button
-              onClick={() => setShowWechatModal(false)}
-              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-[#142D24] text-white transition-colors hover:bg-[#10B981] hover:text-[#040D0A]"
-            >
-              ×
-            </button>
-
-            <h3 className="mb-4 text-center text-lg font-bold text-white">官方人工客服</h3>
-
-            <div className="mb-4">
-              <div className="mx-auto h-36 w-36 rounded-xl bg-white p-2 shadow-lg">
-                <img src="/wechat-qrcode.png?v=1" alt="微信二维码" className="h-full w-full object-contain" />
-              </div>
-              <p className="mt-2 text-center text-xs text-gray-400">扫码添加官方客服微信</p>
-            </div>
-
-            <button
-              onClick={() => void handleCopyWechat()}
-              className="w-full rounded-xl bg-gradient-to-r from-green-600 to-green-500 px-4 py-3 text-sm font-bold text-white shadow-lg transition-all hover:from-green-500 hover:to-green-400 hover:shadow-green-500/30 active:scale-95"
-            >
-              一键复制微信号（YH509235）
-            </button>
-
-            <div className="mt-4 border-t border-[#142D24] pt-4">
-              <p className="mb-2 text-xs font-bold text-[#10B981]">常用充值档位</p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <p><span className="text-white">10 元</span> {'->'} <span className="text-[#10B981]">100 积分</span></p>
-                <p><span className="text-white">29 元</span> {'->'} <span className="text-[#10B981]">320 积分</span></p>
-                <p><span className="text-white">59 元</span> {'->'} <span className="text-[#10B981]">700 积分</span></p>
-                <p><span className="text-white">99 元</span> {'->'} <span className="text-[#10B981]">1300 积分</span></p>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-[#142D24] bg-[#091511] p-6 text-center">
+            <h3 className="text-lg font-bold text-white">联系官方客服</h3>
+            <p className="mt-3 text-sm text-gray-300">微信号：YH509235</p>
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={handleCopyWechat}
+                className="flex-1 rounded-xl bg-[#10B981] px-4 py-3 text-sm font-bold text-[#04120D]"
+              >
+                复制微信号
+              </button>
+              <button
+                onClick={() => setShowWechatModal(false)}
+                className="flex-1 rounded-xl border border-[#142D24] px-4 py-3 text-sm font-semibold text-white"
+              >
+                关闭
+              </button>
             </div>
           </div>
         </div>
@@ -360,40 +303,24 @@ export default function RechargePage() {
 
       <ChangePasswordModal show={showChangePassword} onClose={() => setShowChangePassword(false)} />
       <TermsModal show={showTermsModal} onClose={() => setShowTermsModal(false)} />
-
-      <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#1e293b]/50 bg-[#030712]/95 py-2.5 backdrop-blur-sm">
-        <div className="mx-auto max-w-[1400px] px-4 text-center">
-          <p className="text-sm text-gray-400">
-            使用本站即表示你同意
-            <button
-              onClick={() => setShowTermsModal(true)}
-              className="rounded px-1 font-semibold text-[#10B981] underline decoration-[#10B981]/50 underline-offset-2 transition-all duration-300 hover:text-[#00F2FE] hover:decoration-[#00F2FE]"
-            >
-              《安全合规与使用须知》
-            </button>
-          </p>
-        </div>
-      </footer>
     </div>
   )
 }
 
 function NavLink({
   href,
-  children,
   active,
+  children,
 }: {
   href: string
-  children: React.ReactNode
   active?: boolean
+  children: React.ReactNode
 }) {
   return (
     <Link
       href={href}
-      className={`rounded-xl border px-5 py-2.5 text-base font-semibold tracking-wide transition-all md:text-lg ${
-        active
-          ? 'border-[#142D24] bg-[#10B981] text-[#040D0A] shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-          : 'border-[#142D24] bg-[#091511]/60 text-white hover:border-[#10B981] hover:bg-[#142D24]'
+      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+        active ? 'bg-[#10B981] text-[#04120D]' : 'text-white hover:bg-[#101E18]'
       }`}
     >
       {children}
@@ -414,9 +341,7 @@ function MenuButton({
     <button
       onClick={onClick}
       className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-        danger
-          ? 'text-red-400 hover:bg-[#142D24]'
-          : 'text-white hover:bg-[#142D24] hover:text-[#10B981]'
+        danger ? 'text-red-400 hover:bg-[#142D24]' : 'text-white hover:bg-[#142D24] hover:text-[#10B981]'
       }`}
     >
       {children}

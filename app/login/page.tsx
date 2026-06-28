@@ -265,6 +265,18 @@ export default function LoginPage() {
       }
 
       await ensureProfileExists(verifyData.user.id, verifyData.user.email || email, username.trim())
+
+      const loginResponse = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const loginData = await loginResponse.json()
+
+      if (loginData.success && loginData.user && loginData.session?.accessToken) {
+        saveSession(loginData.user.id, loginData.user.email || email, loginData.session)
+      }
+
       router.push('/dashboard')
     } catch (registerError) {
       console.error('Register error:', registerError)
@@ -322,7 +334,7 @@ export default function LoginPage() {
 
         <div className="relative z-10 text-center">
           <div className="mx-auto mb-6 h-24 w-24 sm:h-28 sm:w-28">
-            <img src="/logo.svg?v=1" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
+            <img src="/logo.svg?v=2" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
           </div>
 
           <p className="mx-auto mb-8 max-w-md text-lg text-[#64748B]">
@@ -341,7 +353,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="mb-6 text-center md:hidden">
             <div className="mx-auto mb-3 h-36 w-36">
-              <img src="/logo.svg?v=1" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
+              <img src="/logo.svg?v=2" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
             </div>
             <p className="text-sm text-[#64748B]">自媒体知识图卡与视觉排版工作台</p>
           </div>
@@ -525,7 +537,7 @@ export default function LoginPage() {
                     isSubmitting ? 'cursor-not-allowed opacity-50' : 'hover:shadow-[0_0_25px_rgba(0,230,118,0.6)]'
                   }`}
                 >
-                  {isSubmitting ? '注册中...' : '注册并进入'}
+                  {isSubmitting ? '注册中...' : '注册并进入创作台'}
                 </button>
               </div>
 
@@ -549,42 +561,45 @@ export default function LoginPage() {
       </div>
 
       {showForgotPassword && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
           <div className="w-full max-w-md border border-[#334155] bg-[#1E293B] p-6">
-            <h3 className="text-lg font-bold text-white">找回密码</h3>
-            <p className="mt-1 text-sm text-[#64748B]">我们会把重置链接发送到你的 QQ 邮箱</p>
-
-            {forgotError && <MessageBox tone="error">{forgotError}</MessageBox>}
-            {resetSent && <MessageBox tone="success">重置链接已发送，请查收邮箱。</MessageBox>}
-
-            <div className="mt-4">
-              <FieldLabel>QQ 邮箱</FieldLabel>
-              <input
-                type="email"
-                value={forgotEmail}
-                onChange={(event) => setForgotEmail(event.target.value)}
-                placeholder="请输入 QQ 邮箱"
-                className="w-full border border-[#334155] bg-[#0D111A] px-4 py-3 text-white outline-none transition-all placeholder:text-[#475569] focus:border-[#00E676]"
-              />
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-white">重置密码</h3>
+                <p className="mt-1 text-sm text-[#64748B]">输入注册邮箱，我们会发送重置链接</p>
+              </div>
+              <button
+                onClick={() => setShowForgotPassword(false)}
+                className="text-2xl text-[#64748B] transition-colors hover:text-white"
+              >
+                ×
+              </button>
             </div>
 
-            <div className="mt-6 flex gap-3">
+            {forgotError && <MessageBox tone="error">{forgotError}</MessageBox>}
+            {resetSent && <MessageBox tone="success">邮件已发送，请查收邮箱并按提示重置密码。</MessageBox>}
+
+            <div className="space-y-4">
+              <div>
+                <FieldLabel>QQ 邮箱</FieldLabel>
+                <input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(event) => setForgotEmail(event.target.value)}
+                  placeholder="请输入注册使用的 QQ 邮箱"
+                  className="w-full border border-[#334155] bg-[#0D111A] px-4 py-3 text-white outline-none transition-all placeholder:text-[#475569] focus:border-[#00E676]"
+                  disabled={isSendingReset}
+                />
+              </div>
+
               <button
-                type="button"
-                onClick={() => setShowForgotPassword(false)}
-                className="flex-1 border border-[#334155] px-4 py-3 text-sm font-medium text-[#CBD5E1]"
-              >
-                取消
-              </button>
-              <button
-                type="button"
                 onClick={handleForgotPassword}
                 disabled={isSendingReset}
-                className={`flex-1 bg-[#00E676] px-4 py-3 text-sm font-bold text-[#0D111A] ${
-                  isSendingReset ? 'opacity-60' : ''
+                className={`w-full bg-[#00E676] py-3.5 text-base font-bold text-[#0D111A] shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all ${
+                  isSendingReset ? 'cursor-not-allowed opacity-50' : 'hover:shadow-[0_0_25px_rgba(0,230,118,0.6)]'
                 }`}
               >
-                {isSendingReset ? '发送中...' : '发送重置链接'}
+                {isSendingReset ? '发送中...' : '发送重置邮件'}
               </button>
             </div>
           </div>
@@ -598,29 +613,22 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="mb-2 block text-sm font-medium text-[#CBD5E1]">{children}</label>
 }
 
-function MessageBox({ children, tone }: { children: React.ReactNode; tone: 'error' | 'success' }) {
-  const toneClass =
-    tone === 'error'
-      ? 'border-red-500/40 bg-red-500/10 text-red-300'
-      : 'border-[#00E676]/40 bg-[#00E676]/10 text-[#86EFAC]'
-
-  return <div className={`mb-4 border px-4 py-3 text-sm ${toneClass}`}>{children}</div>
-}
-
-function FeatureCard({
-  icon,
-  title,
-  description,
+function MessageBox({
+  children,
+  tone,
 }: {
-  icon: string
-  title: string
-  description: string
+  children: React.ReactNode
+  tone: 'error' | 'success'
 }) {
   return (
-    <div className="border border-[#334155] bg-[#111827]/50 px-6 py-4">
-      <div className="mb-2 text-sm font-bold text-[#00E676]">{icon}</div>
-      <div className="text-base font-semibold text-white">{title}</div>
-      <p className="mt-1 text-sm leading-6 text-[#64748B]">{description}</p>
+    <div
+      className={`mb-4 border px-4 py-3 text-sm ${
+        tone === 'error'
+          ? 'border-red-500/30 bg-red-500/10 text-red-300'
+          : 'border-[#00E676]/30 bg-[#00E676]/10 text-[#8CF5CA]'
+      }`}
+    >
+      {children}
     </div>
   )
 }
@@ -653,10 +661,32 @@ function PasswordInput({
       <button
         type="button"
         onClick={onToggleVisible}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-white"
+        className="absolute right-4 top-1/2 -translate-y-1/2 text-[#64748B] transition-colors hover:text-white"
       >
         {visible ? '隐藏' : '显示'}
       </button>
+    </div>
+  )
+}
+
+function FeatureCard({
+  icon,
+  title,
+  description,
+}: {
+  icon: string
+  title: string
+  description: string
+}) {
+  return (
+    <div className="border border-[#334155] bg-[#111827]/70 px-4 py-3">
+      <div className="flex items-start gap-3">
+        <div className="min-w-[34px] text-sm font-bold text-[#00E676]">{icon}</div>
+        <div>
+          <h3 className="text-base font-semibold text-white">{title}</h3>
+          <p className="mt-1 text-sm leading-6 text-[#64748B]">{description}</p>
+        </div>
+      </div>
     </div>
   )
 }

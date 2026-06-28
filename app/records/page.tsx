@@ -317,7 +317,11 @@ export default function RecordsPage() {
           ...prev,
           [recordId]: data.url,
         }))
-        alert('4K 放大已完成。')
+        const costText =
+          typeof data.creditsCost === 'number' && data.creditsCost > 0
+            ? `，本次已扣除 ${data.creditsCost} 积分`
+            : ''
+        alert(`4K 放大已完成${costText}。`)
       } else {
         alert(data.error || '4K 放大失败，请稍后重试。')
       }
@@ -431,7 +435,7 @@ export default function RecordsPage() {
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-2 sm:py-3">
             <Link href="/" className="flex items-center select-none transition-opacity hover:opacity-80">
-              <img src="/logo.svg?v=1" alt="AI画堂" className="h-20 w-20 object-contain" />
+              <img src="/logo.svg?v=2" alt="AI画堂" className="h-20 w-20 object-contain" />
             </Link>
 
             <nav className="hidden items-center gap-4 md:flex">
@@ -1070,4 +1074,5 @@ function RecordDetailModal({
     </div>
   )
 }
+
 

@@ -26,6 +26,7 @@ interface CustomStyle {
 type GenerationMode = 'text' | 'image'
 type GenerationStatus = 'idle' | 'loading' | 'success'
 type ModelType = 'GPT-Image-2' | 'NanoBanana2'
+const PENDING_GENERATION_KEY = 'ai_huatang_pending_generation_request'
 
 const ASPECT_RATIOS = [
   { label: 'auto', value: 'auto', note: '自动适配' },
@@ -130,7 +131,7 @@ export default function DashboardPage() {
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>(() => {
     if (typeof window === 'undefined') return 'idle'
     const saved = localStorage.getItem('ai_huatang_draft_status') as GenerationStatus
-    return saved === 'loading' ? 'idle' : saved || 'idle'
+    return saved || 'idle'
   })
   const [generatedImages, setGeneratedImages] = useState<string[]>(() => {
     if (typeof window === 'undefined') return []
@@ -242,6 +243,41 @@ export default function DashboardPage() {
       localStorage.removeItem('ai_huatang_last_preview')
     }
   }, [customStylesList, generatedImages])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (generationStatus !== 'loading') return
+
+    const pendingRequestId = localStorage.getItem(PENDING_GENERATION_KEY)
+    if (!pendingRequestId) return
+
+    let cancelled = false
+
+    void (async () => {
+      const fallback = await pollLatestGeneratedRecord(pendingRequestId, 36)
+      if (cancelled) return
+
+      if (fallback.success) {
+        const nextImages = fallback.imageUrls || []
+        setProgress(100)
+        setGeneratedImages(nextImages)
+        setGenerationStatus('success')
+        localStorage.removeItem(PENDING_GENERATION_KEY)
+        window.dispatchEvent(new Event('ai-huatang-generation-complete'))
+        return
+      }
+
+      if (fallback.error && !fallback.error.includes('轮询超时')) {
+        alert(fallback.error)
+        setGenerationStatus('idle')
+        localStorage.removeItem(PENDING_GENERATION_KEY)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [generationStatus])
 
   const validSegments = useMemo(
     () =>
@@ -547,6 +583,7 @@ export default function DashboardPage() {
 
     try {
       const clientRequestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      localStorage.setItem(PENDING_GENERATION_KEY, clientRequestId)
       const resolutionMap: Record<string, string> = {
         '1K': '1024x1024',
         '2K': '2048x2048',
@@ -619,6 +656,7 @@ export default function DashboardPage() {
       setProgress(100)
       setGeneratedImages(nextImages)
       setGenerationStatus('success')
+      localStorage.removeItem(PENDING_GENERATION_KEY)
       window.dispatchEvent(new Event('ai-huatang-generation-complete'))
 
       if (data.creditsRemaining !== undefined && profile) {
@@ -627,9 +665,10 @@ export default function DashboardPage() {
     } catch (error: any) {
       console.error('Generation error:', error)
       if (error.name === 'AbortError') {
-        alert('生成超时，已自动取消，请稍后再试。')
+        alert('当前页面请求已中断，但服务端可能仍在继续生成。稍后返回创作页或生成记录页查看最新结果。')
       } else {
         alert(error.message || '生成失败，请稍后重试。')
+        localStorage.removeItem(PENDING_GENERATION_KEY)
       }
       setGenerationStatus('idle')
     } finally {
@@ -704,7 +743,7 @@ export default function DashboardPage() {
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-1 sm:py-2">
             <Link href="/" className="flex items-center transition-opacity hover:opacity-80">
-              <img src="/logo.svg?v=1" alt="AI画堂" className="h-20 w-20 object-contain" />
+              <img src="/logo.svg?v=2" alt="AI画堂" className="h-20 w-20 object-contain" />
             </Link>
 
             <nav className="hidden items-center gap-4 md:flex">
@@ -1061,12 +1100,12 @@ export default function DashboardPage() {
             <section className="rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
               <div className="mb-3 flex items-center gap-2">
                 <span className="text-lg">风格</span>
-                <h3 className="text-base font-bold text-white">风格定义</h3>
+                <h3 className="text-base font-bold text-white">风格设定</h3>
               </div>
 
               <div className="space-y-3">
                 <div>
-                  <label className="mb-1.5 block text-xs text-[#10B981]">系统风格</label>
+                  <label className="mb-1.5 block text-xs text-[#10B981]">选择风格</label>
                   <select
                     value={selectedStyleId || ''}
                     onChange={(event) => handleStyleChange(Number(event.target.value))}
@@ -1095,7 +1134,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs text-[#10B981]">风格名称</label>
+                  <label className="mb-1.5 block text-xs text-[#10B981]">当前风格名称</label>
                   <input
                     type="text"
                     value={customStyleName}
@@ -1163,6 +1202,7 @@ export default function DashboardPage() {
                         abortController.current = null
                         setGenerationStatus('idle')
                         localStorage.setItem('ai_huatang_draft_status', 'idle')
+                        localStorage.removeItem(PENDING_GENERATION_KEY)
                       }}
                       className="w-full rounded-lg border border-red-900/50 bg-[#EF4444] py-3 text-sm font-bold text-white shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-all hover:shadow-[0_0_30px_rgba(239,68,68,0.6)]"
                     >

@@ -52,7 +52,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: '注册 IP 已记录。',
+      message: '注册来源已记录。',
     })
   } catch (error) {
     console.error('[RegisterCheck] PUT error:', error)

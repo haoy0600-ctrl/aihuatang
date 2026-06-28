@@ -10,10 +10,22 @@ async function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function getUpscaleCreditCost(resolution?: string | null) {
+  if (resolution === '2K') return 4
+  if (resolution === '4K') return 0
+  return 6
+}
+
+async function rollbackCredits(userId: string, credits: number) {
+  const { data: profile } = await supabaseAdmin!.from('profiles').select('credits').eq('id', userId).single()
+  const currentCredits = profile?.credits || 0
+  await supabaseAdmin!.from('profiles').update({ credits: currentCredits + credits }).eq('id', userId)
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (!supabaseAdmin) {
-      return NextResponse.json({ success: false, error: '系统配置未完成，请稍后重试' }, { status: 500 })
+      return NextResponse.json({ success: false, error: '系统配置未完成，请稍后重试。' }, { status: 500 })
     }
 
     const auth = await requireAuthenticatedUser(request)
@@ -24,31 +36,64 @@ export async function POST(request: NextRequest) {
     const { imageUrl, recordId } = await request.json()
 
     if (!imageUrl || !recordId) {
-      return NextResponse.json(
-        { success: false, error: '图片链接和记录 ID 不能为空' },
-        { status: 400 },
-      )
+      return NextResponse.json({ success: false, error: '图片链接和记录 ID 不能为空。' }, { status: 400 })
     }
 
     if (!REPLICATE_API_TOKEN) {
       return NextResponse.json(
-        { success: false, error: '4K 放大服务尚未配置' },
+        { success: false, error: '4K 放大服务尚未配置，请先补充服务器的 Replicate 配置。' },
         { status: 500 },
       )
     }
 
-    const { data: ownedRecord, error: ownError } = await supabaseAdmin
+    const { data: record, error: recordError } = await supabaseAdmin
       .from('generation_records')
-      .select('id, user_id')
+      .select('id, user_id, resolution, image_url_4k')
       .eq('id', recordId)
       .eq('user_id', auth.user.id)
       .single()
 
-    if (ownError || !ownedRecord) {
+    if (recordError || !record) {
+      return NextResponse.json({ success: false, error: '记录不存在或无权操作。' }, { status: 404 })
+    }
+
+    if (record.image_url_4k) {
+      return NextResponse.json({ success: true, url: record.image_url_4k, creditsRemaining: null })
+    }
+
+    const upscaleCost = getUpscaleCreditCost(record.resolution)
+
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('credits')
+      .eq('id', auth.user.id)
+      .single()
+
+    if (profileError || !profile) {
+      return NextResponse.json({ success: false, error: '读取积分失败，请稍后重试。' }, { status: 500 })
+    }
+
+    const currentCredits = profile.credits || 0
+    if (upscaleCost > currentCredits) {
       return NextResponse.json(
-        { success: false, error: '记录不存在或无权操作' },
-        { status: 404 },
+        {
+          success: false,
+          error: `积分不足，本次 4K 放大需要 ${upscaleCost} 积分，当前仅剩 ${currentCredits} 积分。`,
+        },
+        { status: 400 },
       )
+    }
+
+    if (upscaleCost > 0) {
+      const { error: deductError } = await supabaseAdmin
+        .from('profiles')
+        .update({ credits: currentCredits - upscaleCost })
+        .eq('id', auth.user.id)
+        .eq('credits', currentCredits)
+
+      if (deductError) {
+        return NextResponse.json({ success: false, error: '扣除积分失败，请稍后重试。' }, { status: 409 })
+      }
     }
 
     const createResponse = await fetch('https://api.replicate.com/v1/predictions', {
@@ -70,9 +115,23 @@ export async function POST(request: NextRequest) {
     const createData = await createResponse.json()
 
     if (!createResponse.ok || !createData.id) {
-      console.error('[Upscale] Failed to create prediction:', createData)
+      if (upscaleCost > 0) {
+        await rollbackCredits(auth.user.id, upscaleCost)
+      }
+
+      const detail = String(createData?.detail || createData?.error || '')
+      if (detail.toLowerCase().includes('insufficient credit')) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: '4K 放大服务当前不可用：服务器上游 Replicate 余额不足，请先给服务器的 Replicate 账户充值。',
+          },
+          { status: 503 },
+        )
+      }
+
       return NextResponse.json(
-        { success: false, error: createData?.detail || createData?.error || '创建 4K 放大任务失败' },
+        { success: false, error: detail || '创建 4K 放大任务失败，请稍后重试。' },
         { status: 500 },
       )
     }
@@ -99,19 +158,24 @@ export async function POST(request: NextRequest) {
       }
 
       if (status === 'failed' || status === 'canceled') {
-        console.error('[Upscale] Prediction ended unsuccessfully:', statusData)
+        if (upscaleCost > 0) {
+          await rollbackCredits(auth.user.id, upscaleCost)
+        }
+
+        const detail = String(statusData?.error || '')
         return NextResponse.json(
-          { success: false, error: statusData?.error || '4K 放大失败' },
+          { success: false, error: detail || '4K 放大失败，请稍后重试。' },
           { status: 500 },
         )
       }
     }
 
     if (!outputUrl) {
-      return NextResponse.json(
-        { success: false, error: '未获取到放大后的图片地址' },
-        { status: 500 },
-      )
+      if (upscaleCost > 0) {
+        await rollbackCredits(auth.user.id, upscaleCost)
+      }
+
+      return NextResponse.json({ success: false, error: '未获取到 4K 图片地址。' }, { status: 500 })
     }
 
     const { error: updateError } = await supabaseAdmin
@@ -127,12 +191,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       url: outputUrl,
+      creditsCost: upscaleCost,
+      creditsRemaining: currentCredits - upscaleCost,
     })
   } catch (error: any) {
     console.error('[Upscale] Error:', error.message, error.stack)
-    return NextResponse.json(
-      { success: false, error: '4K 放大失败，请稍后重试' },
-      { status: 500 },
-    )
+    return NextResponse.json({ success: false, error: '4K 放大失败，请稍后重试。' }, { status: 500 })
   }
 }

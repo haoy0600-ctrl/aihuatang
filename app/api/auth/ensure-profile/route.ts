@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     const { data: existingProfile, error: queryError } = await supabaseAdmin
       .from('profiles')
-      .select('id, username, avatar_url')
+      .select('id, username, avatar_url, credits')
       .eq('id', auth.user.id)
       .maybeSingle()
 
@@ -111,6 +111,10 @@ export async function POST(request: NextRequest) {
 
     if (!existingProfile.avatar_url) {
       updatePayload.avatar_url = DEFAULT_AVATAR_URL
+    }
+
+    if (typeof existingProfile.credits !== 'number') {
+      updatePayload.credits = DEFAULT_CREDITS
     }
 
     if (Object.keys(updatePayload).length > 0) {

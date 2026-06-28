@@ -8,7 +8,7 @@ export default function PrivacyPage() {
       <header className="border-b border-[#142D24]">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
           <Link href="/" className="flex items-center">
-            <img src="/logo.svg?v=1" alt="AI画堂" className="h-12 w-12 object-contain" />
+            <img src="/logo.svg?v=2" alt="AI画堂" className="h-12 w-12 object-contain" />
           </Link>
           <Link
             href="/login"
@@ -19,7 +19,7 @@ export default function PrivacyPage() {
         </div>
       </header>
 
-      <main className="mx-auto flex-1 max-w-4xl px-4 py-8">
+      <main className="mx-auto max-w-4xl flex-1 px-4 py-8">
         <div className="rounded-2xl border border-[#142D24] bg-[#0A1A10] p-6 md:p-8">
           <h1 className="mb-6 text-center text-xl font-bold text-white">AI画堂隐私政策</h1>
 
@@ -28,7 +28,7 @@ export default function PrivacyPage() {
             items={[
               '注册邮箱、用户名、登录所需的身份信息。',
               '账户积分、充值记录、生成记录、使用偏好等业务数据。',
-              '为保障安全所必需的访问日志、设备信息和错误日志。',
+              '为了保障安全所必需的访问日志、设备信息和错误日志。',
             ]}
           />
 
@@ -59,12 +59,6 @@ export default function PrivacyPage() {
           />
         </div>
       </main>
-
-      <footer className="border-t border-[#142D24] py-4">
-        <div className="mx-auto max-w-4xl px-4 text-center">
-          <p className="text-xs text-[#10B981]">© 2026 AI画堂</p>
-        </div>
-      </footer>
     </div>
   )
 }

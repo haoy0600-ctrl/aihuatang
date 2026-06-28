@@ -8,7 +8,7 @@ export default function TermsPage() {
       <header className="border-b border-[#142D24]">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
           <Link href="/" className="flex items-center">
-            <img src="/logo.svg?v=1" alt="AI画堂" className="h-12 w-12 object-contain" />
+            <img src="/logo.svg?v=2" alt="AI画堂" className="h-12 w-12 object-contain" />
           </Link>
           <Link
             href="/dashboard"
@@ -19,12 +19,12 @@ export default function TermsPage() {
         </div>
       </header>
 
-      <main className="mx-auto flex-1 max-w-4xl px-4 py-8">
+      <main className="mx-auto max-w-4xl flex-1 px-4 py-8">
         <div className="rounded-2xl border border-[#142D24] bg-[#0A1A10] p-6 md:p-8">
           <h1 className="mb-6 text-center text-xl font-bold text-white">AI画堂安全合规与使用须知</h1>
 
           <p className="mb-6 text-sm leading-relaxed text-gray-300">
-            本站为 AI 图像生成与知识图卡制作平台。为了保障平台稳定运行、保护用户账户安全并满足合规要求，请在使用前认真阅读以下说明。
+            本站提供 AI 图像生成与知识图卡制作服务。为了保障平台稳定运行、保护用户账户安全并满足合规要求，请在使用前认真阅读以下说明。
           </p>
 
           <Section
@@ -42,7 +42,7 @@ export default function TermsPage() {
             color="text-yellow-400"
             items={[
               '系统会对提示词、成图结果和批量调用行为进行自动风控检测。',
-              '恶意绕过限制、批量测试违规内容或反复触发高风险策略的账户，会被限制功能或永久封禁。',
+              '恶意绕过限制、批量测试违规内容或反复触发高风险策略的账号，会被限制功能或永久封禁。',
               '情节严重时，平台将保留向有关部门提交必要注册信息与访问日志的权利。',
             ]}
           />
@@ -87,12 +87,6 @@ export default function TermsPage() {
           />
         </div>
       </main>
-
-      <footer className="border-t border-[#142D24] py-4">
-        <div className="mx-auto max-w-4xl px-4 text-center">
-          <p className="text-xs text-[#10B981]">© 2026 AI画堂</p>
-        </div>
-      </footer>
     </div>
   )
 }

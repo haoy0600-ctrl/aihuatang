@@ -53,7 +53,7 @@ header {
 }
 
 /* ========================================
-   Header 特效粒子背景
+   Header 粒子背景
    ======================================== */
 
 .header-particles {
@@ -191,7 +191,7 @@ select::-ms-expand {
   }
 }
 
-/* 首页 Banner 渐变光晕动画 */
+/* 首页 Banner 微光动画 */
 @keyframes aurora-glow {
   0%,
   100% {

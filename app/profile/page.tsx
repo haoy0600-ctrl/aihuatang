@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
@@ -60,7 +60,12 @@ const compressImage = (file: File, maxSizeKB = 200): Promise<File> =>
               const sizeKB = blob.size / 1024
               if (sizeKB <= maxSizeKB || quality <= 0.1) {
                 const baseName = file.name.replace(/\.[^.]+$/, '')
-                resolve(new File([blob], `${baseName || 'avatar'}.jpg`, { type: 'image/jpeg', lastModified: Date.now() }))
+                resolve(
+                  new File([blob], `${baseName || 'avatar'}.jpg`, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now(),
+                  }),
+                )
                 return
               }
 
@@ -88,7 +93,6 @@ export default function ProfilePage() {
   const [currentTime, setCurrentTime] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
-  const [activeTab, setActiveTab] = useState<'info' | 'password'>('info')
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [showTermsModal, setShowTermsModal] = useState(false)
@@ -198,11 +202,11 @@ export default function ProfilePage() {
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-[#040D0A]">
-      <header className="flex-shrink-0 border-b border-[#142D24] bg-[#040D0A]">
+      <header className="border-b border-[#142D24] bg-[#040D0A]">
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-2 sm:py-3">
             <Link href="/" className="flex items-center select-none transition-opacity hover:opacity-80">
-              <img src="/logo.svg?v=1" alt="AI画堂" className="h-20 w-20 object-contain" />
+              <img src="/logo.svg?v=2" alt="AI画堂" className="h-20 w-20 object-contain" />
             </Link>
 
             <nav className="hidden items-center gap-4 md:flex">
@@ -241,17 +245,38 @@ export default function ProfilePage() {
                       <p className="truncate text-sm font-medium text-white">{user?.email || '未登录'}</p>
                     </div>
                     <div className="p-2">
-                      <MenuButton onClick={() => { router.push('/dashboard'); setShowUserMenu(false) }}>
+                      <MenuButton
+                        onClick={() => {
+                          router.push('/dashboard')
+                          setShowUserMenu(false)
+                        }}
+                      >
                         创作中心
                       </MenuButton>
-                      <MenuButton onClick={() => { router.push('/records'); setShowUserMenu(false) }}>
+                      <MenuButton
+                        onClick={() => {
+                          router.push('/records')
+                          setShowUserMenu(false)
+                        }}
+                      >
                         生成记录
                       </MenuButton>
-                      <MenuButton onClick={() => { router.push('/recharge'); setShowUserMenu(false) }}>
+                      <MenuButton
+                        onClick={() => {
+                          router.push('/recharge')
+                          setShowUserMenu(false)
+                        }}
+                      >
                         卡密兑换
                       </MenuButton>
                       <div className="my-1 border-t border-[#142D24]" />
-                      <MenuButton danger onClick={() => { handleLogout(); setShowUserMenu(false) }}>
+                      <MenuButton
+                        danger
+                        onClick={() => {
+                          handleLogout()
+                          setShowUserMenu(false)
+                        }}
+                      >
                         退出登录
                       </MenuButton>
                     </div>
@@ -263,131 +288,93 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-auto p-6">
-        <div className="mx-auto max-w-2xl">
-          <div className="overflow-hidden rounded-xl border border-[#142D24] bg-[#091511]/60 shadow-2xl backdrop-blur-md">
-            <div className="border-b border-[#142D24] p-6">
-              <div className="flex items-center gap-4">
-                <div
-                  className="relative flex h-16 w-16 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-[#142D24] bg-[#10B981] shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-transform hover:scale-105"
-                  onClick={handleAvatarClick}
-                >
-                  <img src={resolveAvatarUrl(profile.avatar_url)} alt="头像" className="h-full w-full object-cover" />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity hover:opacity-100">
-                    <span className="text-xs font-bold text-white">更换头像</span>
-                  </div>
-                  {uploading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/80">
-                      <div className="text-center">
-                        <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-2 border-[#10B981] border-t-transparent" />
-                        <span className="text-xs text-[#10B981]">{uploadProgress}%</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
+      <main className="mx-auto w-full max-w-[900px] flex-1 px-4 py-8">
+        <div className="rounded-3xl border border-[#142D24] bg-[#091511]/70 p-6 shadow-2xl backdrop-blur-md">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center">
+            <div className="flex items-center gap-5">
+              <button
+                onClick={handleAvatarClick}
+                className="relative h-24 w-24 overflow-hidden rounded-3xl border border-[#10B981]/30 bg-[#0B1511]"
+              >
+                <img src={resolveAvatarUrl(profile.avatar_url)} alt="头像" className="h-full w-full object-cover" />
+                <div className="absolute inset-x-0 bottom-0 bg-black/55 py-1 text-xs text-white">更换头像</div>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/jpg"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                />
-
-                <div>
-                  <h2 className="text-xl font-bold text-white">{user?.email}</h2>
-                  <p className="mt-1 text-sm text-[#10B981]">用户 ID：{profile.id.substring(0, 8)}...</p>
-                </div>
+              <div>
+                <h1 className="text-3xl font-black text-white">{user.email}</h1>
+                <p className="mt-2 text-sm text-[#10B981]">账号 ID：{profile.id}</p>
+                {uploading && <p className="mt-2 text-xs text-[#8CF5CA]">头像上传中 {uploadProgress}%</p>}
               </div>
             </div>
 
-            <div className="flex border-b border-[#142D24]">
-              <TabButton active={activeTab === 'info'} onClick={() => setActiveTab('info')}>
-                基本信息
-              </TabButton>
-              <TabButton active={activeTab === 'password'} onClick={() => setActiveTab('password')}>
+            <div className="md:ml-auto">
+              <button
+                onClick={() => setShowChangePassword(true)}
+                className="rounded-2xl border border-[#10B981]/30 bg-[#0E1C17] px-5 py-3 text-sm font-semibold text-[#D9FFF0] transition hover:border-[#10B981]"
+              >
                 修改密码
-              </TabButton>
+              </button>
             </div>
+          </div>
 
-            <div className="p-6">
-              {activeTab === 'info' && (
-                <div className="space-y-4">
-                  <InfoRow label="邮箱地址" value={profile.email || '-'} />
-                  <InfoRow label="账户 ID" value={profile.id || '-'} mono />
-                  <InfoRow label="当前积分" value={String(profile.credits || 0)} highlight />
-                  <InfoRow label="注册时间" value={formatDate(profile.created_at)} />
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            <InfoCard label="邮箱地址" value={profile.email} />
+            <InfoCard label="当前积分" value={`${profile.credits}`} strong />
+            <InfoCard label="注册时间" value={formatDate(profile.created_at)} />
+            <InfoCard label="默认头像策略" value={profile.avatar_url ? '已生效' : '待补齐'} />
+          </div>
 
-                  <div className="mt-6 flex gap-3">
-                    <Link
-                      href="/recharge"
-                      className="flex-1 rounded-lg border border-[#142D24] bg-[#10B981] py-3 text-center text-sm font-bold text-[#040D0A] shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all hover:shadow-[0_0_20px_rgba(16,185,129,0.6)]"
-                    >
-                      卡密兑换
-                    </Link>
-                    <Link
-                      href="/records"
-                      className="flex-1 rounded-lg border border-[#142D24] bg-[#091511]/60 py-3 text-center text-sm font-bold text-white transition-all hover:border-[#10B981]"
-                    >
-                      生成记录
-                    </Link>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'password' && (
-                <div className="rounded-xl border border-[#142D24] bg-[#040D0A] p-6">
-                  <h3 className="mb-4 text-center text-lg font-bold text-white">修改密码</h3>
-                  <p className="mb-4 text-center text-xs text-[#10B981]">建议定期更新密码，保障账户安全。</p>
-                  <button
-                    onClick={() => setShowChangePassword(true)}
-                    className="w-full rounded-lg border border-[#142D24] bg-[#10B981] py-3 text-sm font-bold text-[#040D0A] shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all hover:shadow-[0_0_20px_rgba(16,185,129,0.6)]"
-                  >
-                    打开修改密码面板
-                  </button>
-                </div>
-              )}
-            </div>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            <Link
+              href="/recharge"
+              className="rounded-2xl bg-[#10B981] px-5 py-3 text-center text-sm font-bold text-[#04120D] shadow-[0_0_20px_rgba(16,185,129,0.25)]"
+            >
+              前往卡密兑换
+            </Link>
+            <Link
+              href="/records"
+              className="rounded-2xl border border-[#142D24] bg-[#0A1411] px-5 py-3 text-center text-sm font-semibold text-white transition hover:border-[#10B981]"
+            >
+              查看生成记录
+            </Link>
           </div>
         </div>
       </main>
 
+      <footer className="border-t border-[#142D24] bg-[#040D0A]/95 py-3 text-center text-xs text-gray-400">
+        使用本站即代表你同意
+        <button onClick={() => setShowTermsModal(true)} className="ml-1 text-[#10B981] underline underline-offset-2">
+          《安全合规与使用须知》
+        </button>
+      </footer>
+
       <ChangePasswordModal show={showChangePassword} onClose={() => setShowChangePassword(false)} />
       <TermsModal show={showTermsModal} onClose={() => setShowTermsModal(false)} />
-
-      <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#1e293b]/50 bg-[#030712]/95 py-2.5 backdrop-blur-sm">
-        <div className="mx-auto max-w-[1400px] px-4 text-center">
-          <p className="text-sm text-gray-400">
-            使用本站即表示你同意
-            <button
-              onClick={() => setShowTermsModal(true)}
-              className="rounded px-1 font-semibold text-[#10B981] underline decoration-[#10B981]/50 underline-offset-2 transition-all duration-300 hover:text-[#00F2FE] hover:decoration-[#00F2FE]"
-            >
-              《安全合规与使用须知》
-            </button>
-          </p>
-        </div>
-      </footer>
     </div>
   )
 }
 
 function NavLink({
   href,
-  children,
   active,
+  children,
 }: {
   href: string
-  children: React.ReactNode
   active?: boolean
+  children: React.ReactNode
 }) {
   return (
     <Link
       href={href}
-      className={`rounded-xl border px-5 py-2.5 text-base font-semibold tracking-wide transition-all md:text-lg ${
-        active
-          ? 'border-[#142D24] bg-[#10B981] text-[#040D0A] shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-          : 'border-[#142D24] bg-[#091511]/60 text-white hover:border-[#10B981] hover:bg-[#142D24]'
+      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+        active ? 'bg-[#10B981] text-[#04120D]' : 'text-white hover:bg-[#101E18]'
       }`}
     >
       {children}
@@ -408,9 +395,7 @@ function MenuButton({
     <button
       onClick={onClick}
       className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-        danger
-          ? 'text-red-400 hover:bg-[#142D24]'
-          : 'text-white hover:bg-[#142D24] hover:text-[#10B981]'
+        danger ? 'text-red-400 hover:bg-[#142D24]' : 'text-white hover:bg-[#142D24] hover:text-[#10B981]'
       }`}
     >
       {children}
@@ -418,46 +403,11 @@ function MenuButton({
   )
 }
 
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
+function InfoCard({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
-    <button
-      onClick={onClick}
-      className={`flex-1 py-3 text-sm font-bold transition-all ${
-        active ? 'bg-[#10B981] text-[#040D0A]' : 'bg-[#091511]/60 text-white hover:bg-[#142D24]'
-      }`}
-    >
-      {children}
-    </button>
-  )
-}
-
-function InfoRow({
-  label,
-  value,
-  mono,
-  highlight,
-}: {
-  label: string
-  value: string
-  mono?: boolean
-  highlight?: boolean
-}) {
-  return (
-    <div className="rounded-lg border border-[#142D24] bg-[#040D0A] p-4">
-      <div className="flex items-center justify-between gap-4">
-        <span className="text-sm text-[#10B981]">{label}</span>
-        <span className={`${mono ? 'font-mono' : ''} ${highlight ? 'text-lg font-bold text-[#10B981]' : 'text-sm text-white'}`}>
-          {value}
-        </span>
-      </div>
+    <div className="rounded-2xl border border-[#142D24] bg-[#07110E] px-5 py-4">
+      <p className="text-sm text-[#7FDDBB]">{label}</p>
+      <p className={`mt-2 break-all ${strong ? 'text-2xl font-black text-[#10B981]' : 'text-base text-white'}`}>{value}</p>
     </div>
   )
 }
