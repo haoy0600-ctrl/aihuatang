@@ -1,4 +1,5 @@
 export const SESSION_STORAGE_KEY = 'ai_handdrawn_login_session'
+export const REMEMBERED_ACCOUNT_KEY = 'ai_handdrawn_remembered_account'
 
 export interface LoginSession {
   id: string
@@ -54,4 +55,19 @@ export function authHeaders(contentType = true): HeadersInit {
     ...(contentType ? { 'Content-Type': 'application/json' } : {}),
     ...(session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {}),
   }
+}
+
+export function getRememberedAccount(): string {
+  if (typeof window === 'undefined') return ''
+  return localStorage.getItem(REMEMBERED_ACCOUNT_KEY) || ''
+}
+
+export function saveRememberedAccount(account: string) {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(REMEMBERED_ACCOUNT_KEY, account)
+}
+
+export function clearRememberedAccount() {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem(REMEMBERED_ACCOUNT_KEY)
 }

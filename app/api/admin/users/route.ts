@@ -2,6 +2,42 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminUser } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
 
+type ProfileRow = {
+  id: string
+  email?: string | null
+  credits?: number | null
+  created_at?: string | null
+  banned?: boolean | null
+  vip_level?: number | null
+  username?: string | null
+}
+
+async function fetchProfilesWithFallback() {
+  if (!supabaseAdmin) {
+    return { data: null, error: new Error('Supabase admin not configured') }
+  }
+
+  const queries = [
+    'id, email, credits, created_at, banned, vip_level, username',
+    'id, email, credits, created_at, banned, username',
+    'id, email, credits, created_at, username',
+    'id, credits, created_at',
+  ]
+
+  for (const selectClause of queries) {
+    const result = await supabaseAdmin
+      .from('profiles')
+      .select(selectClause)
+      .order('created_at', { ascending: false })
+
+    if (!result.error) {
+      return { data: ((result.data || []) as unknown) as ProfileRow[], error: null }
+    }
+  }
+
+  return { data: null, error: new Error('Unable to query profiles with current schema') }
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (!supabaseAdmin) {
@@ -20,14 +56,12 @@ export async function POST(request: NextRequest) {
     }
 
     const [profilesResult, generationsResult] = await Promise.all([
-      supabaseAdmin
-        .from('profiles')
-        .select('id, email, credits, created_at, banned, vip_level, username')
-        .order('created_at', { ascending: false }),
+      fetchProfilesWithFallback(),
       supabaseAdmin.from('generation_records').select('user_id, model, image_count'),
     ])
 
-    const { data: profiles, error: profilesError } = profilesResult
+    const profiles = profilesResult.data
+    const profilesError = profilesResult.error
     const { data: generations } = generationsResult
 
     if (profilesError || !profiles) {
@@ -56,10 +90,10 @@ export async function POST(request: NextRequest) {
 
     const users = profiles.map((profile) => ({
       id: profile.id,
-      email: profile.email || '未知邮箱',
+      email: profile.email || '未设置邮箱',
       username: profile.username || null,
       credits: profile.credits || 0,
-      created_at: profile.created_at,
+      created_at: profile.created_at || new Date(0).toISOString(),
       banned: profile.banned || false,
       vip_level: profile.vip_level || 0,
       generationCount: userGenerationStats[profile.id]?.count || 0,

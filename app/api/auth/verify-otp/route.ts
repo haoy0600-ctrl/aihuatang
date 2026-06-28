@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 export async function POST(request: NextRequest) {
   try {
     const { email, token } = await request.json()
+    const normalizedEmail = String(email || '').trim().toLowerCase()
 
     if (!supabaseAdmin) {
       return NextResponse.json(
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { data, error } = await supabaseAdmin.auth.verifyOtp({
-      email,
+      email: normalizedEmail,
       token,
       type: 'email',
     })
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
         : null,
     })
   } catch (error) {
-    console.error('Verify OTP error:', error)
+    console.error('[Auth/VerifyOtp] Error:', error)
     return NextResponse.json(
       {
         success: false,

@@ -159,12 +159,22 @@ type GenerateRequest = {
   mode: string
 }
 
+function sanitizePromptText(text: string) {
+  return String(text || '')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 function getStyleByName(styleName: string) {
   return HANDDRAWN_STYLES.find((style) => style.name === styleName)
 }
 
 function buildFinalPrompt(inputText: string, styleName: string, customStyle?: string, isImageMode = false): string {
-  const userText = inputText.trim()
+  const userText = sanitizePromptText(inputText)
 
   let activeStyle = ''
   if (customStyle && customStyle.trim()) {
@@ -654,7 +664,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const allPrompts = isTextMode ? inputContents.join('\n') : referenceImages.join('\n') || '[Image Mode]'
+    const sanitizedInputContents = inputContents.map((item) => sanitizePromptText(item)).filter(Boolean)
+
+    const moderationText = isTextMode
+      ? sanitizedInputContents.join('\n')
+      : [styleName, customStyle?.trim()].filter(Boolean).join('\n') || '[Image Mode]'
 
     const isBanned = await isUserCurrentlyBanned(userId)
     if (isBanned) {
@@ -664,11 +678,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (detectSensitiveWords(allPrompts)) {
+    if (detectSensitiveWords(moderationText)) {
       const shouldBan = await recordSensitiveWordViolation({
         userId,
         ipAddress: ip,
-        prompt: allPrompts,
+        prompt: moderationText,
       })
 
       await deductCredits(userId, 2)
@@ -697,9 +711,7 @@ export async function POST(request: NextRequest) {
     const targetImageSize = getImageSizeByResolution(resolution, aspectRatio)
     const modelName = getModelName(modelType, resolution)
 
-    const sentences = isTextMode
-      ? inputContents.filter((item) => item && item.trim().length > 0)
-      : []
+    const sentences = isTextMode ? sanitizedInputContents.filter((item) => item && item.trim().length > 0) : []
 
     const totalImageCount = isTextMode ? sentences.length : referenceImages.length
     totalCost = totalImageCount * costPerImage
@@ -851,36 +863,69 @@ export async function POST(request: NextRequest) {
     })
 
     if (supabaseAdmin) {
-      const recordData = {
-        user_id: userId,
-        prompt: isTextMode ? inputContents.join('\n') : '[Image Mode]',
-        style_name: styleName,
-        style_prompt: finalPrompts.join('\n---\n'),
-        model: modelName,
-        image_count: imageUrls.length,
-        image_urls: JSON.stringify(imageUrls),
-        status: 'success',
-        resolution,
-      }
+      const recordCandidates = [
+        {
+          user_id: userId,
+          prompt: isTextMode ? sanitizedInputContents.join('\n') : '[Image Mode]',
+          style_name: styleName,
+          style_prompt: finalPrompts.join('\n---\n'),
+          model: modelName,
+          image_count: imageUrls.length,
+          image_urls: JSON.stringify(imageUrls),
+          status: 'success',
+          resolution,
+        },
+        {
+          user_id: userId,
+          prompt: isTextMode ? sanitizedInputContents.join('\n') : '[Image Mode]',
+          style_name: styleName,
+          style_prompt: finalPrompts.join('\n---\n'),
+          model: modelName,
+          image_count: imageUrls.length,
+          image_urls: JSON.stringify(imageUrls),
+          status: 'success',
+        },
+      ]
 
-      console.error('[DEBUG-API-GEN-DB-INSERT-DATA] Record data:', JSON.stringify(recordData).substring(0, 500))
+      let recordSaved = false
+      let lastRecordError: any = null
 
-      const { error: recordError, data: recordDataResult } = await supabaseAdmin
-        .from('generation_records')
-        .insert(recordData)
-        .select()
+      for (const recordData of recordCandidates) {
+        console.error('[DEBUG-API-GEN-DB-INSERT-DATA] Record data:', JSON.stringify(recordData).substring(0, 500))
 
-      if (recordError) {
+        const { error: recordError, data: recordDataResult } = await supabaseAdmin
+          .from('generation_records')
+          .insert(recordData as any)
+          .select()
+
+        if (!recordError) {
+          recordSaved = true
+          console.error('[DEBUG-API-GEN-DB-SUCCESS] Record saved successfully:', {
+            recordId: recordDataResult?.[0]?.id,
+          })
+          break
+        }
+
+        lastRecordError = recordError
         console.error('[DEBUG-API-GEN-DB-ERROR] Failed to create generation record:', {
           error: recordError,
           errorMessage: recordError.message,
           errorCode: recordError.code,
           errorDetails: recordError.details,
         })
-      } else {
-        console.error('[DEBUG-API-GEN-DB-SUCCESS] Record saved successfully:', {
-          recordId: recordDataResult?.[0]?.id,
-        })
+      }
+
+      if (!recordSaved) {
+        await rollbackCredits(profileId, totalCost)
+        return NextResponse.json(
+          {
+            success: false,
+            error: '图片已生成，但保存记录失败，积分已退回，请稍后重试。',
+            creditsRemaining: currentCredits + totalCost,
+            debug: lastRecordError?.message || null,
+          },
+          { status: 500 },
+        )
       }
     } else {
       console.error('[DEBUG-API-GEN-DB-NO-ADMIN] supabaseAdmin is not initialized!')

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
+import { resolveAvatarUrl } from '@/lib/avatar'
 
 interface UserProfile {
   id: string
@@ -58,7 +59,8 @@ const compressImage = (file: File, maxSizeKB = 200): Promise<File> =>
 
               const sizeKB = blob.size / 1024
               if (sizeKB <= maxSizeKB || quality <= 0.1) {
-                resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }))
+                const baseName = file.name.replace(/\.[^.]+$/, '')
+                resolve(new File([blob], `${baseName || 'avatar'}.jpg`, { type: 'image/jpeg', lastModified: Date.now() }))
                 return
               }
 
@@ -200,7 +202,7 @@ export default function ProfilePage() {
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-2 sm:py-3">
             <Link href="/" className="flex items-center select-none transition-opacity hover:opacity-80">
-              <img src="/logo.png?v=6" alt="AI画堂" className="h-20 w-20 object-contain" />
+              <img src="/logo.svg?v=1" alt="AI画堂" className="h-20 w-20 object-contain" />
             </Link>
 
             <nav className="hidden items-center gap-4 md:flex">
@@ -229,13 +231,7 @@ export default function ProfilePage() {
                   onClick={() => setShowUserMenu((prev) => !prev)}
                   className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-[#142D24] bg-[#091511]/60 transition-colors hover:border-[#10B981] sm:h-9 sm:w-9"
                 >
-                  {profile.avatar_url ? (
-                    <img src={profile.avatar_url} alt="头像" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-sm font-bold text-white">
-                      {user?.email ? user.email.substring(0, 2).toUpperCase() : 'HA'}
-                    </span>
-                  )}
+                  <img src={resolveAvatarUrl(profile.avatar_url)} alt="头像" className="h-full w-full object-cover" />
                 </button>
 
                 {showUserMenu && (
@@ -276,13 +272,7 @@ export default function ProfilePage() {
                   className="relative flex h-16 w-16 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-[#142D24] bg-[#10B981] shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-transform hover:scale-105"
                   onClick={handleAvatarClick}
                 >
-                  {profile.avatar_url ? (
-                    <img src={profile.avatar_url} alt="头像" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-2xl font-bold text-[#040D0A]">
-                      {user?.email ? user.email.substring(0, 1).toUpperCase() : 'A'}
-                    </span>
-                  )}
+                  <img src={resolveAvatarUrl(profile.avatar_url)} alt="头像" className="h-full w-full object-cover" />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity hover:opacity-100">
                     <span className="text-xs font-bold text-white">更换头像</span>
                   </div>

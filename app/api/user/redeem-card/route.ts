@@ -10,6 +10,24 @@ async function getRecentRedeemErrorCount(ipAddress: string) {
   return countRecentIpEvents('redeem_card_invalid', ipAddress, REDEEM_BLOCK_WINDOW_MS)
 }
 
+async function fetchProfileWithFallback(userId: string) {
+  if (!supabaseAdmin) return { data: null, error: new Error('Supabase admin not configured') }
+
+  const queries = ['id, credits, email', 'id, credits']
+
+  for (const selectClause of queries) {
+    const result = await supabaseAdmin.from('profiles').select(selectClause).eq('id', userId).single()
+    if (!result.error) {
+      return {
+        data: (result.data as unknown) as { id: string; credits?: number; email?: string | null },
+        error: null,
+      }
+    }
+  }
+
+  return { data: null, error: new Error('Profile not found') }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const ipAddress = getClientIP(request)
@@ -66,9 +84,6 @@ export async function POST(request: NextRequest) {
         prompt: cardCode,
       })
 
-      const updatedErrorCount = await getRecentRedeemErrorCount(ipAddress)
-      console.warn('[RedeemCard] Invalid card attempt:', { ipAddress, updatedErrorCount })
-
       return NextResponse.json(
         { success: false, message: '无效的激活码。' },
         { status: 400 },
@@ -89,14 +104,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('id, credits, email')
-      .eq('id', userId)
-      .single()
-
-    if (profileError || !profile) {
-      console.error('[RedeemCard] Profile not found:', { userId, profileError })
+    const profileResult = await fetchProfileWithFallback(userId)
+    const profile = profileResult.data
+    if (profileResult.error || !profile) {
+      console.error('[RedeemCard] Profile not found:', { userId, profileError: profileResult.error })
       return NextResponse.json(
         { success: false, message: '用户不存在。' },
         { status: 404 },
@@ -108,7 +119,7 @@ export async function POST(request: NextRequest) {
       .update({
         status: 'used',
         used_by: userId,
-        used_email: profile.email || '未知',
+        used_email: profile.email || auth.user.email || '未知用户',
         used_at: new Date().toISOString(),
       })
       .eq('id', cardData.id)
@@ -147,7 +158,6 @@ export async function POST(request: NextRequest) {
         .from('profiles')
         .update({
           credits: newCredits,
-          updated_at: new Date().toISOString(),
         })
         .eq('id', userId)
         .eq('credits', currentCredits)

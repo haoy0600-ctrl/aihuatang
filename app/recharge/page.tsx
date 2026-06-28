@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
+import { resolveAvatarUrl } from '@/lib/avatar'
 
 type UserInfo = {
   email?: string
@@ -160,7 +161,7 @@ export default function RechargePage() {
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-2 sm:py-3">
             <Link href="/" className="flex items-center select-none transition-opacity hover:opacity-80">
-              <img src="/logo.png?v=6" alt="AI画堂" className="h-20 w-20 object-contain" />
+              <img src="/logo.svg?v=1" alt="AI画堂" className="h-20 w-20 object-contain" />
             </Link>
 
             <nav className="hidden items-center gap-4 md:flex">
@@ -197,13 +198,7 @@ export default function RechargePage() {
                   onClick={() => setShowUserMenu((prev) => !prev)}
                   className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-[#142D24] bg-[#091511]/60 transition-colors hover:border-[#10B981] sm:h-9 sm:w-9"
                 >
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt="头像" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-sm font-bold text-white">
-                      {user?.email ? user.email.substring(0, 2).toUpperCase() : 'HA'}
-                    </span>
-                  )}
+                  <img src={resolveAvatarUrl(profile?.avatar_url)} alt="头像" className="h-full w-full object-cover" />
                 </button>
 
                 {showUserMenu && (

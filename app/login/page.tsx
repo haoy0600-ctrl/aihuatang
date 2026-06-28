@@ -3,7 +3,15 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { LoginSession, authHeaders, getStoredSession, saveStoredSession } from '@/lib/session'
+import {
+  LoginSession,
+  authHeaders,
+  clearRememberedAccount,
+  getRememberedAccount,
+  getStoredSession,
+  saveRememberedAccount,
+  saveStoredSession,
+} from '@/lib/session'
 
 const QQ_EMAIL_REGEX = /^[^\s@]+@qq\.com$/
 
@@ -27,6 +35,7 @@ export default function LoginPage() {
   const [isSendingReset, setIsSendingReset] = useState(false)
   const [resetSent, setResetSent] = useState(false)
   const [sendSuccess, setSendSuccess] = useState('')
+  const [rememberAccount, setRememberAccount] = useState(true)
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | undefined
@@ -38,14 +47,19 @@ export default function LoginPage() {
     }
 
     return () => {
-      if (timer) {
-        clearInterval(timer)
-      }
+      if (timer) clearInterval(timer)
     }
   }, [countdown])
 
   useEffect(() => {
     try {
+      const remembered = getRememberedAccount()
+      if (remembered) {
+        setEmail(remembered)
+        setForgotEmail(remembered)
+        setRememberAccount(true)
+      }
+
       const session = getStoredSession()
       if (session) {
         setEmail(session.email)
@@ -66,6 +80,11 @@ export default function LoginPage() {
     }
 
     saveStoredSession(session)
+    if (rememberAccount) {
+      saveRememberedAccount(userEmail)
+    } else {
+      clearRememberedAccount()
+    }
   }
 
   const ensureProfileExists = async (userId: string, userEmail: string, nextUsername?: string) => {
@@ -86,14 +105,8 @@ export default function LoginPage() {
   }
 
   const validateQQEmail = (value: string, fieldName = 'QQ 邮箱') => {
-    if (!value) {
-      return `请输入${fieldName}`
-    }
-
-    if (!QQ_EMAIL_REGEX.test(value)) {
-      return `请输入有效的${fieldName}`
-    }
-
+    if (!value) return `请输入${fieldName}`
+    if (!QQ_EMAIL_REGEX.test(value)) return `请输入有效的${fieldName}`
     return ''
   }
 
@@ -126,7 +139,6 @@ export default function LoginPage() {
       const data = await response.json()
       if (!data.success) {
         setError(`发送失败：${data.error}`)
-        setIsSending(false)
         return
       }
 
@@ -327,10 +339,9 @@ export default function LoginPage() {
 
         <div className="relative z-10 text-center">
           <div className="mx-auto mb-6 h-24 w-24 sm:h-28 sm:w-28">
-            <img src="/logo.png?v=6" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
+            <img src="/logo.svg?v=1" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
           </div>
 
-          <h1 className="mb-4 text-3xl font-bold text-white">AI画堂</h1>
           <p className="mx-auto mb-8 max-w-md text-lg text-[#64748B]">
             面向自媒体创作者的高质感图文生成与智能排版工具。
           </p>
@@ -344,7 +355,7 @@ export default function LoginPage() {
             <FeatureCard
               icon="风格"
               title="多种视觉风格"
-              description="覆盖简约、商业、科普、课程封面等常用内容模版。"
+              description="覆盖简约、商业、科普、课程封面等常用内容模板。"
             />
             <FeatureCard
               icon="同步"
@@ -359,7 +370,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="mb-6 text-center md:hidden">
             <div className="mx-auto mb-3 h-36 w-36">
-              <img src="/logo.png?v=6" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
+              <img src="/logo.svg?v=1" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
             </div>
             <p className="text-sm text-[#64748B]">自媒体知识图卡与视觉排版工作台</p>
           </div>
@@ -398,6 +409,16 @@ export default function LoginPage() {
                     disabled={isSubmitting}
                   />
                 </div>
+
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-[#94A3B8]">
+                  <input
+                    type="checkbox"
+                    checked={rememberAccount}
+                    onChange={(event) => setRememberAccount(event.target.checked)}
+                    className="h-4 w-4 accent-[#00E676]"
+                  />
+                  记住账号
+                </label>
 
                 <button
                   onClick={handlePasswordLogin}

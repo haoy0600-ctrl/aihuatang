@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { DEFAULT_AVATAR_URL } from '@/lib/avatar'
 
 const QQ_EMAIL_BONUS = 3
 const DEFAULT_CREDITS = 6
@@ -23,10 +24,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const normalizedEmail = String(email || '').trim().toLowerCase()
+
     const { data: existingUsers } = await supabaseAdmin
       .from('profiles')
       .select('id, email')
-      .eq('email', email.toLowerCase())
+      .eq('email', normalizedEmail)
       .limit(1)
 
     if (existingUsers && existingUsers.length > 0) {
@@ -40,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { data, error } = await supabaseAdmin.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
         emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://aihuatang.top'}/login`,
@@ -58,13 +61,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (data.user) {
-      const qqEmail = isQQEmail(email)
+      const qqEmail = isQQEmail(normalizedEmail)
       const initialCredits = qqEmail ? QQ_EMAIL_BONUS_CREDITS : DEFAULT_CREDITS
 
       await supabaseAdmin.from('profiles').upsert({
         id: data.user.id,
-        email: data.user.email || email,
+        email: data.user.email || normalizedEmail,
         credits: initialCredits,
+        avatar_url: DEFAULT_AVATAR_URL,
         created_at: new Date().toISOString(),
       })
     }
@@ -72,7 +76,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: '注册成功，请登录。',
-      isQQEmail: isQQEmail(email),
+      isQQEmail: isQQEmail(normalizedEmail),
     })
   } catch (error) {
     console.error('Register error:', error)

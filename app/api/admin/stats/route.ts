@@ -2,6 +2,38 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminUser } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
 
+type ProfileRow = {
+  id: string
+  email?: string | null
+  credits?: number | null
+  created_at?: string | null
+  banned?: boolean | null
+  vip_level?: number | null
+  username?: string | null
+}
+
+async function fetchProfilesWithFallback() {
+  if (!supabaseAdmin) {
+    return { data: null, error: new Error('Supabase admin not configured') }
+  }
+
+  const queries = [
+    'id, email, credits, created_at, banned, vip_level, username',
+    'id, email, credits, created_at, banned, username',
+    'id, email, credits, created_at, username',
+    'id, credits, created_at',
+  ]
+
+  for (const selectClause of queries) {
+    const result = await supabaseAdmin.from('profiles').select(selectClause)
+    if (!result.error) {
+      return { data: ((result.data || []) as unknown) as ProfileRow[], error: null }
+    }
+  }
+
+  return { data: null, error: new Error('Unable to query profiles with current schema') }
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (!supabaseAdmin) {
@@ -28,22 +60,24 @@ export async function POST(request: NextRequest) {
       { count: generationCount },
       { data: generations },
       { data: queue },
-      { data: profiles },
+      profilesResult,
       { data: recentGenerationsWithUser },
-      { count: activeUsersCount },
+      activeUsersResult,
     ] = await Promise.all([
       supabaseAdmin.from('profiles').select('id', { count: 'exact' }).limit(0),
       supabaseAdmin.from('generation_records').select('id', { count: 'exact' }).limit(0),
       supabaseAdmin.from('generation_records').select('status, image_count, model, resolution, user_id, created_at'),
       supabaseAdmin.from('generation_records').select('*').eq('status', 'processing').order('created_at', { ascending: true }),
-      supabaseAdmin.from('profiles').select('id, email, credits, created_at, banned, vip_level, username'),
+      fetchProfilesWithFallback(),
       supabaseAdmin
         .from('generation_records')
         .select('id, user_id, model, resolution, image_count, status, created_at')
         .order('created_at', { ascending: false })
         .limit(20),
-      supabaseAdmin.from('generation_records').select('user_id', { count: 'distinct' }).gte('created_at', sevenDaysAgoStr).limit(0),
+      supabaseAdmin.from('generation_records').select('user_id', { count: 'exact', head: true }).gte('created_at', sevenDaysAgoStr),
     ])
+
+    const profiles = profilesResult.data || []
 
     const successCount =
       generations?.filter((item) => item.status === 'success' || item.status === 'completed').length || 0
@@ -87,7 +121,7 @@ export async function POST(request: NextRequest) {
 
     const recentGenerations =
       recentGenerationsWithUser?.slice(0, 10).map((item) => {
-        const user = profiles?.find((profile) => profile.id === item.user_id)
+        const user = profiles.find((profile) => profile.id === item.user_id)
         return {
           ...item,
           userEmail: user?.email || '未知用户',
@@ -97,7 +131,7 @@ export async function POST(request: NextRequest) {
 
     const topUsers =
       profiles
-        ?.filter((profile) => !profile.banned)
+        .filter((profile) => !profile.banned)
         .map((profile) => ({
           ...profile,
           generationCount: userGenerationStats[profile.id]?.count || 0,
@@ -123,7 +157,7 @@ export async function POST(request: NextRequest) {
         resolutionStats,
         recentGenerations,
         topUsers,
-        activeUsers: activeUsersCount || 0,
+        activeUsers: activeUsersResult.count || 0,
       },
     })
   } catch (error) {

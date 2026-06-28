@@ -106,18 +106,18 @@ export default function HomePage() {
   }
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-[#030712] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#030712] via-[#0a0f1a] to-[#030712]" />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#10B981]/10 via-transparent to-transparent" />
-      <div className="pointer-events-none absolute -top-20 left-1/4 h-[500px] w-[500px] rounded-full bg-gradient-to-br from-[#10B981]/20 via-[#10B981]/5 to-transparent blur-[120px]" />
-      <div className="pointer-events-none absolute -top-20 right-1/4 h-[450px] w-[450px] rounded-full bg-gradient-to-bl from-[#00F2FE]/20 via-[#00F2FE]/5 to-transparent blur-[100px]" />
-      <div className="pointer-events-none absolute left-1/3 top-1/2 h-[400px] w-[400px] rounded-full bg-gradient-to-r from-[#8B5CF6]/15 via-transparent to-transparent blur-[100px]" />
+    <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-[#030712] text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.12),_transparent_28%),radial-gradient(circle_at_80%_20%,_rgba(34,211,238,0.10),_transparent_24%),linear-gradient(135deg,_#020617_0%,_#07111b_45%,_#030712_100%)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.05)_1px,transparent_1px)] [background-size:72px_72px]" />
+      <div className="pointer-events-none absolute -top-24 left-[18%] h-[420px] w-[420px] rounded-full bg-gradient-to-br from-[#10B981]/18 via-[#10B981]/6 to-transparent blur-[120px] animate-pulse" />
+      <div className="pointer-events-none absolute right-[12%] top-[10%] h-[360px] w-[360px] rounded-full bg-gradient-to-bl from-[#22D3EE]/16 via-[#22D3EE]/5 to-transparent blur-[100px] animate-pulse" />
+      <div className="pointer-events-none absolute bottom-[14%] left-[30%] h-[320px] w-[320px] rounded-full bg-gradient-to-r from-[#8B5CF6]/12 via-transparent to-transparent blur-[110px] animate-pulse" />
 
       <header className="sticky top-0 z-[60] border-b border-[#1e293b]/50 bg-[#030712]/95 backdrop-blur-sm">
         <div className="w-full px-3 py-2 sm:px-4">
           <div className="flex items-center justify-between gap-3">
             <Link href="/" className="shrink-0">
-              <img src="/logo.png?v=8" alt="AI画堂" className="h-10 w-auto object-contain sm:h-16" />
+              <img src="/logo.svg?v=1" alt="AI画堂" className="h-10 w-auto object-contain sm:h-16" />
             </Link>
 
             <nav className="hidden flex-1 items-center justify-center gap-2 md:flex">
@@ -224,8 +224,8 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="relative z-10 flex flex-1 flex-col items-center px-3 pb-8 pt-4 sm:py-6">
-        <div ref={heroRef} className="mb-6 text-center sm:mb-8">
+      <main className="relative z-10 flex flex-1 flex-col items-center px-3 pb-16 pt-4 sm:px-4 sm:pb-18 sm:pt-5">
+        <div ref={heroRef} className="mb-5 text-center sm:mb-6">
           <h1 className="mb-2 text-xl font-extrabold sm:mb-3 sm:text-2xl md:text-3xl lg:text-4xl">
             <span className="relative inline-block">
               <span className="bg-gradient-to-r from-[#03F09C] via-[#00F2FE] to-[#10B981] bg-clip-text text-transparent">
@@ -261,7 +261,7 @@ export default function HomePage() {
         </div>
 
         <div
-          className={`${isVisible ? 'opacity-100' : 'opacity-0'} mb-6 w-full max-w-5xl transition-opacity delay-700 duration-700 sm:mb-8`}
+          className={`${isVisible ? 'opacity-100' : 'opacity-0'} mb-5 w-full max-w-5xl transition-opacity delay-700 duration-700 sm:mb-8`}
         >
           <div className="mb-3 text-center sm:mb-4">
             <h2 className="mb-1 text-base font-bold text-white sm:text-lg">核心功能</h2>
@@ -282,7 +282,7 @@ export default function HomePage() {
         </div>
 
         <div
-          className={`${isVisible ? 'opacity-100' : 'opacity-0'} mb-6 w-full max-w-5xl transition-opacity delay-1000 duration-700 sm:mb-8`}
+          className={`${isVisible ? 'opacity-100' : 'opacity-0'} mb-5 w-full max-w-5xl transition-opacity delay-1000 duration-700 sm:mb-8`}
         >
           <div className="mb-3 text-center sm:mb-4">
             <h2 className="text-base font-bold text-white sm:text-lg">为什么选择 AI画堂？</h2>
@@ -325,7 +325,7 @@ export default function HomePage() {
         </div>
 
         <div
-          className={`${isVisible ? 'opacity-100' : 'opacity-0'} mb-4 w-full max-w-4xl transition-opacity delay-[1300ms] duration-700`}
+          className={`${isVisible ? 'opacity-100' : 'opacity-0'} mb-3 w-full max-w-4xl transition-opacity delay-[1300ms] duration-700`}
         >
           <div className="mb-3 text-center">
             <h2 className="text-base font-bold text-white sm:text-lg">创作流程</h2>

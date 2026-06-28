@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json()
+    const normalizedEmail = String(email || '').trim().toLowerCase()
 
     if (!supabaseAdmin) {
       return NextResponse.json(
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!email || !email.includes('@')) {
+    if (!normalizedEmail || !normalizedEmail.includes('@')) {
       return NextResponse.json(
         {
           success: false,
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
     const { data: existingUser } = await supabaseAdmin
       .from('profiles')
       .select('id, email')
-      .eq('email', email.toLowerCase())
+      .eq('email', normalizedEmail)
       .limit(1)
 
     if (existingUser && existingUser.length > 0) {
@@ -43,13 +44,15 @@ export async function POST(request: NextRequest) {
     }
 
     const { data, error } = await supabaseAdmin.auth.signInWithOtp({
-      email,
+      email: normalizedEmail,
       options: {
         shouldCreateUser: true,
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://aihuatang.top'}/login`,
       },
     })
 
     if (error) {
+      console.error('[Auth/SendCode] signInWithOtp failed:', error)
       return NextResponse.json(
         {
           success: false,
@@ -65,7 +68,7 @@ export async function POST(request: NextRequest) {
       data,
     })
   } catch (error) {
-    console.error('Send code error:', error)
+    console.error('[Auth/SendCode] Error:', error)
     return NextResponse.json(
       {
         success: false,

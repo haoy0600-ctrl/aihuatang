@@ -1,5 +1,15 @@
 import { NextResponse } from 'next/server'
 
+function sanitizeExpandedMarkdown(text: string) {
+  return text
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 export async function POST(request: Request) {
   try {
     const { text } = await request.json()
@@ -54,7 +64,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const expandedText = data.choices?.[0]?.message?.content?.trim() || ''
+    const expandedText = sanitizeExpandedMarkdown(data.choices?.[0]?.message?.content?.trim() || '')
 
     return NextResponse.json({
       success: true,

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
@@ -8,6 +8,7 @@ import { saveAs } from 'file-saver'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
+import { resolveAvatarUrl } from '@/lib/avatar'
 
 interface GenerationRecord {
   id: string
@@ -17,7 +18,7 @@ interface GenerationRecord {
   style_prompt?: string
   model: string
   image_count: number
-  image_urls: string
+  image_urls: string | string[]
   status: string
   created_at: string
   image_url_4k?: string | null
@@ -39,6 +40,7 @@ export default function RecordsPage() {
 
   const [records, setRecords] = useState<GenerationRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
   const [loadingMore, setLoadingMore] = useState(false)
   const [currentTime, setCurrentTime] = useState('')
   const [user, setUser] = useState<{ email?: string } | null>(null)
@@ -68,12 +70,22 @@ export default function RecordsPage() {
     return () => clearInterval(timer)
   }, [])
 
-  const parseImageUrls = useCallback((value: string) => {
-    try {
-      const urls = JSON.parse(value) as string[]
-      return Array.isArray(urls) ? urls.filter(Boolean) : []
-    } catch {
+  const parseImageUrls = useCallback((value: string | string[] | null | undefined) => {
+    if (Array.isArray(value)) {
+      return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    }
+
+    if (!value || typeof value !== 'string') {
       return []
+    }
+
+    try {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed)
+        ? parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+        : []
+    } catch {
+      return value.trim() ? [value.trim()] : []
     }
   }, [])
 
@@ -99,6 +111,7 @@ export default function RecordsPage() {
       }
 
       try {
+        setErrorMessage('')
         if (reset) {
           const meResponse = await fetch('/api/auth/me', {
             method: 'POST',
@@ -133,6 +146,7 @@ export default function RecordsPage() {
         const recordsData = await recordsResponse.json()
 
         if (!recordsData.success) {
+          setErrorMessage(recordsData.error || '获取生成记录失败。')
           if (reset) {
             setRecords([])
             setTotalRecords(0)
@@ -159,6 +173,7 @@ export default function RecordsPage() {
         setHasMore(Boolean(recordsData.hasMore))
       } catch (error) {
         console.error('Fetch records error:', error)
+        setErrorMessage('网络异常，获取生成记录失败。')
         if (reset) {
           setRecords([])
           setProfile({ credits: 0 })
@@ -416,7 +431,7 @@ export default function RecordsPage() {
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-2 sm:py-3">
             <Link href="/" className="flex items-center select-none transition-opacity hover:opacity-80">
-              <img src="/logo.png?v=6" alt="AI画堂" className="h-20 w-20 object-contain" />
+              <img src="/logo.svg?v=1" alt="AI画堂" className="h-20 w-20 object-contain" />
             </Link>
 
             <nav className="hidden items-center gap-4 md:flex">
@@ -444,13 +459,7 @@ export default function RecordsPage() {
                   onClick={() => setShowUserMenu((prev) => !prev)}
                   className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-[#202B3A] bg-[#141923] transition-colors hover:border-[#00F2FE] sm:h-9 sm:w-9"
                 >
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt="用户头像" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-sm font-bold text-white">
-                      {user?.email ? user.email.substring(0, 2).toUpperCase() : 'AI'}
-                    </span>
-                  )}
+                  <img src={resolveAvatarUrl(profile?.avatar_url)} alt="用户头像" className="h-full w-full object-cover" />
                 </button>
 
                 {showUserMenu && (
@@ -555,6 +564,10 @@ export default function RecordsPage() {
 
           {loading ? (
             <LoadingState />
+          ) : errorMessage ? (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-300">
+              {errorMessage}
+            </div>
           ) : filteredRecords.length === 0 ? (
             <EmptyRecords />
           ) : (
@@ -940,7 +953,7 @@ function RecordDetailModal({
   onDelete: () => void
   image4kUrl?: string
   isUpscaling: boolean
-  parseImageUrls: (value: string) => string[]
+  parseImageUrls: (value: string | string[] | null | undefined) => string[]
 }) {
   const urls = parseImageUrls(record.image_urls)
 
@@ -1057,3 +1070,4 @@ function RecordDetailModal({
     </div>
   )
 }
+

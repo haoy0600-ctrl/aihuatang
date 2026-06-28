@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -7,11 +7,13 @@ import { HANDDRAWN_STYLES, HanddrawnStyle } from '@/config/styles'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
+import { resolveAvatarUrl } from '@/lib/avatar'
 
 interface UserProfile {
   id: string
   email: string
   credits: number
+  avatar_url?: string
 }
 
 interface CustomStyle {
@@ -41,7 +43,7 @@ const ASPECT_RATIOS = [
   { label: '1:2', value: '1:2', note: '双倍长图' },
 ]
 
-const systemStyleLabel = (_style: HanddrawnStyle, index: number) => `系统风格 ${index + 1}`
+const systemStyleLabel = (style: HanddrawnStyle) => style.name
 
 const getStoredJson = <T,>(key: string, fallback: T): T => {
   if (typeof window === 'undefined') {
@@ -59,6 +61,15 @@ const getStoredJson = <T,>(key: string, fallback: T): T => {
     return fallback
   }
 }
+
+const sanitizeDisplayText = (value: string) =>
+  value
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -231,7 +242,11 @@ export default function DashboardPage() {
   }, [customStylesList, generatedImages])
 
   const validSegments = useMemo(
-    () => textSegments.slice(0, totalTabs).filter((item) => item.trim() !== ''),
+    () =>
+      textSegments
+        .slice(0, totalTabs)
+        .map((item) => sanitizeDisplayText(item))
+        .filter((item) => item.trim() !== ''),
     [textSegments, totalTabs],
   )
 
@@ -324,7 +339,7 @@ export default function DashboardPage() {
       }
 
       const nextSegments = [...textSegments]
-      nextSegments[activeTab - 1] = data.expandedText
+      nextSegments[activeTab - 1] = sanitizeDisplayText(data.expandedText)
       setTextSegments(nextSegments)
     } catch (error) {
       console.error('AI expand error:', error)
@@ -367,7 +382,7 @@ export default function DashboardPage() {
     const systemStyleIndex = HANDDRAWN_STYLES.findIndex((item) => item.id === styleId)
     const systemStyle = systemStyleIndex >= 0 ? HANDDRAWN_STYLES[systemStyleIndex] : null
     if (systemStyle) {
-      setCustomStyleName(systemStyleLabel(systemStyle, systemStyleIndex))
+      setCustomStyleName(systemStyleLabel(systemStyle))
       setCustomStylePrompt([systemStyle.styleKeywords, systemStyle.layoutDirectives].filter(Boolean).join('\n'))
     }
   }
@@ -491,6 +506,10 @@ export default function DashboardPage() {
       try {
         data = JSON.parse(rawText)
       } catch (parseError: any) {
+        console.error('[Dashboard] Non-JSON response from /api/generate:', {
+          status: response.status,
+          bodyPreview: rawText.slice(0, 400),
+        })
         throw new Error(`服务返回异常：${parseError.message}`)
       }
 
@@ -601,7 +620,7 @@ export default function DashboardPage() {
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-1 sm:py-2">
             <Link href="/" className="flex items-center transition-opacity hover:opacity-80">
-              <img src="/logo.png?v=6" alt="AI画堂" className="h-20 w-20 object-contain" />
+              <img src="/logo.svg?v=1" alt="AI画堂" className="h-20 w-20 object-contain" />
             </Link>
 
             <nav className="hidden items-center gap-4 md:flex">
@@ -655,9 +674,7 @@ export default function DashboardPage() {
                   onClick={() => setShowUserMenu((value) => !value)}
                   className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#142D24] bg-[#091511]/60 transition-colors hover:border-[#10B981] sm:h-9 sm:w-9"
                 >
-                  <span className="text-sm font-bold text-white">
-                    {user?.email ? user.email.substring(0, 2).toUpperCase() : 'HA'}
-                  </span>
+                  <img src={resolveAvatarUrl(profile?.avatar_url)} alt="头像" className="h-full w-full rounded-lg object-cover" />
                 </button>
 
                 {showUserMenu && (
@@ -986,7 +1003,7 @@ export default function DashboardPage() {
                     <optgroup label="系统风格" className="bg-[#091511]">
                       {HANDDRAWN_STYLES.map((style, index) => (
                         <option key={style.id} value={style.id} className="bg-[#091511]">
-                          {systemStyleLabel(style, index)}
+                          {systemStyleLabel(style)}
                         </option>
                       ))}
                     </optgroup>
@@ -1142,8 +1159,6 @@ export default function DashboardPage() {
                   {generationStatus === 'loading' && (
                     <div className="w-full text-center">
                       <div className="mb-4 text-5xl">生成中</div>
-                      <p className="mb-2 text-base text-[#10B981]">正在创作中...</p>
-                      <p className="text-sm text-[#64748B]">AI 正在绘制你的知识图卡</p>
                       <p className="mt-2 text-xs text-[#64748B]/70">预计需要 1 到 3 分钟，请耐心等待</p>
                       <div className="mx-auto mt-4 h-2 w-48 overflow-hidden rounded-full bg-[#142D24]">
                         <div
@@ -1374,3 +1389,4 @@ function getEffectiveWordCount(str: string): number {
 
   return chineseChars + englishWords.length
 }
+

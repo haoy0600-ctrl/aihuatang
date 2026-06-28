@@ -8,7 +8,7 @@ export default function PrivacyPage() {
       <header className="border-b border-[#142D24]">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
           <Link href="/" className="flex items-center">
-            <img src="/logo.png?v=8" alt="AI画堂" className="h-12 w-12 object-contain" />
+            <img src="/logo.svg?v=1" alt="AI画堂" className="h-12 w-12 object-contain" />
           </Link>
           <Link
             href="/login"
