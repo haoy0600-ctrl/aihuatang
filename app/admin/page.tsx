@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { TermsModal } from '@/components/TermsModal'
 import { isAdminEmail } from '@/lib/auth'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
@@ -119,29 +119,26 @@ export default function AdminPage() {
         }
 
         if (usersData.success) {
-          setUsers(usersData.users)
+          setUsers(usersData.users || [])
         }
-      } catch (fetchError) {
-        console.error('Fetch admin data error:', fetchError)
+      } catch (error) {
+        console.error('Fetch admin data error:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchData()
-    const timer = setInterval(fetchData, 30000)
+    void fetchData()
+    const timer = setInterval(() => void fetchData(), 30000)
     return () => clearInterval(timer)
   }, [router])
 
-  const selectedUser = useMemo(
-    () => users.find((item) => item.id === selectedUserId) || null,
-    [selectedUserId, users],
-  )
+  const selectedUser = useMemo(() => users.find((item) => item.id === selectedUserId) || null, [selectedUserId, users])
 
   const handleCreditAction = async () => {
     if (!selectedUserId) return
     if (creditAmount <= 0) {
-      alert('积分数量必须大于 0')
+      alert('积分数量必须大于 0。')
       return
     }
 
@@ -154,7 +151,6 @@ export default function AdminPage() {
         amount: creditAmount,
       }),
     })
-
     const data = await response.json()
 
     if (data.success) {
@@ -166,7 +162,7 @@ export default function AdminPage() {
       return
     }
 
-    alert(data.error || '操作失败')
+    alert(data.error || '操作失败，请稍后重试。')
   }
 
   const handleToggleStatus = async (userId: string) => {
@@ -178,7 +174,6 @@ export default function AdminPage() {
         action: 'toggle_status',
       }),
     })
-
     const data = await response.json()
 
     if (data.success) {
@@ -189,11 +184,11 @@ export default function AdminPage() {
       return
     }
 
-    alert(data.error || '操作失败')
+    alert(data.error || '操作失败，请稍后重试。')
   }
 
   const handleDeleteUser = async (userId: string, email: string) => {
-    if (!confirm(`确定要删除用户“${email}”吗？此操作不可恢复。`)) {
+    if (!window.confirm(`确定要删除用户“${email}”吗？此操作不可恢复。`)) {
       return
     }
 
@@ -205,7 +200,6 @@ export default function AdminPage() {
         action: 'delete',
       }),
     })
-
     const data = await response.json()
 
     if (data.success) {
@@ -214,13 +208,10 @@ export default function AdminPage() {
       return
     }
 
-    alert(data.error || '删除失败')
+    alert(data.error || '删除失败，请稍后重试。')
   }
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('zh-CN')
-  }
+  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('zh-CN')
 
   const handleLogout = () => {
     clearStoredSession()
@@ -239,12 +230,12 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0D17]">
+    <div className="min-h-screen bg-[#0B0D17] pb-24">
       <header className="border-b border-[#202B3A] bg-[#0B0D17]">
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-2 sm:py-3">
             <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center select-none transition-opacity hover:opacity-80">
+              <Link href="/" className="flex select-none items-center transition-opacity hover:opacity-80">
                 <img src="/logo.png?v=6" alt="AI画堂" className="h-16 w-16 object-contain" />
               </Link>
               <div>
@@ -260,10 +251,16 @@ export default function AdminPage() {
               <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')}>
                 用户管理
               </TabButton>
-              <Link href="/admin/cards" className="px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:text-white">
+              <Link
+                href="/admin/cards"
+                className="px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:text-white"
+              >
                 卡密管理
               </Link>
-              <Link href="/admin/announcements" className="px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:text-white">
+              <Link
+                href="/admin/announcements"
+                className="px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:text-white"
+              >
                 公告管理
               </Link>
             </nav>
@@ -280,6 +277,7 @@ export default function AdminPage() {
                 >
                   <span className="text-sm font-bold text-white">AD</span>
                 </button>
+
                 {showUserMenu && (
                   <div className="absolute right-0 top-10 z-50 w-52 overflow-hidden rounded-xl border border-[#202B3A] bg-[#141923] shadow-lg">
                     <div className="border-b border-[#202B3A] p-3">
@@ -289,7 +287,7 @@ export default function AdminPage() {
                     <div className="p-2">
                       <button
                         onClick={handleLogout}
-                        className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-[#1a2230]"
+                        className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-[#1A2230]"
                       >
                         退出登录
                       </button>
@@ -302,7 +300,7 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <main className="p-4 pb-24">
+      <main className="p-4">
         <div className="mx-auto max-w-7xl">
           {activeTab === 'dashboard' && (
             <>
@@ -384,7 +382,7 @@ export default function AdminPage() {
                             <span>{formatDate(item.created_at)}</span>
                           </div>
                           <div className="truncate text-xs text-amber-400">
-                            用户：{item.username || item.userEmail || '未知'}
+                            用户：{item.username || item.userEmail || '未知用户'}
                           </div>
                         </div>
                       ))
@@ -423,11 +421,13 @@ export default function AdminPage() {
                             </div>
                             {item.usedModels && Object.keys(item.usedModels).length > 0 && (
                               <div className="mt-1 flex flex-wrap gap-1">
-                                {Object.entries(item.usedModels).slice(0, 3).map(([model, count]) => (
-                                  <span key={model} className="rounded bg-[#202B3A] px-1.5 py-0.5 text-[10px] text-[#00F2FE]">
-                                    {model} x{count}
-                                  </span>
-                                ))}
+                                {Object.entries(item.usedModels)
+                                  .slice(0, 3)
+                                  .map(([model, count]) => (
+                                    <span key={model} className="rounded bg-[#202B3A] px-1.5 py-0.5 text-[10px] text-[#00F2FE]">
+                                      {model} x{count}
+                                    </span>
+                                  ))}
                               </div>
                             )}
                           </div>
@@ -468,7 +468,7 @@ export default function AdminPage() {
                           <span className="text-xs text-[#00F2FE]">任务 {item.id.substring(0, 8)}</span>
                           <span className="text-xs text-yellow-400">处理中</span>
                         </div>
-                        <p className="truncate text-sm text-white">{item.prompt.substring(0, 50)}...</p>
+                        <p className="truncate text-sm text-white">{item.prompt?.substring(0, 50) || '无提示词'}...</p>
                         <p className="mt-1 text-[10px] text-[#475569]">{formatDate(item.created_at)}</p>
                       </div>
                     ))}
@@ -503,7 +503,7 @@ export default function AdminPage() {
                   </thead>
                   <tbody>
                     {users.map((item) => (
-                      <tr key={item.id} className="border-t border-[#202B3A] hover:bg-[#1a2230]">
+                      <tr key={item.id} className="border-t border-[#202B3A] hover:bg-[#1A2230]">
                         <td className="px-4 py-3 font-mono text-sm text-[#94A3B8]">{item.id.substring(0, 12)}...</td>
                         <td className="px-4 py-3">
                           <p className="text-sm text-white">{item.username || item.email}</p>
@@ -518,11 +518,13 @@ export default function AdminPage() {
                         <td className="px-4 py-3">
                           {item.usedModels && Object.keys(item.usedModels).length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {Object.entries(item.usedModels).slice(0, 2).map(([model, count]) => (
-                                <span key={model} className="rounded bg-[#202B3A] px-1.5 py-0.5 text-[10px] text-[#00F2FE]">
-                                  {model} x{count}
-                                </span>
-                              ))}
+                              {Object.entries(item.usedModels)
+                                .slice(0, 2)
+                                .map(([model, count]) => (
+                                  <span key={model} className="rounded bg-[#202B3A] px-1.5 py-0.5 text-[10px] text-[#00F2FE]">
+                                    {model} x{count}
+                                  </span>
+                                ))}
                               {Object.keys(item.usedModels).length > 2 && (
                                 <span className="text-[10px] text-[#94A3B8]">+{Object.keys(item.usedModels).length - 2}</span>
                               )}
@@ -575,7 +577,7 @@ export default function AdminPage() {
                               -积分
                             </button>
                             <button
-                              onClick={() => handleToggleStatus(item.id)}
+                              onClick={() => void handleToggleStatus(item.id)}
                               className={`rounded border px-2 py-1 text-xs font-bold transition-all ${
                                 item.banned
                                   ? 'border-[#10B981]/50 bg-[#10B981]/20 text-[#10B981]'
@@ -585,7 +587,7 @@ export default function AdminPage() {
                               {item.banned ? '解禁' : '禁用'}
                             </button>
                             <button
-                              onClick={() => handleDeleteUser(item.id, item.email)}
+                              onClick={() => void handleDeleteUser(item.id, item.email)}
                               className="rounded border border-red-600/50 bg-red-600/20 px-2 py-1 text-xs font-bold text-red-500 transition-all hover:bg-red-600/30"
                             >
                               删除
@@ -606,9 +608,7 @@ export default function AdminPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-md rounded-xl border border-[#202B3A] bg-[#141923]">
             <div className="p-6">
-              <h3 className="mb-4 text-lg font-bold text-white">
-                {creditAction === 'add' ? '增加积分' : '扣除积分'}
-              </h3>
+              <h3 className="mb-4 text-lg font-bold text-white">{creditAction === 'add' ? '增加积分' : '扣减积分'}</h3>
               {selectedUser && (
                 <p className="mb-4 text-sm text-[#94A3B8]">
                   当前用户：<span className="text-white">{selectedUser.username || selectedUser.email}</span>
@@ -632,7 +632,7 @@ export default function AdminPage() {
                   取消
                 </button>
                 <button
-                  onClick={handleCreditAction}
+                  onClick={() => void handleCreditAction()}
                   className={`flex-1 rounded-lg py-2 text-sm font-bold transition-all ${
                     creditAction === 'add' ? 'bg-[#10B981] text-[#0A0F1D]' : 'bg-yellow-500 text-black'
                   }`}
@@ -647,7 +647,7 @@ export default function AdminPage() {
 
       <TermsModal show={showTermsModal} onClose={() => setShowTermsModal(false)} />
 
-      <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#1e293b]/50 bg-[#030712]/95 py-2.5 backdrop-blur-sm">
+      <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#1E293B]/50 bg-[#030712]/95 py-2.5 backdrop-blur-sm">
         <div className="mx-auto max-w-[1400px] px-4 text-center">
           <p className="text-sm text-gray-400">
             使用本站即表示你同意
@@ -671,7 +671,7 @@ function TabButton({
 }: {
   active: boolean
   onClick: () => void
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <button
@@ -704,7 +704,7 @@ function MetricCard({
   )
 }
 
-function StatPanel({ title, children }: { title: string; children: React.ReactNode }) {
+function StatPanel({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="rounded-xl border border-[#202B3A] bg-[#141923] p-4">
       <h3 className="mb-4 text-lg font-bold text-white">{title}</h3>

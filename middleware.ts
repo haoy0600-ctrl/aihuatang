@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '50923561@qq.com')
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean)
+
 export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/admin')) {
     const session = request.cookies.get('ai_handdrawn_login_session')?.value
@@ -17,6 +22,10 @@ export async function middleware(request: NextRequest) {
 
       if (!parsed.email || !parsed.expiresAt || parsed.expiresAt < Date.now()) {
         return NextResponse.redirect(new URL('/login', request.url))
+      }
+
+      if (!ADMIN_EMAILS.includes(parsed.email.trim().toLowerCase())) {
+        return NextResponse.redirect(new URL('/', request.url))
       }
     } catch {
       return NextResponse.redirect(new URL('/login', request.url))

@@ -114,26 +114,6 @@ export default function LoginPage() {
       return
     }
 
-    if (isRegister) {
-      setIsSending(true)
-      try {
-        const checkResponse = await fetch('/api/auth/register-check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email }),
-        })
-
-        const checkData = await checkResponse.json()
-        if (!checkData.success) {
-          setError(checkData.error || '当前环境暂时无法注册，请稍后再试')
-          setIsSending(false)
-          return
-        }
-      } catch (checkError) {
-        console.error('Register check failed:', checkError)
-      }
-    }
-
     setIsSending(true)
 
     try {
@@ -154,7 +134,7 @@ export default function LoginPage() {
       setSendSuccess('验证码已发送，请查收邮箱。')
     } catch (sendError) {
       console.error('Send code error:', sendError)
-      setError('验证码发送失败，请稍后重试')
+      setError('验证码发送失败，请稍后重试。')
     } finally {
       setIsSending(false)
     }
@@ -165,12 +145,12 @@ export default function LoginPage() {
     setSendSuccess('')
 
     if (!email) {
-      setError('请输入邮箱或用户名')
+      setError('请输入邮箱或用户名。')
       return
     }
 
     if (!password) {
-      setError('请输入密码')
+      setError('请输入密码。')
       return
     }
 
@@ -191,7 +171,7 @@ export default function LoginPage() {
       }
 
       if (!data.user || !data.session?.accessToken) {
-        setError('登录失败：未获取到有效会话')
+        setError('登录失败：未获取到有效会话。')
         setIsSubmitting(false)
         return
       }
@@ -201,7 +181,7 @@ export default function LoginPage() {
       router.push('/dashboard')
     } catch (loginError) {
       console.error('Login error:', loginError)
-      setError('登录失败，请稍后重试')
+      setError('登录失败，请稍后重试。')
       setIsSubmitting(false)
     }
   }
@@ -211,7 +191,7 @@ export default function LoginPage() {
     setSendSuccess('')
 
     if (!username.trim()) {
-      setError('请输入用户名')
+      setError('请输入用户名。')
       return
     }
 
@@ -222,22 +202,22 @@ export default function LoginPage() {
     }
 
     if (!token || token.length !== 6) {
-      setError('请输入 6 位验证码')
+      setError('请输入 6 位验证码。')
       return
     }
 
     if (!password) {
-      setError('请输入密码')
+      setError('请输入密码。')
       return
     }
 
     if (password.length < 6) {
-      setError('密码长度至少 6 位')
+      setError('密码长度至少 6 位。')
       return
     }
 
     if (password !== confirmPassword) {
-      setError('两次输入的密码不一致')
+      setError('两次输入的密码不一致。')
       return
     }
 
@@ -252,13 +232,13 @@ export default function LoginPage() {
 
       const verifyData = await verifyResponse.json()
       if (!verifyData.success) {
-        setError('验证码错误或已过期，请重新获取')
+        setError('验证码错误或已过期，请重新获取。')
         setIsSubmitting(false)
         return
       }
 
       if (!verifyData.user || !verifyData.session?.accessToken) {
-        setError('注册失败：未获取到有效会话')
+        setError('注册失败：未获取到有效会话。')
         setIsSubmitting(false)
         return
       }
@@ -292,7 +272,7 @@ export default function LoginPage() {
       router.push('/dashboard')
     } catch (registerError) {
       console.error('Register error:', registerError)
-      setError('注册失败，请稍后重试')
+      setError('注册失败，请稍后重试。')
       setIsSubmitting(false)
     }
   }
@@ -325,7 +305,7 @@ export default function LoginPage() {
       setResetSent(true)
     } catch (resetError) {
       console.error('Reset password error:', resetError)
-      setForgotError('发送失败，请稍后重试')
+      setForgotError('发送失败，请稍后重试。')
     } finally {
       setIsSendingReset(false)
     }
@@ -333,7 +313,7 @@ export default function LoginPage() {
 
   return (
     <div className="grid min-h-screen w-full grid-cols-1 bg-[#0D111A] md:grid-cols-2">
-      <div className="relative hidden items-center justify-center overflow-hidden bg-[#0D111A] p-8 lg:p-12 md:flex">
+      <div className="relative hidden items-center justify-center overflow-hidden bg-[#0D111A] p-8 md:flex lg:p-12">
         <div className="absolute inset-0 opacity-20">
           <div
             className="h-full w-full"
@@ -661,8 +641,8 @@ function MessageBox({
 }) {
   const className =
     tone === 'error'
-      ? 'bg-red-500/10 border border-red-500/30 text-red-400 p-3 mb-6 text-sm'
-      : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-3 mb-6 text-sm'
+      ? 'mb-6 border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400'
+      : 'mb-6 border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-400'
 
   return <div className={className}>{children}</div>
 }

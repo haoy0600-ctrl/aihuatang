@@ -42,6 +42,7 @@ const ASPECT_RATIOS = [
 ]
 
 const systemStyleLabel = (_style: HanddrawnStyle, index: number) => `系统风格 ${index + 1}`
+
 const getStoredJson = <T,>(key: string, fallback: T): T => {
   if (typeof window === 'undefined') {
     return fallback
@@ -231,7 +232,7 @@ export default function DashboardPage() {
 
   const validSegments = useMemo(
     () => textSegments.slice(0, totalTabs).filter((item) => item.trim() !== ''),
-    [textSegments, totalTabs]
+    [textSegments, totalTabs],
   )
 
   const getResolutionPrice = (resolution: string) => {
@@ -303,7 +304,7 @@ export default function DashboardPage() {
   const handleAIExpand = async () => {
     const currentText = textSegments[activeTab - 1]?.trim() || ''
     if (!currentText) {
-      alert('请先输入需要优化的文案')
+      alert('请先输入需要优化的文案。')
       return
     }
 
@@ -318,7 +319,7 @@ export default function DashboardPage() {
 
       const data = await response.json()
       if (!response.ok || !data.success || !data.expandedText) {
-        alert(data.error || 'AI 扩写失败，请稍后重试')
+        alert(data.error || 'AI 优化失败，请稍后重试。')
         return
       }
 
@@ -327,11 +328,12 @@ export default function DashboardPage() {
       setTextSegments(nextSegments)
     } catch (error) {
       console.error('AI expand error:', error)
-      alert('AI 扩写请求失败，请检查网络后重试')
+      alert('AI 优化请求失败，请检查网络后重试。')
     } finally {
       setIsExpanding(false)
     }
   }
+
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
     if (files.length === 0) return
@@ -372,11 +374,11 @@ export default function DashboardPage() {
 
   const handleSaveCustomStyle = () => {
     if (!customStyleName.trim()) {
-      alert('请填写风格名称')
+      alert('请填写风格名称。')
       return
     }
     if (!customStylePrompt.trim()) {
-      alert('请填写风格 Prompt')
+      alert('请填写风格 Prompt。')
       return
     }
 
@@ -389,8 +391,9 @@ export default function DashboardPage() {
 
     setCustomStylesList((prev) => [...prev, nextStyle])
     setSelectedStyleId(nextStyle.id)
-    alert('自定义风格已保存')
+    alert('自定义风格已保存。')
   }
+
   const handleDeleteCustomStyle = (styleId: number) => {
     setCustomStylesList((prev) => prev.filter((item) => item.id !== styleId))
     if (selectedStyleId === styleId) {
@@ -408,7 +411,7 @@ export default function DashboardPage() {
 
   const executeActualGeneration = async () => {
     if (!selectedStyleId) {
-      alert('请先选择一个风格')
+      alert('请先选择一个风格。')
       return
     }
 
@@ -417,28 +420,28 @@ export default function DashboardPage() {
     const activeStyle = selectedCustomStyle || selectedSystemStyle
 
     if (!activeStyle) {
-      alert('未找到对应风格，请重新选择')
+      alert('未找到对应风格，请重新选择。')
       return
     }
 
     if (genMode === 'text' && validSegments.length === 0) {
-      alert('请先输入要生成的文案')
+      alert('请先输入要生成的文案。')
       return
     }
 
     if (genMode === 'image' && uploadedImages.length === 0) {
-      alert('请先上传参考图片')
+      alert('请先上传参考图片。')
       return
     }
 
     if (!profile?.id) {
-      alert('登录状态已失效，请重新登录')
+      alert('登录状态已失效，请重新登录。')
       router.replace('/login')
       return
     }
 
     if (profile.credits < totalCost) {
-      alert(`积分不足，本次需要 ${totalCost} 积分，当前仅剩 ${profile.credits} 积分`)
+      alert(`积分不足，本次需要 ${totalCost} 积分，当前仅剩 ${profile.credits} 积分。`)
       return
     }
 
@@ -492,11 +495,11 @@ export default function DashboardPage() {
       }
 
       if (!response.ok || !data.success) {
-        const errorMessage = data.error || data.message || '生成失败，请稍后重试'
+        const errorMessage = data.error || data.message || '生成失败，请稍后重试。'
 
         if (String(errorMessage).includes('VIP 4K')) {
           const confirmed = confirm(
-            '当前账号没有 VIP 4K 权限，无法使用 4K 极清生成功能。\n\n4K 需要更高等级卡密或高级权益解锁。\n\n现在前往充值页吗？'
+            '当前账号没有 VIP 4K 权限，无法使用 4K 超清生成功能。\n\n4K 需要更高等级卡密或高级权益解锁。\n\n现在前往充值页吗？',
           )
           if (confirmed) {
             router.push('/recharge')
@@ -521,9 +524,9 @@ export default function DashboardPage() {
     } catch (error: any) {
       console.error('Generation error:', error)
       if (error.name === 'AbortError') {
-        alert('生成超时，已自动取消，请稍后再试')
+        alert('生成超时，已自动取消，请稍后再试。')
       } else {
-        alert(error.message || '生成失败，请稍后重试')
+        alert(error.message || '生成失败，请稍后重试。')
       }
       setGenerationStatus('idle')
     } finally {
@@ -532,19 +535,20 @@ export default function DashboardPage() {
       abortController.current = null
     }
   }
+
   const handleGenerate = () => {
     if (genMode === 'text' && validSegments.length === 0) {
-      alert('请先输入要生成的文案')
+      alert('请先输入要生成的文案。')
       return
     }
 
     if (genMode === 'image' && uploadedImages.length === 0) {
-      alert('请先上传参考图片')
+      alert('请先上传参考图片。')
       return
     }
 
     if (!selectedStyleId) {
-      alert('请先选择一个风格')
+      alert('请先选择一个风格。')
       return
     }
 
@@ -555,6 +559,7 @@ export default function DashboardPage() {
 
     setIsApiNoticeOpen(true)
   }
+
   const handleConfirmNotice = () => {
     localStorage.setItem('has_seen_api_notice', 'true')
     setIsApiNoticeOpen(false)
@@ -870,7 +875,10 @@ export default function DashboardPage() {
                     {uploadedImages.length > 0 && (
                       <div className="mt-4 grid grid-cols-4 gap-2">
                         {uploadedImages.map((url, index) => (
-                          <div key={index} className="relative aspect-square overflow-hidden rounded-lg border border-[#142D24]">
+                          <div
+                            key={index}
+                            className="relative aspect-square overflow-hidden rounded-lg border border-[#142D24]"
+                          >
                             <img src={url} alt={`参考图 ${index + 1}`} className="h-full w-full object-cover" />
                             <button
                               onClick={() => handleRemoveImage(index)}
@@ -941,7 +949,7 @@ export default function DashboardPage() {
                             : 'border border-[#142D24] bg-[#091511]/60 text-white hover:bg-[#142D24]'
                         }`}
                       >
-                        {resolution} ({getResolutionPrice(resolution)}积分)
+                        {resolution} ({getResolutionPrice(resolution)} 积分)
                       </button>
                     ))}
                   </div>
@@ -1101,7 +1109,13 @@ export default function DashboardPage() {
 
                 {generationStatus === 'success' && generatedImages.length > 0 && (
                   <button
-                    onClick={() => generatedImages.forEach((url, index) => setTimeout(() => handleDownload(url, index), index * 250))}
+                    onClick={() =>
+                      generatedImages.forEach((url, index) =>
+                        setTimeout(() => {
+                          void handleDownload(url, index)
+                        }, index * 250),
+                      )
+                    }
                     className="flex items-center gap-1 rounded-lg border border-[#142D24] bg-[#091511] px-3 py-1.5 text-xs font-bold text-[#10B981] transition-all hover:border-[#10B981] hover:bg-[#142D24]"
                   >
                     批量保存
@@ -1110,7 +1124,9 @@ export default function DashboardPage() {
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col">
-                <div className={`flex flex-1 items-center justify-center overflow-hidden rounded-lg border-2 border-[#142D24] bg-[#040D0A] ${getAspectClass()}`}>
+                <div
+                  className={`flex flex-1 items-center justify-center overflow-hidden rounded-lg border-2 border-[#142D24] bg-[#040D0A] ${getAspectClass()}`}
+                >
                   {generationStatus === 'idle' && (
                     <div className="p-8 text-center">
                       <div className="mb-4 text-5xl">等待</div>
@@ -1146,7 +1162,10 @@ export default function DashboardPage() {
                   {generationStatus === 'success' && generatedImages.length > 1 && (
                     <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-2 p-2">
                       {generatedImages.slice(0, 4).map((url, index) => (
-                        <div key={index} className="group relative overflow-hidden rounded-lg border border-[#142D24] bg-[#091511]/50">
+                        <div
+                          key={index}
+                          className="group relative overflow-hidden rounded-lg border border-[#142D24] bg-[#091511]/50"
+                        >
                           <img src={url} alt={`Generated ${index + 1}`} className="h-full w-full object-cover" />
                           <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100">
                             <button
@@ -1195,20 +1214,20 @@ export default function DashboardPage() {
                   使用说明
                 </h2>
                 <p className="mt-2 text-gray-300">
-                  平台内置多种系统风格，也支持你保存自己的风格模板。适合制作知识图卡、封面图、课程笔记和图文信息卡。
+                  平台内置多种系统风格，也支持保存你自己的风格模板。适合制作知识图卡、封面图、课程笔记和图文信息卡。
                 </p>
               </div>
 
               <div className="mt-4 space-y-4">
                 <section>
-                  <h3 className="font-bold text-[#00F2FE]">1. 文生图怎么用</h3>
+                  <h3 className="font-bold text-[#00F2FE]">1. 文生图怎么用？</h3>
                   <p className="mt-1 text-gray-400">
-                    输入每一段内容，选择模型、比例、分辨率和风格，然后点击“开始生成”。如果一段文字太长，建议拆成多段。
+                    输入每一段内容，选择模型、比例、分辨率和风格，然后点击“开始生成”。如果一段文字过长，建议拆成多段。
                   </p>
                 </section>
 
                 <section>
-                  <h3 className="font-bold text-[#03F09C]">2. 图生图怎么用</h3>
+                  <h3 className="font-bold text-[#03F09C]">2. 图生图怎么用？</h3>
                   <p className="mt-1 text-gray-400">
                     上传参考图后，系统会按你选定的风格重新生成，适合做风格迁移、视觉统一和样式复刻。
                   </p>
@@ -1217,9 +1236,9 @@ export default function DashboardPage() {
                 <section>
                   <h3 className="font-bold text-white">3. 模型选择建议</h3>
                   <ul className="mt-2 space-y-1 text-gray-300">
-                    <li>• 中文知识图卡、封面图：优先使用 `GPT-Image-2`</li>
-                    <li>• 更快出图、参考图改写：可以试试 `NanoBanana2`</li>
-                    <li>• 4K 会额外消耗更多积分，建议先用 2K 试稿</li>
+                    <li>中文知识图卡、封面图：优先使用 `GPT-Image-2`</li>
+                    <li>更快出图、参考图改写：可以试试 `NanoBanana2`</li>
+                    <li>4K 会额外消耗更多积分，建议先用 2K 试稿</li>
                   </ul>
                 </section>
 
@@ -1233,11 +1252,11 @@ export default function DashboardPage() {
                 <section className="rounded-lg border border-red-500/20 bg-red-950/20 p-3 text-gray-300">
                   <h3 className="text-sm font-bold text-red-400">特别提醒</h3>
                   <p className="mt-2">
-                    • 卡密兑换后积分通常会立即到账。
+                    1. 卡密兑换后积分通常会立即到账。
                     <br />
-                    • 如果因超时或网络波动导致失败，正常情况下不会扣积分。
+                    2. 如果因超时或网络波动导致失败，正常情况下不会扣积分。
                     <br />
-                    • 大量文字排版生图时，个别字形轻微变化属于模型常见现象，建议适当精简字数。
+                    3. 大量文字排版生图时，个别字形轻微变化属于模型常见现象，建议适当精简字数。
                   </p>
                 </section>
               </div>

@@ -136,13 +136,9 @@ export default function AnnouncementsPage() {
                     <div className="flex-1">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         {announcement.is_pinned && (
-                          <span className="rounded-md bg-[#00E676]/15 px-2 py-1 text-xs text-[#00E676]">
-                            置顶
-                          </span>
+                          <span className="rounded-md bg-[#00E676]/15 px-2 py-1 text-xs text-[#00E676]">置顶</span>
                         )}
-                        <span className={`rounded-md px-2 py-1 text-xs ${typeMeta.className}`}>
-                          {typeMeta.label}
-                        </span>
+                        <span className={`rounded-md px-2 py-1 text-xs ${typeMeta.className}`}>{typeMeta.label}</span>
                       </div>
 
                       <h2 className="text-lg font-semibold text-white">{announcement.title}</h2>
@@ -167,10 +163,7 @@ export default function AnnouncementsPage() {
       </main>
 
       {selectedAnnouncement && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setSelectedAnnouncement(null)}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setSelectedAnnouncement(null)}>
           <div
             className="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#142D24] bg-[#0A1612] p-6"
             onClick={(event) => event.stopPropagation()}
@@ -178,9 +171,7 @@ export default function AnnouncementsPage() {
             <div className="mb-4 flex items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-2">
                 {selectedAnnouncement.is_pinned && (
-                  <span className="rounded-md bg-[#00E676]/15 px-2 py-1 text-xs text-[#00E676]">
-                    置顶
-                  </span>
+                  <span className="rounded-md bg-[#00E676]/15 px-2 py-1 text-xs text-[#00E676]">置顶</span>
                 )}
                 <span className={`rounded-md px-2 py-1 text-xs ${getTypeMeta(selectedAnnouncement.type).className}`}>
                   {getTypeMeta(selectedAnnouncement.type).label}
@@ -207,9 +198,7 @@ export default function AnnouncementsPage() {
             </p>
 
             <div className="mt-5 border-t border-[#142D24] pt-5">
-              <p className="whitespace-pre-wrap text-sm leading-7 text-gray-300">
-                {selectedAnnouncement.content}
-              </p>
+              <p className="whitespace-pre-wrap text-sm leading-7 text-gray-300">{selectedAnnouncement.content}</p>
             </div>
           </div>
         </div>

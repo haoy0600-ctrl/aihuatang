@@ -28,10 +28,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { count, credits } = await request.json()
-
     const auth = await requireAdminUser(request)
-    if (auth.response || !auth.user) return auth.response
+    if (auth.response || !auth.user) {
+      return auth.response
+    }
+
+    const { count, credits } = await request.json()
 
     if (!count || count <= 0 || count > 100) {
       return NextResponse.json(

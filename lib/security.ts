@@ -152,7 +152,7 @@ export async function recordSensitiveWordViolation({
   maxViolations = 3,
   windowMs = 5 * 60 * 1000,
   banHours = 24,
-  reason = '恶意刷词触发安全锁',
+  reason = '恶意刷词触发安全限制',
 }: RecordSensitiveWordViolationParams): Promise<boolean> {
   await logSecurityEvent({
     type: 'sensitive_word',

@@ -14,10 +14,13 @@ export async function POST(request: NextRequest) {
     const { email, password } = await request.json()
 
     if (!supabaseAdmin) {
-      return NextResponse.json({
-        success: false,
-        error: '系统配置未完成，请稍后重试。',
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: '系统配置未完成，请稍后重试。',
+        },
+        { status: 500 },
+      )
     }
 
     const { data: existingUsers } = await supabaseAdmin
@@ -27,10 +30,13 @@ export async function POST(request: NextRequest) {
       .limit(1)
 
     if (existingUsers && existingUsers.length > 0) {
-      return NextResponse.json({
-        success: false,
-        error: '该邮箱已注册，请直接登录。',
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: '该邮箱已注册，请直接登录。',
+        },
+        { status: 400 },
+      )
     }
 
     const { data, error } = await supabaseAdmin.auth.signUp({
@@ -42,24 +48,25 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      return NextResponse.json({
-        success: false,
-        error: error.message,
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: error.message,
+        },
+        { status: 400 },
+      )
     }
 
     if (data.user) {
       const qqEmail = isQQEmail(email)
       const initialCredits = qqEmail ? QQ_EMAIL_BONUS_CREDITS : DEFAULT_CREDITS
 
-      await supabaseAdmin
-        .from('profiles')
-        .upsert({
-          id: data.user.id,
-          email: data.user.email || email,
-          credits: initialCredits,
-          created_at: new Date().toISOString(),
-        })
+      await supabaseAdmin.from('profiles').upsert({
+        id: data.user.id,
+        email: data.user.email || email,
+        credits: initialCredits,
+        created_at: new Date().toISOString(),
+      })
     }
 
     return NextResponse.json({
@@ -69,9 +76,12 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Register error:', error)
-    return NextResponse.json({
-      success: false,
-      error: '注册失败，请稍后重试。',
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: '注册失败，请稍后重试。',
+      },
+      { status: 500 },
+    )
   }
 }

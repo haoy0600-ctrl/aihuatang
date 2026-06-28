@@ -15,25 +15,25 @@ interface UserProfile {
   avatar_url?: string
 }
 
-const compressImage = (file: File, maxSizeKB = 200): Promise<File> => {
-  return new Promise((resolve, reject) => {
+const compressImage = (file: File, maxSizeKB = 200): Promise<File> =>
+  new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.readAsDataURL(file)
 
     reader.onload = (event) => {
-      const img = new Image()
-      img.src = event.target?.result as string
+      const image = new Image()
+      image.src = event.target?.result as string
 
-      img.onload = () => {
+      image.onload = () => {
         const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')
+        const context = canvas.getContext('2d')
 
-        if (!ctx) {
+        if (!context) {
           reject(new Error('无法创建画布'))
           return
         }
 
-        let { width, height } = img
+        let { width, height } = image
         const maxDimension = 512
 
         if (width > maxDimension || height > maxDimension) {
@@ -44,41 +44,44 @@ const compressImage = (file: File, maxSizeKB = 200): Promise<File> => {
 
         canvas.width = width
         canvas.height = height
-        ctx.drawImage(img, 0, 0, width, height)
+        context.drawImage(image, 0, 0, width, height)
 
         let quality = 0.9
 
         const compress = () => {
-          canvas.toBlob((result) => {
-            if (!result) {
-              reject(new Error('压缩失败'))
-              return
-            }
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error('压缩失败'))
+                return
+              }
 
-            const sizeKB = result.size / 1024
-            if (sizeKB <= maxSizeKB || quality <= 0.1) {
-              resolve(new File([result], file.name, { type: file.type, lastModified: Date.now() }))
-              return
-            }
+              const sizeKB = blob.size / 1024
+              if (sizeKB <= maxSizeKB || quality <= 0.1) {
+                resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }))
+                return
+              }
 
-            quality -= 0.1
-            compress()
-          }, 'image/jpeg', quality)
+              quality -= 0.1
+              compress()
+            },
+            'image/jpeg',
+            quality,
+          )
         }
 
         compress()
       }
 
-      img.onerror = () => reject(new Error('图片加载失败'))
+      image.onerror = () => reject(new Error('图片加载失败'))
     }
 
     reader.onerror = () => reject(new Error('文件读取失败'))
   })
-}
 
 export default function ProfilePage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<{ email?: string } | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [currentTime, setCurrentTime] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -114,7 +117,6 @@ export default function ProfilePage() {
           headers: authHeaders(),
           body: JSON.stringify({}),
         })
-
         const data = await response.json()
 
         if (!data.success || !data.user || !data.profile) {
@@ -124,8 +126,8 @@ export default function ProfilePage() {
 
         setUser(data.user)
         setProfile(data.profile)
-      } catch (fetchError) {
-        console.error('Fetch profile error:', fetchError)
+      } catch (error) {
+        console.error('Fetch profile error:', error)
         router.push('/login')
       }
     }
@@ -163,13 +165,13 @@ export default function ProfilePage() {
 
       if (data.success) {
         setProfile((prev) => (prev ? { ...prev, avatar_url: data.avatarUrl } : null))
-        alert('头像上传成功')
+        alert('头像上传成功。')
       } else {
-        alert(data.error || '上传失败')
+        alert(data.error || data.message || '上传失败。')
       }
-    } catch (uploadError) {
-      console.error('Upload error:', uploadError)
-      alert('图片处理失败，请重试')
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('图片处理失败，请重试。')
     } finally {
       setUploading(false)
       setUploadProgress(0)
@@ -189,10 +191,11 @@ export default function ProfilePage() {
     )
   }
 
-  const formatDate = (dateString?: string) => (dateString ? new Date(dateString).toLocaleDateString('zh-CN') : '-')
+  const formatDate = (dateString?: string) =>
+    dateString ? new Date(dateString).toLocaleDateString('zh-CN') : '-'
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-[#040D0A]">
+    <div className="flex min-h-screen w-full flex-col bg-[#040D0A]">
       <header className="flex-shrink-0 border-b border-[#142D24] bg-[#040D0A]">
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-2 sm:py-3">
@@ -214,6 +217,7 @@ export default function ProfilePage() {
                 <span>{new Date().toLocaleDateString('zh-CN')}</span>
                 <span className="font-mono text-sm font-bold text-white">{currentTime}</span>
               </div>
+
               <div className="flex items-center gap-1 rounded-lg border border-[#142D24] bg-[#091511]/60 px-2 py-1 sm:gap-1.5 sm:px-3 sm:py-1.5">
                 <span className="h-2 w-2 rounded-full bg-[#10B981]" />
                 <span className="hidden text-xs text-[#10B981] sm:inline">积分</span>
@@ -241,11 +245,19 @@ export default function ProfilePage() {
                       <p className="truncate text-sm font-medium text-white">{user?.email || '未登录'}</p>
                     </div>
                     <div className="p-2">
-                      <MenuButton onClick={() => { router.push('/dashboard'); setShowUserMenu(false) }}>创作中心</MenuButton>
-                      <MenuButton onClick={() => { router.push('/records'); setShowUserMenu(false) }}>生成记录</MenuButton>
-                      <MenuButton onClick={() => { router.push('/recharge'); setShowUserMenu(false) }}>卡密兑换</MenuButton>
+                      <MenuButton onClick={() => { router.push('/dashboard'); setShowUserMenu(false) }}>
+                        创作中心
+                      </MenuButton>
+                      <MenuButton onClick={() => { router.push('/records'); setShowUserMenu(false) }}>
+                        生成记录
+                      </MenuButton>
+                      <MenuButton onClick={() => { router.push('/recharge'); setShowUserMenu(false) }}>
+                        卡密兑换
+                      </MenuButton>
                       <div className="my-1 border-t border-[#142D24]" />
-                      <MenuButton danger onClick={() => { handleLogout(); setShowUserMenu(false) }}>退出登录</MenuButton>
+                      <MenuButton danger onClick={() => { handleLogout(); setShowUserMenu(false) }}>
+                        退出登录
+                      </MenuButton>
                     </div>
                   </div>
                 )}
@@ -336,7 +348,7 @@ export default function ProfilePage() {
               {activeTab === 'password' && (
                 <div className="rounded-xl border border-[#142D24] bg-[#040D0A] p-6">
                   <h3 className="mb-4 text-center text-lg font-bold text-white">修改密码</h3>
-                  <p className="mb-4 text-center text-xs text-[#10B981]">建议定期更新密码，保障账号安全。</p>
+                  <p className="mb-4 text-center text-xs text-[#10B981]">建议定期更新密码，保障账户安全。</p>
                   <button
                     onClick={() => setShowChangePassword(true)}
                     className="w-full rounded-lg border border-[#142D24] bg-[#10B981] py-3 text-sm font-bold text-[#040D0A] shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all hover:shadow-[0_0_20px_rgba(16,185,129,0.6)]"

@@ -17,7 +17,9 @@ export async function GET(request: NextRequest) {
     }
 
     const auth = await requireAdminUser(request)
-    if (auth.response || !auth.user) return auth.response
+    if (auth.response || !auth.user) {
+      return auth.response
+    }
 
     const { data: cards, error } = await supabaseAdmin
       .from('card_codes')

@@ -5,10 +5,13 @@ import { supabaseAdmin } from '@/lib/supabase'
 export async function POST(request: NextRequest) {
   try {
     if (!supabaseAdmin) {
-      return NextResponse.json({
-        success: false,
-        error: '系统配置未完成，请稍后重试。',
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: '系统配置未完成，请稍后重试。',
+        },
+        { status: 500 },
+      )
     }
 
     const auth = await requireAdminUser(request)
@@ -28,13 +31,17 @@ export async function POST(request: NextRequest) {
     const { data: generations } = generationsResult
 
     if (profilesError || !profiles) {
-      return NextResponse.json({
-        success: false,
-        error: '获取用户失败。',
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: '获取用户失败。',
+        },
+        { status: 500 },
+      )
     }
 
-    const userGenerationStats: Record<string, { count: number; totalImages: number; models: Record<string, number> }> = {}
+    const userGenerationStats: Record<string, { count: number; totalImages: number; models: Record<string, number> }> =
+      {}
 
     generations?.forEach((item) => {
       const userId = item.user_id || 'unknown'
@@ -66,9 +73,12 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Admin users error:', error)
-    return NextResponse.json({
-      success: false,
-      error: '获取用户失败，请稍后重试。',
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: '获取用户失败，请稍后重试。',
+      },
+      { status: 500 },
+    )
   }
 }

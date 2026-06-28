@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       console.error('[RedeemCard] Supabase admin not configured')
       return NextResponse.json(
         { success: false, message: '服务暂不可用，请稍后再试。' },
-        { status: 503 }
+        { status: 503 },
       )
     }
 
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
           success: false,
           message: '安全检测：错误次数过多，请 24 小时后再试。',
         },
-        { status: 429 }
+        { status: 429 },
       )
     }
 
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     if (!cardCode) {
       return NextResponse.json(
         { success: false, message: '激活码不能为空。' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         { success: false, message: '无效的激活码。' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
           success: false,
           message: `该卡密已于 ${usedTime} 被 ${cardData.used_email || '其他用户'} 使用。`,
         },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
       console.error('[RedeemCard] Profile not found:', { userId, profileError })
       return NextResponse.json(
         { success: false, message: '用户不存在。' },
-        { status: 404 }
+        { status: 404 },
       )
     }
 
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
       console.error('[RedeemCard] Mark used failed:', markUsedError)
       return NextResponse.json(
         { success: false, message: '该卡密已被使用，请刷新后重试。' },
-        { status: 409 }
+        { status: 409 },
       )
     }
 
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         { success: false, message: '系统繁忙，请稍后再试。' },
-        { status: 500 }
+        { status: 500 },
       )
     }
 
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
     console.error('[RedeemCard] Unknown error:', error?.message, error?.stack)
     return NextResponse.json(
       { success: false, message: '系统繁忙，请稍后再试。' },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }

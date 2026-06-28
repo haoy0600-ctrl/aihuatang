@@ -6,17 +6,23 @@ export async function POST(request: NextRequest) {
     const { email } = await request.json()
 
     if (!supabaseAdmin) {
-      return NextResponse.json({
-        success: false,
-        error: '系统配置未完成，请稍后重试。',
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: '系统配置未完成，请稍后重试。',
+        },
+        { status: 500 },
+      )
     }
 
     if (!email || !email.includes('@')) {
-      return NextResponse.json({
-        success: false,
-        error: '请输入有效的邮箱地址。',
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: '请输入有效的邮箱地址。',
+        },
+        { status: 400 },
+      )
     }
 
     const { data: existingUser } = await supabaseAdmin
@@ -26,11 +32,14 @@ export async function POST(request: NextRequest) {
       .limit(1)
 
     if (existingUser && existingUser.length > 0) {
-      return NextResponse.json({
-        success: false,
-        error: '该邮箱已注册，请直接登录或使用找回密码功能。',
-        alreadyRegistered: true,
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: '该邮箱已注册，请直接登录或使用找回密码功能。',
+          alreadyRegistered: true,
+        },
+        { status: 400 },
+      )
     }
 
     const { data, error } = await supabaseAdmin.auth.signInWithOtp({
@@ -41,10 +50,13 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      return NextResponse.json({
-        success: false,
-        error: error.message,
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: error.message,
+        },
+        { status: 400 },
+      )
     }
 
     return NextResponse.json({
@@ -54,9 +66,12 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Send code error:', error)
-    return NextResponse.json({
-      success: false,
-      error: '发送验证码失败，请稍后重试。',
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: '发送验证码失败，请稍后重试。',
+      },
+      { status: 500 },
+    )
   }
 }

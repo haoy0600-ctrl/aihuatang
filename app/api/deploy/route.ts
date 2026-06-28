@@ -1,35 +1,42 @@
 import { NextResponse } from 'next/server'
-import { exec } from 'child_process'
+import { execFile } from 'child_process'
 import { promisify } from 'util'
 
-const execAsync = promisify(exec)
+const execFileAsync = promisify(execFile)
 
 export async function POST(request: Request) {
   try {
     const deploySecret = process.env.DEPLOY_SECRET
+    const deployScriptPath = process.env.DEPLOY_SCRIPT_PATH
+
     if (!deploySecret) {
-      return NextResponse.json({ success: false, message: '部署密钥未配置' }, { status: 500 })
+      return NextResponse.json({ success: false, message: '部署密钥未配置。' }, { status: 500 })
+    }
+
+    if (!deployScriptPath) {
+      return NextResponse.json({ success: false, message: '部署脚本路径未配置。' }, { status: 500 })
     }
 
     const headerSecret = request.headers.get('x-deploy-secret')
     if (headerSecret !== deploySecret) {
-      return NextResponse.json({ success: false, message: '无权部署' }, { status: 401 })
+      return NextResponse.json({ success: false, message: '无权部署。' }, { status: 401 })
     }
 
     const { ref } = await request.json()
-    
     if (ref !== 'refs/heads/main') {
-      return NextResponse.json({ success: false, message: '只处理 main 分支' })
+      return NextResponse.json({ success: false, message: '仅允许部署 main 分支。' })
     }
 
-    const { stdout, stderr } = await execAsync('/www/wwwroot/aihuatang/deploy.sh')
-    
-    console.log('部署输出:', stdout)
-    if (stderr) console.error('部署错误:', stderr)
-    
-    return NextResponse.json({ success: true, message: '部署成功', stdout })
+    const { stdout, stderr } = await execFileAsync(deployScriptPath, [])
+
+    console.log('Deploy stdout:', stdout)
+    if (stderr) {
+      console.error('Deploy stderr:', stderr)
+    }
+
+    return NextResponse.json({ success: true, message: '部署成功。', stdout })
   } catch (error) {
-    console.error('部署失败:', error)
-    return NextResponse.json({ success: false, message: '部署失败' }, { status: 500 })
+    console.error('Deploy failed:', error)
+    return NextResponse.json({ success: false, message: '部署失败。' }, { status: 500 })
   }
 }

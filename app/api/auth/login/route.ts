@@ -8,17 +8,23 @@ export async function POST(request: NextRequest) {
 
     if (!supabaseAdmin) {
       console.error('[Auth/Login] Supabase admin not configured')
-      return NextResponse.json({
-        success: false,
-        error: '系统配置未完成，请稍后重试。',
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: '系统配置未完成，请稍后重试。',
+        },
+        { status: 500 },
+      )
     }
 
     if (!email || !password) {
-      return NextResponse.json({
-        success: false,
-        error: '邮箱或用户名和密码不能为空。',
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: '邮箱或用户名和密码不能为空。',
+        },
+        { status: 400 },
+      )
     }
 
     const isEmail = String(email).includes('@')
@@ -32,10 +38,13 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (profileError || !profile) {
-        return NextResponse.json({
-          success: false,
-          error: '用户名不存在。',
-        }, { status: 401 })
+        return NextResponse.json(
+          {
+            success: false,
+            error: '用户名不存在。',
+          },
+          { status: 401 },
+        )
       }
 
       loginEmail = profile.email
@@ -47,10 +56,13 @@ export async function POST(request: NextRequest) {
     })
 
     if (error || !data.user) {
-      return NextResponse.json({
-        success: false,
-        error: '账号未注册或密码错误，请检查后重试。',
-      }, { status: 401 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: '账号未注册或密码错误，请检查后重试。',
+        },
+        { status: 401 },
+      )
     }
 
     return NextResponse.json({
@@ -60,19 +72,24 @@ export async function POST(request: NextRequest) {
         email: data.user.email,
         createdAt: data.user.created_at,
       },
-      session: data.session ? {
-        accessToken: data.session.access_token,
-        refreshToken: data.session.refresh_token,
-        expiresAt: data.session.expires_at
-          ? data.session.expires_at * 1000
-          : Date.now() + 30 * 24 * 60 * 60 * 1000,
-      } : null,
+      session: data.session
+        ? {
+            accessToken: data.session.access_token,
+            refreshToken: data.session.refresh_token,
+            expiresAt: data.session.expires_at
+              ? data.session.expires_at * 1000
+              : Date.now() + 30 * 24 * 60 * 60 * 1000,
+          }
+        : null,
     })
   } catch (error: any) {
     console.error('[Auth/Login] Error:', error.message, error.stack)
-    return NextResponse.json({
-      success: false,
-      error: '登录失败，请稍后重试。',
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: '登录失败，请稍后重试。',
+      },
+      { status: 500 },
+    )
   }
 }

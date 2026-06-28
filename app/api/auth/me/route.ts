@@ -24,10 +24,7 @@ export async function POST(request: NextRequest) {
 
     if (profileError || !profileData) {
       console.error('[Auth/Me] Profile query error:', profileError)
-      return NextResponse.json(
-        { success: false, error: '用户资料不存在。' },
-        { status: 404 },
-      )
+      return NextResponse.json({ success: false, error: '用户资料不存在。' }, { status: 404 })
     }
 
     return NextResponse.json({

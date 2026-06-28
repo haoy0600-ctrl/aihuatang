@@ -39,17 +39,20 @@ export default function HomePage() {
     {
       icon: 'AI',
       title: '智能优化生成',
-      description: '支持长文拆解、提示词优化和成图细节增强，让知识图卡既有内容密度，也有完成度。',
+      description:
+        '支持长文拆解、提示词优化和成图细节增强，让知识图卡既有内容密度，也有视觉完成度。',
     },
     {
       icon: '风格',
       title: '拒绝廉价 AI 感',
-      description: '内置多套自媒体高转化视觉模版，适合小红书、公众号、课程封面和信息卡片。',
+      description:
+        '内置多套自媒体高转化视觉模板，适合小红书、公众号、课程封面和信息卡片。',
     },
     {
       icon: '卡密',
       title: '卡密秒级激活',
-      description: '支持站内卡密充值与套餐兑换，个人创作者和团队账号都能快速开工。',
+      description:
+        '支持站内卡密充值与套餐兑换，个人创作者和团队账号都能快速开工。',
     },
   ]
 
@@ -57,30 +60,48 @@ export default function HomePage() {
     {
       step: '01',
       title: '输入主题',
-      description: '填写选题、观点或参考文案',
+      description: '填写选题、观点或参考文案。',
     },
     {
       step: '02',
       title: '选择风格',
-      description: '匹配适合的画风、排版和输出规格',
+      description: '匹配适合的画风、排版和输出规格。',
     },
     {
       step: '03',
       title: '生成发布',
-      description: '一键导出可直接使用的成品',
+      description: '一键导出可直接使用的成品。',
     },
   ]
 
   const comparison = {
     traditional: [
-      { title: '成本偏高', description: '单张价格波动大，高频创作时预算压力明显。' },
-      { title: '风格不稳', description: '容易出现模版感重、品牌调性不统一的问题。' },
-      { title: '响应较慢', description: '从写提示词到返工修改，整体链路长。' },
+      {
+        title: '成本偏高',
+        description: '单张价格波动大，高频创作时预算压力明显。',
+      },
+      {
+        title: '风格不稳',
+        description: '容易出现模板感重、品牌调性不统一的问题。',
+      },
+      {
+        title: '响应较慢',
+        description: '从写提示词到返工修改，整体链路偏长。',
+      },
     ],
     product: [
-      { title: '成本更可控', description: '按积分细分消耗，适合持续产出和批量生成。' },
-      { title: '风格更统一', description: '同一主题下可以稳定保持视觉秩序和内容质感。' },
-      { title: '效率更高', description: '从输入文案到成图发布，流程更短、更直接。' },
+      {
+        title: '成本更可控',
+        description: '按积分细分消耗，适合持续产出和批量生成。',
+      },
+      {
+        title: '风格更统一',
+        description: '同一主题下可以稳定保持视觉秩序和内容质感。',
+      },
+      {
+        title: '效率更高',
+        description: '从输入文案到成图发布，流程更短、更直接。',
+      },
     ],
   }
 
@@ -100,20 +121,35 @@ export default function HomePage() {
             </Link>
 
             <nav className="hidden flex-1 items-center justify-center gap-2 md:flex">
-              <Link href="/dashboard" className="rounded-lg bg-[#10B981] px-3 py-1.5 text-xs font-semibold text-[#0B0D17] shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+              <Link
+                href="/dashboard"
+                className="rounded-lg bg-[#10B981] px-3 py-1.5 text-xs font-semibold text-[#0B0D17] shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+              >
                 创作台
               </Link>
-              <Link href="/records" className="rounded-lg border border-[#202B3A] bg-[#141923] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-[#10B981]">
+              <Link
+                href="/records"
+                className="rounded-lg border border-[#202B3A] bg-[#141923] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-[#10B981]"
+              >
                 生成记录
               </Link>
-              <Link href="/recharge" className="rounded-lg border border-[#202B3A] bg-[#141923] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-[#10B981]">
+              <Link
+                href="/recharge"
+                className="rounded-lg border border-[#202B3A] bg-[#141923] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-[#10B981]"
+              >
                 充值中心
               </Link>
-              <Link href="/announcements" className="rounded-lg border border-[#202B3A] bg-[#141923] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-[#10B981]">
+              <Link
+                href="/announcements"
+                className="rounded-lg border border-[#202B3A] bg-[#141923] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-[#10B981]"
+              >
                 站内公告
               </Link>
               {isAdmin && (
-                <Link href="/admin" className="rounded-lg bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] px-3 py-1.5 text-xs font-semibold text-white shadow-[0_0_10px_rgba(139,92,246,0.3)]">
+                <Link
+                  href="/admin"
+                  className="rounded-lg bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] px-3 py-1.5 text-xs font-semibold text-white shadow-[0_0_10px_rgba(139,92,246,0.3)]"
+                >
                   后台管理
                 </Link>
               )}
@@ -133,7 +169,10 @@ export default function HomePage() {
             </button>
 
             <div className="hidden md:block">
-              <Link href="/dashboard" className="rounded-lg bg-[#10B981] px-4 py-2 text-sm font-semibold text-[#0B0D17] shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+              <Link
+                href="/dashboard"
+                className="rounded-lg bg-[#10B981] px-4 py-2 text-sm font-semibold text-[#0B0D17] shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+              >
                 立即开始
               </Link>
             </div>
@@ -142,20 +181,40 @@ export default function HomePage() {
           {mobileMenuOpen && (
             <div className="mt-3 border-t border-[#1e293b] pt-3 md:hidden">
               <div className="flex flex-col gap-2">
-                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-[#10B981] px-4 py-3 text-center text-sm font-bold text-[#0B0D17]">
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-lg bg-[#10B981] px-4 py-3 text-center text-sm font-bold text-[#0B0D17]"
+                >
                   立即创作
                 </Link>
-                <Link href="/records" onClick={() => setMobileMenuOpen(false)} className="rounded-lg border border-[#202B3A] bg-[#141923] px-4 py-3 text-center text-sm font-semibold text-white">
+                <Link
+                  href="/records"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-lg border border-[#202B3A] bg-[#141923] px-4 py-3 text-center text-sm font-semibold text-white"
+                >
                   生成记录
                 </Link>
-                <Link href="/recharge" onClick={() => setMobileMenuOpen(false)} className="rounded-lg border border-[#202B3A] bg-[#141923] px-4 py-3 text-center text-sm font-semibold text-white">
+                <Link
+                  href="/recharge"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-lg border border-[#202B3A] bg-[#141923] px-4 py-3 text-center text-sm font-semibold text-white"
+                >
                   卡密充值
                 </Link>
-                <Link href="/announcements" onClick={() => setMobileMenuOpen(false)} className="rounded-lg border border-[#202B3A] bg-[#141923] px-4 py-3 text-center text-sm font-semibold text-white">
+                <Link
+                  href="/announcements"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-lg border border-[#202B3A] bg-[#141923] px-4 py-3 text-center text-sm font-semibold text-white"
+                >
                   站内公告
                 </Link>
                 {isAdmin && (
-                  <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="rounded-lg bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] px-4 py-3 text-center text-sm font-semibold text-white">
+                  <Link
+                    href="/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="rounded-lg bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] px-4 py-3 text-center text-sm font-semibold text-white"
+                  >
                     后台管理
                   </Link>
                 )}
@@ -175,16 +234,21 @@ export default function HomePage() {
               <span className="absolute -inset-1 -z-10 bg-gradient-to-r from-[#03F09C] via-[#00F2FE] to-[#10B981] opacity-20 blur-md" />
             </span>
             <span className={`${isVisible ? 'opacity-100' : 'opacity-0'} text-white transition-opacity duration-700`}>
-              {' '}· 自媒体全自动知识图卡生产线
+              {' '}
+              · 自媒体全自动知识图卡生产线
             </span>
           </h1>
 
-          <p className={`${isVisible ? 'opacity-100' : 'opacity-0'} mx-auto mb-3 max-w-2xl text-xs leading-relaxed text-gray-400 transition-opacity delay-200 duration-700 sm:mb-4 sm:text-sm`}>
+          <p
+            className={`${isVisible ? 'opacity-100' : 'opacity-0'} mx-auto mb-3 max-w-2xl text-xs leading-relaxed text-gray-400 transition-opacity delay-200 duration-700 sm:mb-4 sm:text-sm`}
+          >
             告别生硬的 AI 感和繁琐排版。内置智能排版引擎，一句话就能重构成高密度、可直接发布的知识图卡。
           </p>
 
-          <p className={`${isVisible ? 'opacity-100' : 'opacity-0'} mx-auto mb-3 max-w-2xl text-xs leading-relaxed text-[#03F09C]/80 transition-opacity delay-300 duration-700 sm:mb-4 sm:text-sm`}>
-            支持标准、2K、4K 多档输出，兼顾预算与成品质量，适合小红书、公众号、课程封面和社群分发场景。
+          <p
+            className={`${isVisible ? 'opacity-100' : 'opacity-0'} mx-auto mb-3 max-w-2xl text-xs leading-relaxed text-[#03F09C]/80 transition-opacity delay-300 duration-700 sm:mb-4 sm:text-sm`}
+          >
+            支持标准、2K、4K 多档输出，兼顾预算与成品质感，适合小红书、公众号、课程封面和社群分发场景。
           </p>
 
           <Link
@@ -196,7 +260,9 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <div className={`${isVisible ? 'opacity-100' : 'opacity-0'} mb-6 w-full max-w-5xl transition-opacity delay-700 duration-700 sm:mb-8`}>
+        <div
+          className={`${isVisible ? 'opacity-100' : 'opacity-0'} mb-6 w-full max-w-5xl transition-opacity delay-700 duration-700 sm:mb-8`}
+        >
           <div className="mb-3 text-center sm:mb-4">
             <h2 className="mb-1 text-base font-bold text-white sm:text-lg">核心功能</h2>
             <p className="text-xs text-[#10B981]">高效创作，一键生成</p>
@@ -215,7 +281,9 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className={`${isVisible ? 'opacity-100' : 'opacity-0'} mb-6 w-full max-w-5xl transition-opacity delay-1000 duration-700 sm:mb-8`}>
+        <div
+          className={`${isVisible ? 'opacity-100' : 'opacity-0'} mb-6 w-full max-w-5xl transition-opacity delay-1000 duration-700 sm:mb-8`}
+        >
           <div className="mb-3 text-center sm:mb-4">
             <h2 className="text-base font-bold text-white sm:text-lg">为什么选择 AI画堂？</h2>
           </div>
@@ -256,7 +324,9 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className={`${isVisible ? 'opacity-100' : 'opacity-0'} mb-4 w-full max-w-4xl transition-opacity delay-[1300ms] duration-700`}>
+        <div
+          className={`${isVisible ? 'opacity-100' : 'opacity-0'} mb-4 w-full max-w-4xl transition-opacity delay-[1300ms] duration-700`}
+        >
           <div className="mb-3 text-center">
             <h2 className="text-base font-bold text-white sm:text-lg">创作流程</h2>
             <p className="text-xs text-[#10B981]">三步完成，高频可复用</p>

@@ -285,21 +285,14 @@ export default function AdminAnnouncementsPage() {
                 const typeMeta = getTypeMeta(announcement.type)
 
                 return (
-                  <article
-                    key={announcement.id}
-                    className="rounded-xl border border-[#334155]/50 bg-[#1e293b]/40 p-4"
-                  >
+                  <article key={announcement.id} className="rounded-xl border border-[#334155]/50 bg-[#1e293b]/40 p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <div className="mb-2 flex flex-wrap items-center gap-2">
                           {announcement.is_pinned && (
-                            <span className="rounded-md bg-[#10B981]/15 px-2 py-1 text-xs text-[#10B981]">
-                              置顶
-                            </span>
+                            <span className="rounded-md bg-[#10B981]/15 px-2 py-1 text-xs text-[#10B981]">置顶</span>
                           )}
-                          <span className={`rounded-md px-2 py-1 text-xs ${typeMeta.className}`}>
-                            {typeMeta.label}
-                          </span>
+                          <span className={`rounded-md px-2 py-1 text-xs ${typeMeta.className}`}>{typeMeta.label}</span>
                         </div>
 
                         <h3 className="text-base font-semibold text-white">{announcement.title}</h3>
@@ -310,9 +303,7 @@ export default function AdminAnnouncementsPage() {
                       </div>
                     </div>
 
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-300">
-                      {announcement.content}
-                    </p>
+                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-300">{announcement.content}</p>
                   </article>
                 )
               })}

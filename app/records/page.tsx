@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import JSZip from 'jszip'
@@ -23,18 +23,26 @@ interface GenerationRecord {
   image_url_4k?: string | null
 }
 
+interface UserProfile {
+  credits: number
+  avatar_url?: string
+}
+
 type FilterStatus = 'all' | 'success' | 'failed'
 
 const COLUMN_COUNT = 5
+const PAGE_SIZE = 20
 
 export default function RecordsPage() {
   const router = useRouter()
+  const observerRef = useRef<HTMLDivElement>(null)
+
   const [records, setRecords] = useState<GenerationRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [currentTime, setCurrentTime] = useState('')
-  const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState<{ credits: number; avatar_url?: string } | null>(null)
+  const [user, setUser] = useState<{ email?: string } | null>(null)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
@@ -48,7 +56,6 @@ export default function RecordsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [totalRecords, setTotalRecords] = useState(0)
-  const observerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const updateTime = () => {
@@ -61,23 +68,33 @@ export default function RecordsPage() {
     return () => clearInterval(timer)
   }, [])
 
-  const distributeRecordsToColumns = useCallback((list: GenerationRecord[]) => {
-    const columns: GenerationRecord[][] = Array.from({ length: COLUMN_COUNT }, () => [])
-    list.forEach((record, index) => {
-      columns[index % COLUMN_COUNT].push(record)
+  const parseImageUrls = useCallback((value: string) => {
+    try {
+      const urls = JSON.parse(value) as string[]
+      return Array.isArray(urls) ? urls.filter(Boolean) : []
+    } catch {
+      return []
+    }
+  }, [])
+
+  const hydrate4kMap = useCallback((list: GenerationRecord[]) => {
+    const next4k: Record<string, string> = {}
+    list.forEach((item) => {
+      if (item.image_url_4k) {
+        next4k[item.id] = item.image_url_4k
+      }
     })
-    return columns
+    setImage4kUrls(next4k)
   }, [])
 
   const fetchRecords = useCallback(
     async (pageNum = 1, reset = false) => {
       const session = getStoredSession()
       if (!session) {
-        if (reset) {
-          setRecords([])
-          setProfile({ credits: 3 })
-          setLoading(false)
-        }
+        setRecords([])
+        setProfile({ credits: 0 })
+        setLoading(false)
+        setLoadingMore(false)
         return
       }
 
@@ -88,22 +105,20 @@ export default function RecordsPage() {
             headers: authHeaders(),
             body: JSON.stringify({}),
           })
-
           const meData = await meResponse.json()
+
           if (!meData.success || !meData.user) {
             setRecords([])
-            setProfile({ credits: 3 })
+            setProfile({ credits: 0 })
             setLoading(false)
             return
           }
 
           setUser(meData.user)
-          if (meData.profile) {
-            setProfile({
-              credits: meData.profile.credits,
-              avatar_url: meData.profile.avatar_url,
-            })
-          }
+          setProfile({
+            credits: meData.profile?.credits ?? 0,
+            avatar_url: meData.profile?.avatar_url,
+          })
         }
 
         const recordsResponse = await fetch('/api/user/records', {
@@ -112,44 +127,50 @@ export default function RecordsPage() {
           body: JSON.stringify({
             status: filterStatus,
             page: pageNum,
-            limit: 20,
+            limit: PAGE_SIZE,
           }),
         })
-
         const recordsData = await recordsResponse.json()
 
         if (!recordsData.success) {
           if (reset) {
             setRecords([])
+            setTotalRecords(0)
+            setHasMore(false)
           }
           return
         }
 
-        const nextRecords = reset ? recordsData.records || [] : [...records, ...(recordsData.records || [])]
+        const incomingRecords = (recordsData.records || []) as GenerationRecord[]
 
-        setRecords(nextRecords)
+        if (reset) {
+          setRecords(incomingRecords)
+          hydrate4kMap(incomingRecords)
+        } else {
+          setRecords((prev) => {
+            const merged = [...prev, ...incomingRecords]
+            const deduped = Array.from(new Map(merged.map((item) => [item.id, item])).values())
+            hydrate4kMap(deduped)
+            return deduped
+          })
+        }
+
         setTotalRecords(recordsData.total || 0)
-        setHasMore(recordsData.hasMore || false)
-
-        const next4k: Record<string, string> = {}
-        nextRecords.forEach((item: GenerationRecord) => {
-          if (item.image_url_4k) {
-            next4k[item.id] = item.image_url_4k
-          }
-        })
-        setImage4kUrls((prev) => ({ ...prev, ...next4k }))
-      } catch (fetchError) {
-        console.error('Fetch records error:', fetchError)
+        setHasMore(Boolean(recordsData.hasMore))
+      } catch (error) {
+        console.error('Fetch records error:', error)
         if (reset) {
           setRecords([])
-          setProfile({ credits: 3 })
+          setProfile({ credits: 0 })
+          setTotalRecords(0)
+          setHasMore(false)
         }
       } finally {
         setLoading(false)
         setLoadingMore(false)
       }
     },
-    [filterStatus, records],
+    [filterStatus, hydrate4kMap],
   )
 
   useEffect(() => {
@@ -171,7 +192,7 @@ export default function RecordsPage() {
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries
-        if (entry.isIntersecting && !loadingMore && hasMore && !loading) {
+        if (entry.isIntersecting && !loading && !loadingMore && hasMore) {
           setLoadingMore(true)
           setCurrentPage((prev) => prev + 1)
         }
@@ -179,18 +200,27 @@ export default function RecordsPage() {
       { rootMargin: '200px' },
     )
 
-    if (observerRef.current) {
-      observer.observe(observerRef.current)
+    const currentNode = observerRef.current
+    if (currentNode) {
+      observer.observe(currentNode)
     }
 
     return () => observer.disconnect()
-  }, [loadingMore, hasMore, loading])
+  }, [hasMore, loading, loadingMore])
 
   useEffect(() => {
     if (currentPage > 1) {
       void fetchRecords(currentPage, false)
     }
   }, [currentPage, fetchRecords])
+
+  const filteredRecords = useMemo(() => {
+    if (filterStatus === 'all') return records
+    if (filterStatus === 'success') {
+      return records.filter((record) => record.status === 'success' || record.status === 'completed')
+    }
+    return records.filter((record) => record.status === 'failed' || record.status === 'error')
+  }, [filterStatus, records])
 
   const statusCounts = useMemo(
     () => ({
@@ -201,14 +231,21 @@ export default function RecordsPage() {
     [records],
   )
 
+  const columns = useMemo(() => {
+    const result: GenerationRecord[][] = Array.from({ length: COLUMN_COUNT }, () => [])
+    filteredRecords.forEach((record, index) => {
+      result[index % COLUMN_COUNT].push(record)
+    })
+    return result
+  }, [filteredRecords])
+
   const getModelPrice = () => 3
 
-  const parseImageUrls = (value: string) => {
-    try {
-      return JSON.parse(value) as string[]
-    } catch {
-      return []
-    }
+  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('zh-CN')
+
+  const getFirstSentence = (text: string) => {
+    const sentences = text.split(/[。！？；\n]/).filter((item) => item.trim())
+    return sentences[0]?.trim() || text.substring(0, 30)
   }
 
   const handleDownload = async (url: string, index: number) => {
@@ -223,8 +260,8 @@ export default function RecordsPage() {
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(blobUrl)
-    } catch (downloadError) {
-      console.error('Download failed:', downloadError)
+    } catch (error) {
+      console.error('Download failed:', error)
       const link = document.createElement('a')
       link.href = url
       link.download = `AI画堂_${Date.now()}_${index + 1}.png`
@@ -238,14 +275,14 @@ export default function RecordsPage() {
   const handleCopyLink = async (url: string) => {
     try {
       await navigator.clipboard.writeText(url)
-      alert('图片链接已复制到剪贴板')
+      alert('图片链接已复制到剪贴板。')
     } catch {
-      prompt('请手动复制图片链接：', url)
+      window.prompt('请手动复制图片链接：', url)
     }
   }
 
   const handleUpscale = async (recordId: string, imageUrl: string) => {
-    if (upscalingIds.has(recordId)) return
+    if (!imageUrl || upscalingIds.has(recordId)) return
 
     setUpscalingIds((prev) => new Set([...prev, recordId]))
 
@@ -258,7 +295,6 @@ export default function RecordsPage() {
         },
         body: JSON.stringify({ imageUrl, recordId }),
       })
-
       const data = await response.json()
 
       if (data.success && data.url) {
@@ -266,13 +302,13 @@ export default function RecordsPage() {
           ...prev,
           [recordId]: data.url,
         }))
-        alert('4K 放大完成')
+        alert('4K 放大已完成。')
       } else {
-        alert(data.error || '4K 放大失败，请稍后重试')
+        alert(data.error || '4K 放大失败，请稍后重试。')
       }
-    } catch (upscaleError) {
-      console.error('Upscale error:', upscaleError)
-      alert('4K 放大失败，请稍后重试')
+    } catch (error) {
+      console.error('Upscale failed:', error)
+      alert('4K 放大失败，请稍后重试。')
     } finally {
       setUpscalingIds((prev) => {
         const next = new Set(prev)
@@ -286,50 +322,67 @@ export default function RecordsPage() {
     try {
       await navigator.clipboard.writeText(prompt)
       setCopiedPromptId(id)
-      setTimeout(() => setCopiedPromptId(null), 2000)
+      window.setTimeout(() => setCopiedPromptId(null), 2000)
     } catch {
-      alert('复制失败，请手动复制提示词')
+      alert('复制失败，请手动复制。')
     }
   }
 
   const handleDeleteRecord = async (recordId: string) => {
-    const response = await fetch('/api/user/delete-record', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ id: recordId }),
-    })
+    try {
+      const response = await fetch('/api/user/delete-record', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ id: recordId }),
+      })
+      const data = await response.json()
 
-    const data = await response.json()
-    if (data.success) {
-      const nextRecords = records.filter((item) => item.id !== recordId)
-      setRecords(nextRecords)
+      if (!data.success) {
+        alert(data.error || '删除失败，请稍后重试。')
+        return
+      }
+
+      setRecords((prev) => prev.filter((item) => item.id !== recordId))
+      setImage4kUrls((prev) => {
+        const next = { ...prev }
+        delete next[recordId]
+        return next
+      })
       setTotalRecords((prev) => Math.max(0, prev - 1))
-    } else {
-      alert(data.error || '删除失败')
+    } catch (error) {
+      console.error('Delete record failed:', error)
+      alert('删除失败，请稍后重试。')
     }
   }
 
   const handleDeleteAll = async () => {
-    await Promise.all(
-      records.map((record) =>
-        fetch('/api/user/delete-record', {
-          method: 'POST',
-          headers: authHeaders(),
-          body: JSON.stringify({ id: record.id }),
-        }),
-      ),
-    )
+    try {
+      await Promise.all(
+        records.map((record) =>
+          fetch('/api/user/delete-record', {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ id: record.id }),
+          }),
+        ),
+      )
 
-    setRecords([])
-    setTotalRecords(0)
-    setShowDeleteAllModal(false)
+      setRecords([])
+      setImage4kUrls({})
+      setTotalRecords(0)
+      setHasMore(false)
+      setShowDeleteAllModal(false)
+    } catch (error) {
+      console.error('Delete all failed:', error)
+      alert('批量删除失败，请稍后重试。')
+    }
   }
 
   const downloadAllImages = async (urls: string[]) => {
-    if (urls.length <= 1) {
-      if (urls[0]) {
-        await handleDownload(urls[0], 0)
-      }
+    if (urls.length === 0) return
+
+    if (urls.length === 1) {
+      await handleDownload(urls[0], 0)
       return
     }
 
@@ -344,37 +397,18 @@ export default function RecordsPage() {
       )
       const content = await zip.generateAsync({ type: 'blob' })
       saveAs(content, `AI画堂_记录_${Date.now()}.zip`)
-    } catch (zipError) {
-      console.error('Batch download failed:', zipError)
+    } catch (error) {
+      console.error('Batch download failed:', error)
       for (let index = 0; index < urls.length; index += 1) {
         await handleDownload(urls[index], index)
       }
     }
   }
 
-  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('zh-CN')
-
-  const getFirstSentence = (text: string) => {
-    const sentences = text.split(/[。！？；\n]/).filter((item) => item.trim())
-    return sentences[0]?.trim() || text.substring(0, 30)
-  }
-
-  const openDetailModal = (record: GenerationRecord) => setSelectedRecord(record)
-
   const handleLogout = () => {
     clearStoredSession()
     window.location.href = '/login'
   }
-
-  const filteredRecords = useMemo(() => {
-    if (filterStatus === 'all') return records
-    if (filterStatus === 'success') {
-      return records.filter((record) => record.status === 'success' || record.status === 'completed')
-    }
-    return records.filter((record) => record.status === 'failed' || record.status === 'error')
-  }, [filterStatus, records])
-
-  const filteredColumns = useMemo(() => distributeRecordsToColumns(filteredRecords), [distributeRecordsToColumns, filteredRecords])
 
   return (
     <div className="min-h-screen bg-[#0B0D17]">
@@ -387,7 +421,9 @@ export default function RecordsPage() {
 
             <nav className="hidden items-center gap-4 md:flex">
               <NavLink href="/dashboard">创作中心</NavLink>
-              <NavLink href="/records" active>生成记录</NavLink>
+              <NavLink href="/records" active>
+                生成记录
+              </NavLink>
               <NavLink href="/recharge">卡密兑换</NavLink>
             </nav>
 
@@ -396,20 +432,24 @@ export default function RecordsPage() {
                 <span>{new Date().toLocaleDateString('zh-CN')}</span>
                 <span className="font-mono text-sm font-bold text-white">{currentTime}</span>
               </div>
+
               <div className="flex items-center gap-1 rounded-lg border border-[#202B3A] bg-[#141923] px-2 py-1 sm:gap-1.5 sm:px-3 sm:py-1.5">
                 <span className="h-2 w-2 rounded-full border border-[#202B3A] bg-[#10B981]" />
                 <span className="hidden text-xs text-[#00F2FE] sm:inline">积分</span>
                 <span className="text-sm font-bold text-white">{profile?.credits || 0}</span>
               </div>
+
               <div className="relative">
                 <button
                   onClick={() => setShowUserMenu((prev) => !prev)}
                   className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-[#202B3A] bg-[#141923] transition-colors hover:border-[#00F2FE] sm:h-9 sm:w-9"
                 >
                   {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt="头像" className="h-full w-full object-cover" />
+                    <img src={profile.avatar_url} alt="用户头像" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-sm font-bold text-white">{user?.email ? user.email.substring(0, 2).toUpperCase() : 'HA'}</span>
+                    <span className="text-sm font-bold text-white">
+                      {user?.email ? user.email.substring(0, 2).toUpperCase() : 'AI'}
+                    </span>
                   )}
                 </button>
 
@@ -420,12 +460,48 @@ export default function RecordsPage() {
                       <p className="truncate text-sm font-medium text-white">{user?.email || '未登录'}</p>
                     </div>
                     <div className="p-2">
-                      <MenuButton onClick={() => { router.push('/dashboard'); setShowUserMenu(false) }}>创作中心</MenuButton>
-                      <MenuButton onClick={() => { router.push('/recharge'); setShowUserMenu(false) }}>卡密兑换</MenuButton>
-                      <MenuButton onClick={() => { router.push('/profile'); setShowUserMenu(false) }}>个人中心</MenuButton>
-                      <MenuButton onClick={() => { setShowChangePassword(true); setShowUserMenu(false) }}>修改密码</MenuButton>
+                      <MenuButton
+                        onClick={() => {
+                          router.push('/dashboard')
+                          setShowUserMenu(false)
+                        }}
+                      >
+                        创作中心
+                      </MenuButton>
+                      <MenuButton
+                        onClick={() => {
+                          router.push('/recharge')
+                          setShowUserMenu(false)
+                        }}
+                      >
+                        卡密兑换
+                      </MenuButton>
+                      <MenuButton
+                        onClick={() => {
+                          router.push('/profile')
+                          setShowUserMenu(false)
+                        }}
+                      >
+                        个人中心
+                      </MenuButton>
+                      <MenuButton
+                        onClick={() => {
+                          setShowChangePassword(true)
+                          setShowUserMenu(false)
+                        }}
+                      >
+                        修改密码
+                      </MenuButton>
                       <div className="my-1 border-t border-[#202B3A]" />
-                      <MenuButton danger onClick={() => { handleLogout(); setShowUserMenu(false) }}>退出登录</MenuButton>
+                      <MenuButton
+                        danger
+                        onClick={() => {
+                          handleLogout()
+                          setShowUserMenu(false)
+                        }}
+                      >
+                        退出登录
+                      </MenuButton>
                     </div>
                   </div>
                 )}
@@ -440,7 +516,7 @@ export default function RecordsPage() {
           <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div>
               <h2 className="text-xl font-bold text-white">生成记录</h2>
-              <p className="mt-1 text-sm text-[#00F2FE]">你的创作资产库，共 {totalRecords} 条</p>
+              <p className="mt-1 text-sm text-[#00F2FE]">你的创作资产库，共 {totalRecords} 条记录</p>
             </div>
             <div className="flex gap-3">
               <button
@@ -462,8 +538,8 @@ export default function RecordsPage() {
           <div className="mb-6 flex w-fit gap-2 rounded-xl bg-[#141923] p-1">
             {[
               { key: 'all', label: '全部', color: 'bg-[#00F2FE] text-[#0A0F1D]' },
-              { key: 'success', label: '生成成功', color: 'bg-[#10B981] text-[#0A0F1D]' },
-              { key: 'failed', label: '生成失败', color: 'bg-red-500 text-white' },
+              { key: 'success', label: '成功', color: 'bg-[#10B981] text-[#0A0F1D]' },
+              { key: 'failed', label: '失败', color: 'bg-red-500 text-white' },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -483,12 +559,12 @@ export default function RecordsPage() {
             <EmptyRecords />
           ) : (
             <div className="flex gap-3">
-              {filteredColumns.map((column, colIndex) => (
+              {columns.map((column, colIndex) => (
                 <div key={colIndex} className="flex-1 space-y-3">
                   {column.map((record) => {
                     const imageUrls = parseImageUrls(record.image_urls)
                     const coverUrl = image4kUrls[record.id] || record.image_url_4k || imageUrls[0] || ''
-                    const totalCost = getModelPrice() * (record.image_count || 1)
+                    const totalCost = getModelPrice() * Math.max(1, record.image_count || 1)
                     const firstSentence = getFirstSentence(record.prompt)
                     const success = record.status === 'success' || record.status === 'completed'
                     const failed = record.status === 'failed' || record.status === 'error'
@@ -498,25 +574,31 @@ export default function RecordsPage() {
                         key={record.id}
                         className="group overflow-hidden rounded-lg border border-[#1E293B] bg-[#0D111A] transition-all duration-300 hover:border-[#00F2FE]/50"
                       >
-                        <div className="relative overflow-hidden bg-[#161a2b]">
+                        <div className="relative overflow-hidden bg-[#161A2B]">
                           {coverUrl ? (
                             <img src={coverUrl} alt="生成图片" className="h-auto w-full object-contain" />
                           ) : (
                             <div className="flex aspect-square w-full items-center justify-center bg-[#0B0D17] text-xs text-[#94A3B8]">
-                              {failed ? <span className="p-2 text-center">生成失败</span> : <span>暂无图片</span>}
+                              {failed ? <span className="p-2 text-center">该任务生成失败</span> : <span>暂无图片</span>}
                             </div>
                           )}
 
                           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/80 p-2 opacity-0 transition-all duration-200 group-hover:opacity-100">
                             {coverUrl && (
                               <>
-                                <ActionButton onClick={() => setPreviewImageUrl(coverUrl)} tone="green">预览</ActionButton>
-                                <ActionButton onClick={() => void handleDownload(coverUrl, 0)} tone="blue">下载</ActionButton>
-                                <ActionButton onClick={() => void handleCopyLink(coverUrl)} tone="white">复制链接</ActionButton>
+                                <ActionButton onClick={() => setPreviewImageUrl(coverUrl)} tone="green">
+                                  预览
+                                </ActionButton>
+                                <ActionButton onClick={() => void handleDownload(coverUrl, 0)} tone="blue">
+                                  下载
+                                </ActionButton>
+                                <ActionButton onClick={() => void handleCopyLink(coverUrl)} tone="white">
+                                  复制链接
+                                </ActionButton>
                                 <ActionButton
                                   onClick={() => void handleUpscale(record.id, imageUrls[0] || '')}
                                   tone={image4kUrls[record.id] ? 'success' : 'amber'}
-                                  disabled={upscalingIds.has(record.id) || !!image4kUrls[record.id]}
+                                  disabled={upscalingIds.has(record.id) || Boolean(image4kUrls[record.id])}
                                 >
                                   {image4kUrls[record.id]
                                     ? '已完成 4K'
@@ -529,7 +611,7 @@ export default function RecordsPage() {
 
                             <ActionButton
                               onClick={() => {
-                                if (confirm('确定要删除这条记录吗？')) {
+                                if (window.confirm('确定要删除这条记录吗？')) {
                                   void handleDeleteRecord(record.id)
                                 }
                               }}
@@ -565,20 +647,20 @@ export default function RecordsPage() {
                         <div className="p-2">
                           <div className="mb-1 flex flex-wrap items-center gap-1">
                             <span className="rounded border border-[#10B981]/50 bg-[#10B981]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#10B981]">
-                              {record.style_name}
+                              {record.style_name || '未命名风格'}
                             </span>
                             <span className="rounded border border-[#00F2FE]/50 bg-[#00F2FE]/20 px-2 py-0.5 text-xs font-bold text-[#00F2FE]">
                               {record.model}
                             </span>
                             <span className="rounded border border-[#F59E0B]/50 bg-[#F59E0B]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#F59E0B]">
-                              积分 {totalCost}
+                              消耗 {totalCost} 积分
                             </span>
                           </div>
 
                           <div className="flex items-center justify-between gap-2">
                             <p className="flex-1 truncate text-[10px] text-[#94A3B8]">{firstSentence}</p>
                             <button
-                              onClick={() => openDetailModal(record)}
+                              onClick={() => setSelectedRecord(record)}
                               className="text-[10px] text-[#00F2FE] transition-colors hover:text-[#00E676]"
                             >
                               详情
@@ -649,7 +731,7 @@ export default function RecordsPage() {
           onDownloadAll={downloadAllImages}
           onUpscale={handleUpscale}
           onDelete={async () => {
-            if (confirm('确定要删除这条记录吗？')) {
+            if (window.confirm('确定要删除这条记录吗？')) {
               await handleDeleteRecord(selectedRecord.id)
               setSelectedRecord(null)
             }
@@ -697,7 +779,7 @@ export default function RecordsPage() {
       <ChangePasswordModal show={showChangePassword} onClose={() => setShowChangePassword(false)} />
       <TermsModal show={showTermsModal} onClose={() => setShowTermsModal(false)} />
 
-      <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#1e293b]/50 bg-[#030712]/95 py-2.5 backdrop-blur-sm">
+      <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#1E293B]/50 bg-[#030712]/95 py-2.5 backdrop-blur-sm">
         <div className="mx-auto max-w-[1400px] px-4 text-center">
           <p className="text-sm text-gray-400">
             使用本站即表示你同意
@@ -720,7 +802,7 @@ function NavLink({
   active,
 }: {
   href: string
-  children: React.ReactNode
+  children: ReactNode
   active?: boolean
 }) {
   return (
@@ -729,7 +811,7 @@ function NavLink({
       className={`rounded-xl border px-5 py-2.5 text-base font-semibold tracking-wide transition-all md:text-lg ${
         active
           ? 'border-[#202B3A] bg-[#10B981] text-[#0B0D17] shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-          : 'border-[#202B3A] bg-[#141923] text-white hover:border-[#00F2FE] hover:bg-[#1a2230]'
+          : 'border-[#202B3A] bg-[#141923] text-white hover:border-[#00F2FE] hover:bg-[#1A2230]'
       }`}
     >
       {children}
@@ -742,7 +824,7 @@ function MenuButton({
   onClick,
   danger,
 }: {
-  children: React.ReactNode
+  children: ReactNode
   onClick: () => void
   danger?: boolean
 }) {
@@ -750,9 +832,7 @@ function MenuButton({
     <button
       onClick={onClick}
       className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-        danger
-          ? 'text-red-400 hover:bg-[#1a2230]'
-          : 'text-white hover:bg-[#1a2230] hover:text-[#00F2FE]'
+        danger ? 'text-red-400 hover:bg-[#1A2230]' : 'text-white hover:bg-[#1A2230] hover:text-[#00F2FE]'
       }`}
     >
       {children}
@@ -766,16 +846,16 @@ function ActionButton({
   tone,
   disabled,
 }: {
-  children: React.ReactNode
+  children: ReactNode
   onClick: () => void
   tone: 'green' | 'blue' | 'white' | 'amber' | 'danger' | 'success'
   disabled?: boolean
 }) {
   const toneClass: Record<string, string> = {
-    green: 'border-[#00E676] bg-[#00E676] text-[#0A0F1D] hover:bg-[#00ff80]',
-    blue: 'border-[#00F2FE] bg-[#00F2FE] text-[#0A0F1D] hover:bg-[#33f5ff]',
+    green: 'border-[#00E676] bg-[#00E676] text-[#0A0F1D] hover:bg-[#00FF80]',
+    blue: 'border-[#00F2FE] bg-[#00F2FE] text-[#0A0F1D] hover:bg-[#33F5FF]',
     white: 'border-white/50 bg-white/90 text-[#0A0F1D] hover:bg-white',
-    amber: 'border-[#F59E0B] bg-[#F59E0B] text-[#0A0F1D] hover:bg-[#fbbf24]',
+    amber: 'border-[#F59E0B] bg-[#F59E0B] text-[#0A0F1D] hover:bg-[#FBBF24]',
     danger: 'border-red-500/50 bg-red-500/90 text-white hover:bg-red-500',
     success: 'border-[#10B981] bg-[#10B981] text-[#0A0F1D]',
   }
@@ -872,7 +952,7 @@ function RecordDetailModal({
             <h3 className="text-xl font-bold text-white">记录详情</h3>
             <button
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#202B3A] text-white transition-colors hover:bg-[#2a3343]"
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#202B3A] text-white transition-colors hover:bg-[#2A3343]"
             >
               ×
             </button>
@@ -907,7 +987,10 @@ function RecordDetailModal({
               <p className="mb-3 text-xs uppercase text-[#00F2FE]">全部图片（{urls.length} 张）</p>
               <div className="grid grid-cols-3 gap-3">
                 {urls.map((url, index) => (
-                  <div key={index} className="group relative aspect-square cursor-pointer overflow-hidden rounded-lg border border-[#202B3A] bg-[#0A0F1D] transition-all hover:border-[#00F2FE]">
+                  <div
+                    key={index}
+                    className="group relative aspect-square cursor-pointer overflow-hidden rounded-lg border border-[#202B3A] bg-[#0A0F1D] transition-all hover:border-[#00F2FE]"
+                  >
                     <img src={url} alt={`图片 ${index + 1}`} className="h-full w-full object-cover" />
                     <div className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-[#00F2FE]">
                       {index + 1}
@@ -949,13 +1032,13 @@ function RecordDetailModal({
                 </button>
                 <button
                   onClick={() => urls[0] && onUpscale(record.id, urls[0])}
-                  disabled={isUpscaling || !!image4kUrl}
+                  disabled={isUpscaling || Boolean(image4kUrl)}
                   className={`min-w-[160px] flex-1 rounded-lg border py-3 text-sm font-bold transition-all ${
                     image4kUrl
                       ? 'border-[#10B981] bg-[#10B981] text-[#0A0F1D]'
                       : isUpscaling
                         ? 'cursor-not-allowed border-gray-500/50 bg-gray-500/50 text-gray-400'
-                        : 'border-[#F59E0B] bg-[#F59E0B] text-[#0A0F1D] hover:bg-[#fbbf24]'
+                        : 'border-[#F59E0B] bg-[#F59E0B] text-[#0A0F1D] hover:bg-[#FBBF24]'
                   }`}
                 >
                   {image4kUrl ? '已生成 4K' : isUpscaling ? '处理中...' : '一键 4K 放大'}

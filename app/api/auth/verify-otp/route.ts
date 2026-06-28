@@ -6,10 +6,13 @@ export async function POST(request: NextRequest) {
     const { email, token } = await request.json()
 
     if (!supabaseAdmin) {
-      return NextResponse.json({
-        success: false,
-        error: '系统配置未完成，请稍后重试。',
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: '系统配置未完成，请稍后重试。',
+        },
+        { status: 500 },
+      )
     }
 
     const { data, error } = await supabaseAdmin.auth.verifyOtp({
@@ -19,10 +22,13 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      return NextResponse.json({
-        success: false,
-        error: error.message,
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: error.message,
+        },
+        { status: 400 },
+      )
     }
 
     return NextResponse.json({
@@ -33,19 +39,24 @@ export async function POST(request: NextRequest) {
         createdAt: data.user?.created_at,
         emailConfirmedAt: data.user?.email_confirmed_at,
       },
-      session: data.session ? {
-        accessToken: data.session.access_token,
-        refreshToken: data.session.refresh_token,
-        expiresAt: data.session.expires_at
-          ? data.session.expires_at * 1000
-          : Date.now() + 30 * 24 * 60 * 60 * 1000,
-      } : null,
+      session: data.session
+        ? {
+            accessToken: data.session.access_token,
+            refreshToken: data.session.refresh_token,
+            expiresAt: data.session.expires_at
+              ? data.session.expires_at * 1000
+              : Date.now() + 30 * 24 * 60 * 60 * 1000,
+          }
+        : null,
     })
   } catch (error) {
     console.error('Verify OTP error:', error)
-    return NextResponse.json({
-      success: false,
-      error: '验证码校验失败，请稍后重试。',
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: '验证码校验失败，请稍后重试。',
+      },
+      { status: 500 },
+    )
   }
 }

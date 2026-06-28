@@ -7,10 +7,13 @@ export async function POST(request: NextRequest) {
     const { oldPassword, newPassword } = await request.json()
 
     if (!supabaseAdmin) {
-      return NextResponse.json({
-        success: false,
-        error: '系统配置未完成，请稍后重试',
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: '系统配置未完成，请稍后重试。',
+        },
+        { status: 500 },
+      )
     }
 
     const auth = await requireAuthenticatedUser(request)
@@ -24,10 +27,13 @@ export async function POST(request: NextRequest) {
     })
 
     if (signInError) {
-      return NextResponse.json({
-        success: false,
-        error: '原密码错误',
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: '原密码错误。',
+        },
+        { status: 400 },
+      )
     }
 
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(auth.user.id, {
@@ -35,10 +41,13 @@ export async function POST(request: NextRequest) {
     })
 
     if (updateError) {
-      return NextResponse.json({
-        success: false,
-        error: `修改密码失败：${updateError.message}`,
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: `修改密码失败：${updateError.message}`,
+        },
+        { status: 400 },
+      )
     }
 
     return NextResponse.json({
@@ -47,9 +56,12 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Change password error:', error)
-    return NextResponse.json({
-      success: false,
-      error: '修改密码失败，请稍后重试',
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: '修改密码失败，请稍后重试',
+      },
+      { status: 500 },
+    )
   }
 }

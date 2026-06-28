@@ -20,10 +20,7 @@ export async function GET() {
 
     if (error) {
       console.error('Get announcements error:', error)
-      return NextResponse.json(
-        { success: false, error: '获取公告列表失败。' },
-        { status: 500 },
-      )
+      return NextResponse.json({ success: false, error: '获取公告列表失败。' }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -32,10 +29,7 @@ export async function GET() {
     })
   } catch (error) {
     console.error('Announcements GET error:', error)
-    return NextResponse.json(
-      { success: false, error: '服务器开小差了，请稍后重试。' },
-      { status: 500 },
-    )
+    return NextResponse.json({ success: false, error: '服务器开小差了，请稍后重试。' }, { status: 500 })
   }
 }
 
@@ -56,16 +50,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const title = String(body.title || '').trim()
     const content = String(body.content || '').trim()
-    const type = ['system', 'activity', 'maintenance', 'important'].includes(body.type)
-      ? body.type
-      : 'system'
+    const type = ['system', 'activity', 'maintenance', 'important'].includes(body.type) ? body.type : 'system'
     const isPinned = Boolean(body.is_pinned)
 
     if (!title || !content) {
-      return NextResponse.json(
-        { success: false, error: '公告标题和内容不能为空。' },
-        { status: 400 },
-      )
+      return NextResponse.json({ success: false, error: '公告标题和内容不能为空。' }, { status: 400 })
     }
 
     const { data, error } = await supabaseAdmin
@@ -83,10 +72,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Create announcement error:', error)
-      return NextResponse.json(
-        { success: false, error: '发布公告失败，请稍后再试。' },
-        { status: 500 },
-      )
+      return NextResponse.json({ success: false, error: '发布公告失败，请稍后再试。' }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -96,9 +82,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Announcements POST error:', error)
-    return NextResponse.json(
-      { success: false, error: '服务器开小差了，请稍后重试。' },
-      { status: 500 },
-    )
+    return NextResponse.json({ success: false, error: '服务器开小差了，请稍后重试。' }, { status: 500 })
   }
 }

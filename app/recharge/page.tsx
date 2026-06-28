@@ -6,14 +6,25 @@ import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
 
+type UserInfo = {
+  email?: string
+}
+
+type ProfileInfo = {
+  credits: number
+  avatar_url?: string
+}
+
+type ToastType = 'success' | 'error'
+
 export default function RechargePage() {
   const [currentTime, setCurrentTime] = useState('')
-  const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState<{ credits: number; avatar_url?: string } | null>(null)
+  const [user, setUser] = useState<UserInfo | null>(null)
+  const [profile, setProfile] = useState<ProfileInfo | null>(null)
   const [isRedeeming, setIsRedeeming] = useState(false)
   const [cardCode, setCardCode] = useState('')
   const [toastMessage, setToastMessage] = useState('')
-  const [toastType, setToastType] = useState<'success' | 'error'>('success')
+  const [toastType, setToastType] = useState<ToastType>('success')
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [showWechatModal, setShowWechatModal] = useState(false)
@@ -54,15 +65,12 @@ export default function RechargePage() {
         }
 
         setUser(data.user)
-
-        if (data.profile) {
-          setProfile({
-            credits: data.profile.credits,
-            avatar_url: data.profile.avatar_url,
-          })
-        }
-      } catch (fetchError) {
-        console.error('Profile fetch error:', fetchError)
+        setProfile({
+          credits: data.profile?.credits ?? 3,
+          avatar_url: data.profile?.avatar_url,
+        })
+      } catch (error) {
+        console.error('Profile fetch error:', error)
         setProfile({ credits: 3 })
       }
     }
@@ -70,17 +78,17 @@ export default function RechargePage() {
     void fetchProfile()
   }, [])
 
-  const showToast = (message: string, type: 'success' | 'error') => {
+  const showToast = (message: string, type: ToastType) => {
     setToastMessage(message)
     setToastType(type)
-    setTimeout(() => setToastMessage(''), 3000)
+    window.setTimeout(() => setToastMessage(''), 3000)
   }
 
   const handleRedeemCard = async () => {
     const cleanCode = cardCode.trim().toUpperCase()
 
     if (!cleanCode) {
-      showToast('请输入卡密', 'error')
+      showToast('请输入卡密。', 'error')
       return
     }
 
@@ -89,8 +97,7 @@ export default function RechargePage() {
     try {
       const session = getStoredSession()
       if (!session) {
-        showToast('请先登录', 'error')
-        setIsRedeeming(false)
+        showToast('请先登录。', 'error')
         return
       }
 
@@ -99,11 +106,10 @@ export default function RechargePage() {
         headers: authHeaders(),
         body: JSON.stringify({}),
       })
-
       const meData = await meResponse.json()
+
       if (!meData.success || !meData.user) {
-        showToast('请先登录', 'error')
-        setIsRedeeming(false)
+        showToast('登录状态已失效，请重新登录。', 'error')
         return
       }
 
@@ -112,28 +118,35 @@ export default function RechargePage() {
         headers: authHeaders(),
         body: JSON.stringify({ cardCode: cleanCode }),
       })
-
       const data = await response.json()
 
       if (data.success) {
-        showToast('兑换成功，对应积分已经充值到账', 'success')
-        setProfile((prev) => ({ credits: data.totalCredits, avatar_url: prev?.avatar_url }))
+        showToast('兑换成功，对应积分已充值到账。', 'success')
+        setProfile((prev) => ({
+          credits: data.totalCredits ?? prev?.credits ?? 0,
+          avatar_url: prev?.avatar_url,
+        }))
         setCardCode('')
         cardCodeInputRef.current?.focus()
       } else {
-        showToast(data.error || '兑换失败', 'error')
+        showToast(data.error || data.message || '兑换失败。', 'error')
       }
-    } catch (redeemError) {
-      console.error('Redeem error:', redeemError)
-      showToast('网络错误，请稍后重试', 'error')
+    } catch (error) {
+      console.error('Redeem error:', error)
+      showToast('网络异常，请稍后重试。', 'error')
     } finally {
       setIsRedeeming(false)
     }
   }
 
-  const handleCopyWechat = () => {
-    navigator.clipboard.writeText('YH509235')
-    showToast('微信号已复制，去微信添加客服即可', 'success')
+  const handleCopyWechat = async () => {
+    try {
+      await navigator.clipboard.writeText('YH509235')
+      showToast('微信号已复制，去微信添加客服即可。', 'success')
+    } catch (error) {
+      console.error('Copy wechat error:', error)
+      showToast('复制失败，请手动添加微信号 YH509235。', 'error')
+    }
   }
 
   const handleLogout = () => {
@@ -153,7 +166,9 @@ export default function RechargePage() {
             <nav className="hidden items-center gap-4 md:flex">
               <NavLink href="/dashboard">创作中心</NavLink>
               <NavLink href="/records">生成记录</NavLink>
-              <NavLink href="/recharge" active>卡密兑换</NavLink>
+              <NavLink href="/recharge" active>
+                卡密兑换
+              </NavLink>
             </nav>
 
             <button
@@ -170,11 +185,13 @@ export default function RechargePage() {
                 <span>{new Date().toLocaleDateString('zh-CN')}</span>
                 <span className="font-mono text-sm font-bold text-white">{currentTime}</span>
               </div>
+
               <div className="flex items-center gap-1 rounded-lg border border-[#142D24] bg-[#091511]/60 px-2 py-1 sm:gap-1.5 sm:px-3 sm:py-1.5">
                 <span className="h-2 w-2 rounded-full bg-[#10B981]" />
                 <span className="hidden text-xs text-[#10B981] sm:inline">积分</span>
-                <span className="text-sm font-bold text-white">{profile?.credits || 0}</span>
+                <span className="text-sm font-bold text-white">{profile?.credits ?? 0}</span>
               </div>
+
               <div className="relative">
                 <button
                   onClick={() => setShowUserMenu((prev) => !prev)}
@@ -183,7 +200,9 @@ export default function RechargePage() {
                   {profile?.avatar_url ? (
                     <img src={profile.avatar_url} alt="头像" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-sm font-bold text-white">{user?.email ? user.email.substring(0, 2).toUpperCase() : 'HA'}</span>
+                    <span className="text-sm font-bold text-white">
+                      {user?.email ? user.email.substring(0, 2).toUpperCase() : 'HA'}
+                    </span>
                   )}
                 </button>
 
@@ -194,12 +213,22 @@ export default function RechargePage() {
                       <p className="truncate text-sm font-medium text-white">{user?.email || '未登录'}</p>
                     </div>
                     <div className="p-2">
-                      <MenuButton onClick={() => { window.location.href = '/dashboard'; setShowUserMenu(false) }}>创作中心</MenuButton>
-                      <MenuButton onClick={() => { window.location.href = '/records'; setShowUserMenu(false) }}>生成记录</MenuButton>
-                      <MenuButton onClick={() => { window.location.href = '/profile'; setShowUserMenu(false) }}>个人中心</MenuButton>
-                      <MenuButton onClick={() => { setShowChangePassword(true); setShowUserMenu(false) }}>修改密码</MenuButton>
+                      <MenuButton onClick={() => { window.location.href = '/dashboard'; setShowUserMenu(false) }}>
+                        创作中心
+                      </MenuButton>
+                      <MenuButton onClick={() => { window.location.href = '/records'; setShowUserMenu(false) }}>
+                        生成记录
+                      </MenuButton>
+                      <MenuButton onClick={() => { window.location.href = '/profile'; setShowUserMenu(false) }}>
+                        个人中心
+                      </MenuButton>
+                      <MenuButton onClick={() => { setShowChangePassword(true); setShowUserMenu(false) }}>
+                        修改密码
+                      </MenuButton>
                       <div className="my-1 border-t border-[#142D24]" />
-                      <MenuButton danger onClick={() => { handleLogout(); setShowUserMenu(false) }}>退出登录</MenuButton>
+                      <MenuButton danger onClick={() => { handleLogout(); setShowUserMenu(false) }}>
+                        退出登录
+                      </MenuButton>
                     </div>
                   </div>
                 )}
@@ -227,7 +256,7 @@ export default function RechargePage() {
             <div>
               <h2 className="text-center text-xl font-bold text-white">官方卡密兑换中心</h2>
               <p className="mt-1 text-center text-sm text-[#10B981]">
-                当前余额：<span className="font-bold text-[#00E676]">{profile?.credits || 0}</span> 积分
+                当前余额：<span className="font-bold text-[#00E676]">{profile?.credits ?? 0}</span> 积分
               </p>
             </div>
           </div>
@@ -248,7 +277,7 @@ export default function RechargePage() {
                 onChange={(event) => setCardCode(event.target.value.toUpperCase())}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') {
-                    handleRedeemCard()
+                    void handleRedeemCard()
                   }
                 }}
                 placeholder="请输入以 AHT- 开头的官方卡密激活码"
@@ -256,7 +285,7 @@ export default function RechargePage() {
               />
 
               <button
-                onClick={handleRedeemCard}
+                onClick={() => void handleRedeemCard()}
                 disabled={isRedeeming || !cardCode.trim()}
                 className={`w-full rounded-lg border px-4 py-3 text-sm font-bold transition-all ${
                   isRedeeming || !cardCode.trim()
@@ -315,7 +344,7 @@ export default function RechargePage() {
             </div>
 
             <button
-              onClick={handleCopyWechat}
+              onClick={() => void handleCopyWechat()}
               className="w-full rounded-xl bg-gradient-to-r from-green-600 to-green-500 px-4 py-3 text-sm font-bold text-white shadow-lg transition-all hover:from-green-500 hover:to-green-400 hover:shadow-green-500/30 active:scale-95"
             >
               一键复制微信号（YH509235）

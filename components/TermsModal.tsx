@@ -52,8 +52,7 @@ export function TermsModal({ show, onClose }: TermsModalProps) {
 
         <div className="max-h-[calc(80vh-144px)] space-y-6 overflow-y-auto p-6 text-sm text-gray-300">
           <p>
-            本站提供 AI 图像生成与知识图卡创作服务。为了保障平台稳定运行，并保护所有用户的使用体验，
-            请在使用前认真阅读以下规则。
+            本站提供 AI 图像生成与知识图卡创作服务。为了保障平台稳定运行，并保护所有用户的使用体验，请在使用前认真阅读以下规则。
           </p>
 
           <Section

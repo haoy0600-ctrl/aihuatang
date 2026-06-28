@@ -14,10 +14,7 @@ export async function POST(request: NextRequest) {
     const { email } = await request.json()
 
     if (!email) {
-      return NextResponse.json(
-        { success: false, error: '邮箱地址不能为空。' },
-        { status: 400 },
-      )
+      return NextResponse.json({ success: false, error: '邮箱地址不能为空。' }, { status: 400 })
     }
 
     const recentRegisterCount = await getRecentRegisterCount(clientIP)
@@ -38,10 +35,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('[RegisterCheck] POST error:', error)
-    return NextResponse.json(
-      { success: false, error: '系统繁忙，请稍后再试。' },
-      { status: 500 },
-    )
+    return NextResponse.json({ success: false, error: '系统繁忙，请稍后再试。' }, { status: 500 })
   }
 }
 
@@ -62,9 +56,6 @@ export async function PUT(request: NextRequest) {
     })
   } catch (error) {
     console.error('[RegisterCheck] PUT error:', error)
-    return NextResponse.json(
-      { success: false, error: '系统繁忙。' },
-      { status: 500 },
-    )
+    return NextResponse.json({ success: false, error: '系统繁忙。' }, { status: 500 })
   }
 }

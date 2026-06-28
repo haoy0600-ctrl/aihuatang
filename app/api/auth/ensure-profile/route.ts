@@ -27,7 +27,7 @@ async function sendDingTalkNotification(userEmail: string, username?: string) {
 > 注册时间：${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
 > 初始积分：8 积分
 
-请管理员留意账号状态与渠道来源。`,
+请管理员留意账户状态与渠道来源。`,
         },
       }),
     })
@@ -54,10 +54,13 @@ export async function POST(request: NextRequest) {
     const { username } = body
 
     if (!supabaseAdmin) {
-      return NextResponse.json({
-        success: false,
-        error: '系统配置未完成，请稍后重试。',
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: '系统配置未完成，请稍后重试。',
+        },
+        { status: 500 },
+      )
     }
 
     const { data: existingProfile } = await supabaseAdmin
@@ -67,22 +70,23 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (!existingProfile) {
-      const { error: insertError } = await supabaseAdmin
-        .from('profiles')
-        .insert({
-          id: userId,
-          email: userEmail,
-          username: username || null,
-          credits: 8,
-          created_at: new Date().toISOString(),
-        })
+      const { error: insertError } = await supabaseAdmin.from('profiles').insert({
+        id: userId,
+        email: userEmail,
+        username: username || null,
+        credits: 8,
+        created_at: new Date().toISOString(),
+      })
 
       if (insertError) {
         console.error('Failed to create profile:', insertError)
-        return NextResponse.json({
-          success: false,
-          error: '创建用户资料失败。',
-        }, { status: 500 })
+        return NextResponse.json(
+          {
+            success: false,
+            error: '创建用户资料失败。',
+          },
+          { status: 500 },
+        )
       }
 
       await sendDingTalkNotification(userEmail, username)
@@ -100,9 +104,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Ensure profile error:', error)
-    return NextResponse.json({
-      success: false,
-      error: '创建用户资料失败，请稍后重试。',
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: '创建用户资料失败，请稍后重试。',
+      },
+      { status: 500 },
+    )
   }
 }
