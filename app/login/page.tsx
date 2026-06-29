@@ -57,11 +57,12 @@ export default function LoginPage() {
         setEmail(remembered)
         setForgotEmail(remembered)
         setRememberAccount(true)
+      } else {
+        setRememberAccount(false)
       }
 
       const session = getStoredSession()
       if (session) {
-        setEmail(session.email)
         router.push('/dashboard')
       }
     } catch (sessionError) {

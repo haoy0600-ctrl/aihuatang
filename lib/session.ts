@@ -9,6 +9,24 @@ export interface LoginSession {
   expiresAt: number
 }
 
+function getCookieValue(name: string): string {
+  if (typeof document === 'undefined') return ''
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
+  return match ? decodeURIComponent(match[1]) : ''
+}
+
+function setCookieValue(name: string, value: string, maxAgeSeconds: number) {
+  if (typeof document === 'undefined') return
+  const secure = window.location.protocol === 'https:' ? '; secure' : ''
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSeconds}; samesite=lax${secure}`
+}
+
+function clearCookieValue(name: string) {
+  if (typeof document === 'undefined') return
+  const secure = window.location.protocol === 'https:' ? '; secure' : ''
+  document.cookie = `${name}=; path=/; max-age=0; samesite=lax${secure}`
+}
+
 export function getStoredSession(): LoginSession | null {
   if (typeof window === 'undefined') return null
 
@@ -59,15 +77,18 @@ export function authHeaders(contentType = true): HeadersInit {
 
 export function getRememberedAccount(): string {
   if (typeof window === 'undefined') return ''
-  return localStorage.getItem(REMEMBERED_ACCOUNT_KEY) || ''
+  return localStorage.getItem(REMEMBERED_ACCOUNT_KEY) || getCookieValue(REMEMBERED_ACCOUNT_KEY) || ''
 }
 
 export function saveRememberedAccount(account: string) {
   if (typeof window === 'undefined') return
-  localStorage.setItem(REMEMBERED_ACCOUNT_KEY, account)
+  const normalized = account.trim().toLowerCase()
+  localStorage.setItem(REMEMBERED_ACCOUNT_KEY, normalized)
+  setCookieValue(REMEMBERED_ACCOUNT_KEY, normalized, 180 * 24 * 60 * 60)
 }
 
 export function clearRememberedAccount() {
   if (typeof window === 'undefined') return
   localStorage.removeItem(REMEMBERED_ACCOUNT_KEY)
+  clearCookieValue(REMEMBERED_ACCOUNT_KEY)
 }
