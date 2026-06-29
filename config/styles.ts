@@ -7,125 +7,58 @@ export interface HanddrawnStyle {
   layoutDirectives: string
 }
 
+const premium =
+  '8K resolution, Hasselblad H6D medium format rendering, 85mm cinematic lens, crisp edges, premium commercial finish'
+
 export const HANDDRAWN_STYLES: HanddrawnStyle[] = [
-  {
-    id: 1,
-    name: '卡通知识图',
-    category: '高转化热门',
-    purpose: '适合课程总结、知识点拆解、儿童教育图卡。',
-    styleKeywords:
-      'Cute cartoon hand-drawn illustration, vibrant saturated colors, clean vector lines, playful character design, educational infographic, friendly facial expressions, bright classroom feeling, polished composition, premium quality',
-    layoutDirectives:
-      'Use comic-style modular panels, clear numbered sections, bold title banner, speech bubbles, rounded cards, strong hierarchy, keep text readable and tidy.',
-  },
-  {
-    id: 2,
-    name: '黏土立体卡片',
-    category: '高转化热门',
-    purpose: '适合封面图、卖点图、课程主视觉。',
-    styleKeywords:
-      '3D clay illustration, soft inflated shapes, adorable miniature scene, matte material, studio lighting, premium render, warm friendly mood, product-card visual, clean background',
-    layoutDirectives:
-      'Use layered depth, floating objects, strong focal object, large breathing space, premium showroom composition.',
-  },
-  {
-    id: 3,
-    name: '玻璃拟态信息卡',
-    category: '科技产品',
-    purpose: '适合科技、工具、效率类内容。',
-    styleKeywords:
-      'Glassmorphism interface, translucent frosted panels, subtle cyan glow, high-end UI design, futuristic but minimal, clean data-card presentation, elegant lighting, premium digital feel',
-    layoutDirectives:
-      'Use translucent cards, soft glow dividers, layered glass panels, clean spacing, concise typography, avoid clutter.',
-  },
-  {
-    id: 4,
-    name: '便签拼贴笔记',
-    category: '内容种草',
-    purpose: '适合清单、经验分享、复盘总结。',
-    styleKeywords:
-      'Sticky note collage, scrapbook style, hand-crafted notes, tape details, layered paper texture, cozy desk atmosphere, colorful but organized, lifestyle creator aesthetic',
-    layoutDirectives:
-      'Use overlapping memo blocks, pinned note layout, handwritten labels, playful separators, but maintain clean reading order.',
-  },
-  {
-    id: 5,
-    name: '课堂手账插画',
-    category: '教育专用',
-    purpose: '适合学生笔记、教师课件、课程导图。',
-    styleKeywords:
-      'Digital notebook illustration, pastel marker notes, classroom handout style, soft educational colors, clear labels, tidy study layout, friendly and practical',
-    layoutDirectives:
-      'Use notebook sections, highlighted key points, structured bullets, simple doodles, make educational content easy to scan.',
-  },
-  {
-    id: 6,
-    name: '杂志封面排版',
-    category: '品牌内容',
-    purpose: '适合公众号头图、小红书封面、栏目主图。',
-    styleKeywords:
-      'Editorial magazine cover, strong typography, stylish composition, modern visual hierarchy, commercial design, premium publication look, polished color contrast',
-    layoutDirectives:
-      'Use bold heading area, clean image-text split, visual rhythm, elegant margins, cover-like focal layout.',
-  },
-  {
-    id: 7,
-    name: '北欧清爽极简',
-    category: '高级极简',
-    purpose: '适合生活方式、美学、轻知识内容。',
-    styleKeywords:
-      'Nordic minimalist illustration, muted palette, airy white space, elegant soft shadows, calm and refined mood, tasteful editorial look, premium simplicity',
-    layoutDirectives:
-      'Use large margins, light blocks, clean symmetry, understated decoration, emphasize calm and readability.',
-  },
-  {
-    id: 8,
-    name: '科技蓝光看板',
-    category: '高级极简',
-    purpose: '适合产品介绍、数据图表、平台能力展示。',
-    styleKeywords:
-      'High-end tech dashboard, cool blue glow, digital analytics interface, futuristic panels, professional enterprise tone, crisp details, premium product visualization',
-    layoutDirectives:
-      'Use dashboard cards, glowing separators, chart placeholders, modular layout, clear data hierarchy, enterprise-grade polish.',
-  },
-  {
-    id: 9,
-    name: '绘本故事分镜',
-    category: '情绪表达',
-    purpose: '适合故事讲解、案例拆解、互动教学。',
-    styleKeywords:
-      'Picture book storytelling, warm illustrated scenes, expressive characters, soft cinematic light, emotional but clean, children-friendly narrative panels',
-    layoutDirectives:
-      'Use story panels, visual sequence, title ribbon, short dialog bubbles, clear beginning-middle-end composition.',
-  },
-  {
-    id: 10,
-    name: '高密度图文排版',
-    category: '信息承载',
-    purpose: '适合知识总结、课程归纳、长文拆解。',
-    styleKeywords:
-      'High-density infographic, structured information blocks, clear icons, educational layout, readable text zones, efficient content packing, polished creator template',
-    layoutDirectives:
-      'Use dense but tidy grid, numbered modules, strong contrast headings, consistent spacing, keep every block easy to scan.',
-  },
-  {
-    id: 11,
-    name: '治愈柔光插画',
-    category: '情绪表达',
-    purpose: '适合疗愈、情感、成长内容。',
-    styleKeywords:
-      'Soft healing illustration, warm ambient light, cozy atmosphere, dreamy palette, emotional storytelling, delicate character expressions, premium lifestyle visual',
-    layoutDirectives:
-      'Use soft rounded areas, glow accents, gentle contrast, warm visual center, breathing room around key copy.',
-  },
-  {
-    id: 12,
-    name: '黑金高级商业',
-    category: '品牌内容',
-    purpose: '适合高客单产品、会员权益、商业海报。',
-    styleKeywords:
-      'Luxury black and gold commercial design, premium contrast, rich texture, confident visual language, high-end product poster, elegant dramatic lighting',
-    layoutDirectives:
-      'Use bold focal layout, black base, gold accent lines, strong negative space, premium showcase composition.',
-  },
+  { id: 1, name: '卡通知识图', category: '教育热门', purpose: '课程总结、知识点拆解、儿童教育图卡。', styleKeywords: `Cute cartoon hand-drawn illustration, vibrant saturated colors, clean vector lines, playful character design, educational infographic, friendly facial expressions, bright classroom feeling, ${premium}`, layoutDirectives: 'Use comic-style modular panels, numbered sections, bold title banner, speech bubbles and strong readability.' },
+  { id: 2, name: '黏土立体卡片', category: '封面转化', purpose: '封面图、卖点图、课程主视觉。', styleKeywords: `3D clay illustration, soft inflated shapes, adorable miniature scene, matte material, studio lighting, premium render, ${premium}`, layoutDirectives: 'Use large focal object, floating props, layered depth and spacious composition.' },
+  { id: 3, name: '玻璃拟态信息卡', category: '科技产品', purpose: '科技、工具、效率类内容。', styleKeywords: `Glassmorphism interface, translucent frosted panels, subtle cyan glow, futuristic UI, clean data-card presentation, elegant lighting, ${premium}`, layoutDirectives: 'Use translucent cards, glow dividers, clean spacing and concise typography.' },
+  { id: 4, name: '便签拼贴笔记', category: '内容种草', purpose: '清单、经验分享、复盘总结。', styleKeywords: `Sticky note collage, scrapbook aesthetic, hand-crafted notes, tape details, layered paper texture, cozy desk atmosphere, ${premium}`, layoutDirectives: 'Use overlapping memo blocks, pinned note layout and playful separators with clear reading order.' },
+  { id: 5, name: '课堂手账插画', category: '教育专用', purpose: '学生笔记、教师课件、课程导图。', styleKeywords: `Digital notebook illustration, pastel marker notes, classroom handout style, clear labels, tidy study layout, friendly educational palette, ${premium}`, layoutDirectives: 'Use notebook sections, highlighted key points, structured bullets and simple doodles.' },
+  { id: 6, name: '杂志封面排版', category: '品牌内容', purpose: '公众号头图、小红书封面、栏目主图。', styleKeywords: `Editorial magazine cover, strong typography, stylish composition, modern visual hierarchy, commercial design, polished color contrast, ${premium}`, layoutDirectives: 'Use bold heading area, elegant margins, image-text rhythm and cover-like focal layout.' },
+  { id: 7, name: '北欧清爽极简', category: '高级极简', purpose: '生活方式、美学、轻知识内容。', styleKeywords: `Nordic minimalist illustration, muted palette, airy whitespace, elegant soft shadows, tasteful editorial look, refined simplicity, ${premium}`, layoutDirectives: 'Use large margins, light blocks, symmetry and understated decoration.' },
+  { id: 8, name: '科技蓝光看板', category: '高级极简', purpose: '产品介绍、数据图表、平台能力展示。', styleKeywords: `High-end tech dashboard, cool blue glow, analytics interface, futuristic panels, enterprise tone, crisp details, ${premium}`, layoutDirectives: 'Use dashboard cards, chart placeholders and modular hierarchy.' },
+  { id: 9, name: '绘本故事分镜', category: '情绪表达', purpose: '故事讲解、案例拆解、互动教学。', styleKeywords: `Picture book storytelling, warm illustrated scenes, expressive characters, soft cinematic light, narrative panels, ${premium}`, layoutDirectives: 'Use story panels, visual sequence, title ribbon and concise dialog bubbles.' },
+  { id: 10, name: '高密度图文排版', category: '信息承载', purpose: '知识总结、课程归纳、长文拆解。', styleKeywords: `High-density infographic, structured information blocks, clear icons, educational layout, efficient content packing, polished creator template, ${premium}`, layoutDirectives: 'Use dense but tidy grid, numbered modules and strong contrast headings.' },
+  { id: 11, name: '治愈柔光插画', category: '情绪表达', purpose: '疗愈、情感、成长内容。', styleKeywords: `Soft healing illustration, warm ambient light, cozy atmosphere, dreamy palette, emotional storytelling, delicate expressions, ${premium}`, layoutDirectives: 'Use rounded zones, glow accents, gentle contrast and breathing room.' },
+  { id: 12, name: '黑金高级商业', category: '品牌内容', purpose: '高客单产品、会员权益、商业海报。', styleKeywords: `Luxury black and gold commercial design, rich texture, confident visual language, dramatic lighting, premium product poster, ${premium}`, layoutDirectives: 'Use black base, gold accents, strong negative space and premium showcase composition.' },
+  { id: 13, name: '奶油法式海报', category: '品牌内容', purpose: '生活方式品牌、课程海报、温柔美学封面。', styleKeywords: `Creamy French editorial poster, soft beige and sage palette, delicate serif typography, elegant collage, premium lifestyle art direction, ${premium}`, layoutDirectives: 'Use soft blocks, graceful margins and refined decorative accents.' },
+  { id: 14, name: '赛博霓虹概念', category: '科技产品', purpose: 'AI 工具、潮流视觉、年轻科技内容。', styleKeywords: `Cyberpunk neon visual, magenta cyan glow, holographic reflections, futuristic scene, premium sci-fi UI treatment, ${premium}`, layoutDirectives: 'Use dark background, luminous accents, perspective depth and energetic hierarchy.' },
+  { id: 15, name: '国潮海报插画', category: '情绪表达', purpose: '传统文化、节气海报、节日主题。', styleKeywords: `Modern guochao illustration, rich Chinese color palette, layered decorative motifs, stylish poster composition, premium cultural visual, ${premium}`, layoutDirectives: 'Use ornamental frame, layered patterns, bold title and strong thematic centerpiece.' },
+  { id: 16, name: '手绘思维导图', category: '教育专用', purpose: '知识框架、课程地图、逻辑整理。', styleKeywords: `Hand-drawn mind map, neat educational sketch lines, colorful branches, tidy labels, smart classroom visualization, ${premium}`, layoutDirectives: 'Use central node, radial branches, consistent labels and compact spacing.' },
+  { id: 17, name: '小红书种草卡', category: '内容种草', purpose: '种草推荐、避坑指南、经验总结。', styleKeywords: `Xiaohongshu-inspired recommendation card, clear lifestyle blocks, creator note style, polished commercial tone, ${premium}`, layoutDirectives: 'Use catchy title, highlight tags, before-after blocks and punchy takeaways.' },
+  { id: 18, name: '商业路演封面', category: '科技产品', purpose: '融资、方案汇报、ToB 演示封面。', styleKeywords: `Business pitch deck cover, restrained premium corporate style, strong typography, smart visual metaphor, ${premium}`, layoutDirectives: 'Use bold headline, calm grid and one dominant visual centerpiece.' },
+  { id: 19, name: '3D 图标功能卡', category: '科技产品', purpose: '功能介绍、服务卖点、SaaS 能力展示。', styleKeywords: `3D icon card, glossy miniature objects, enterprise SaaS aesthetic, premium UI marketing render, ${premium}`, layoutDirectives: 'Use repeated feature cards, strong icon focus and short supporting copy.' },
+  { id: 20, name: '极简白底海报', category: '高级极简', purpose: '高级感宣传、课程预告、品牌图文。', styleKeywords: `Ultra minimal white poster, restrained typography, subtle shadow, luxury whitespace, editorial polish, ${premium}`, layoutDirectives: 'Use huge whitespace, clean alignment and one soft focal object.' },
+  { id: 21, name: '漫画教程分步图', category: '教育专用', purpose: '步骤教学、操作说明、教程卡片。', styleKeywords: `Manga tutorial panel, expressive linework, numbered process illustrations, clear action arrows, educational comic layout, ${premium}`, layoutDirectives: 'Use step-by-step panels, process arrows and concise labels.' },
+  { id: 22, name: '暖色治愈书摘', category: '情绪表达', purpose: '书摘金句、情绪共鸣、成长内容。', styleKeywords: `Warm literary quote poster, soft amber light, cozy reading scene, elegant composition, emotional premium mood, ${premium}`, layoutDirectives: 'Use quote focal area, subtle supporting illustration and clean hierarchy.' },
+  { id: 23, name: '冷淡风产品清单', category: '高级极简', purpose: '产品清单、工具推荐、信息整理。', styleKeywords: `Cool-toned minimalist list card, monochrome accents, structured layout, sophisticated product curation feel, ${premium}`, layoutDirectives: 'Use list hierarchy, icon bullets and disciplined spacing.' },
+  { id: 24, name: '3D 场景课程封面', category: '封面转化', purpose: '课程主图、训练营封面、活动视觉。', styleKeywords: `3D educational scene, premium stage lighting, toy-like objects, vivid focal composition, ${premium}`, layoutDirectives: 'Use hero scene center, big title, supporting props and sales-ready hierarchy.' },
+  { id: 25, name: '极简知识长图', category: '信息承载', purpose: '长图总结、公众号长图、图文科普。', styleKeywords: `Minimal knowledge poster, tall infographic, calm palette, readable section blocks, premium editorial cleanliness, ${premium}`, layoutDirectives: 'Use vertical rhythm, section dividers and clear scan path.' },
+  { id: 26, name: '儿童启蒙拼图卡', category: '教育专用', purpose: '启蒙认知、单词卡、儿童练习。', styleKeywords: `Kids puzzle learning card, colorful educational shapes, playful icons, cheerful character cues, ${premium}`, layoutDirectives: 'Use large labeled blocks, bright separators and friendly learning rhythm.' },
+  { id: 27, name: '莫兰迪课程卡', category: '高级极简', purpose: '高级课程海报、温柔知识卡。', styleKeywords: `Morandi palette educational card, dusty pastel tones, elegant layout, calm premium atmosphere, ${premium}`, layoutDirectives: 'Use soft muted modules, low-saturation contrast and graceful spacing.' },
+  { id: 28, name: '电影感故事海报', category: '情绪表达', purpose: '案例故事、人物经历、情绪叙事。', styleKeywords: `Cinematic story poster, moody lighting, dramatic framing, polished narrative composition, ${premium}`, layoutDirectives: 'Use strong visual center, title lockup and emotional scene depth.' },
+  { id: 29, name: '轻拟物操作面板', category: '科技产品', purpose: '产品功能演示、App 模拟图、UI 介绍。', styleKeywords: `Soft skeuomorphic panel, tactile buttons, refined app mockup, premium interaction visual, ${premium}`, layoutDirectives: 'Use tactile modules, card stacking and polished interface hierarchy.' },
+  { id: 30, name: '课程重点荧光笔记', category: '教育专用', purpose: '重点归纳、应试总结、课堂笔记。', styleKeywords: `Highlighted study notes, fluorescent marker effects, tidy educational page, practical revision aid, ${premium}`, layoutDirectives: 'Use highlight strokes, exam-ready bullets and strong title labeling.' },
+  { id: 31, name: '商务极简数据卡', category: '科技产品', purpose: '企业数据、报告摘要、指标看板。', styleKeywords: `Minimal business metrics card, muted enterprise palette, elegant charts, structured KPI dashboard, ${premium}`, layoutDirectives: 'Use KPI cards, clean labels and disciplined information tiers.' },
+  { id: 32, name: '梦幻渐变海报', category: '情绪表达', purpose: '女性成长、情绪氛围、轻品牌视觉。', styleKeywords: `Dreamy gradient poster, luminous color transitions, soft glow, premium lifestyle atmosphere, ${premium}`, layoutDirectives: 'Use blended gradients, centered composition and lyrical typography.' },
+  { id: 33, name: '潮流贴纸拼版', category: '内容种草', purpose: '社媒封面、年轻化推荐、趣味内容。', styleKeywords: `Trendy sticker collage, playful youth visual, layered badges, bright highlights, creator social aesthetic, ${premium}`, layoutDirectives: 'Use sticker clusters, energetic hierarchy and tidy content boxes.' },
+  { id: 34, name: '高端课程招募页', category: '封面转化', purpose: '训练营招募、直播预告、社群招生。', styleKeywords: `Premium course campaign visual, conversion-focused layout, credible educational branding, elegant CTA composition, ${premium}`, layoutDirectives: 'Use trust badges, bold headline, offer blocks and premium CTA focus.' },
+  { id: 35, name: '品牌故事时间轴', category: '品牌内容', purpose: '品牌历程、成长故事、项目进展。', styleKeywords: `Brand timeline infographic, premium narrative layout, elegant milestones, refined visual pacing, ${premium}`, layoutDirectives: 'Use clear chronology, milestone cards and directional connectors.' },
+  { id: 36, name: '漫画人物口播卡', category: '教育专用', purpose: '英语口语、人物对话、情景表达。', styleKeywords: `Comic dialogue learning card, expressive character bubbles, classroom scene, educational clarity, ${premium}`, layoutDirectives: 'Use speech bubbles, character poses and dialog-first layout.' },
+  { id: 37, name: '高级电商卖点卡', category: '封面转化', purpose: '卖点提炼、套餐介绍、功能对比。', styleKeywords: `Premium ecommerce benefit card, polished object lighting, conversion-ready graphic design, ${premium}`, layoutDirectives: 'Use feature highlights, comparative modules and strong visual proof points.' },
+  { id: 38, name: '治愈日记手札', category: '情绪表达', purpose: '日记体表达、疗愈内容、轻生活感。', styleKeywords: `Healing diary journal aesthetic, soft handwritten feel, cozy room scene, calm emotional layout, ${premium}`, layoutDirectives: 'Use journal pages, subtle tape accents and warm handwritten zones.' },
+  { id: 39, name: '理科实验图卡', category: '教育专用', purpose: '实验步骤、科学现象、公式讲解。', styleKeywords: `Science experiment educational card, neat lab illustration, polished infographic clarity, ${premium}`, layoutDirectives: 'Use labeled diagrams, process sequence and crisp educational modules.' },
+  { id: 40, name: '品牌会员权益卡', category: '品牌内容', purpose: '会员制度、充值权益、服务说明。', styleKeywords: `Premium membership benefits card, polished loyalty design, elegant dark UI treatment, ${premium}`, layoutDirectives: 'Use tier cards, luxury spacing and strong benefit emphasis.' },
+  { id: 41, name: '清新植物系海报', category: '高级极简', purpose: '自然疗愈、生活方式、书摘氛围。', styleKeywords: `Botanical poster, fresh green palette, soft natural light, premium calm editorial mood, ${premium}`, layoutDirectives: 'Use foliage framing, centered content and light airy whitespace.' },
+  { id: 42, name: '复古课堂拼贴', category: '教育专用', purpose: '复古学习感、英语练习、知识回顾。', styleKeywords: `Retro classroom collage, aged paper textures, educational nostalgia, warm school aesthetic, ${premium}`, layoutDirectives: 'Use vintage paper layers, stamps, labels and nostalgic composition.' },
+  { id: 43, name: '高级 UI 展示版', category: '科技产品', purpose: 'APP 界面、网站模块、产品展示。', styleKeywords: `Premium UI showcase, layered device mockups, polished gradients, crisp interface presentation, ${premium}`, layoutDirectives: 'Use device frames, depth layering and clean feature callouts.' },
+  { id: 44, name: 'IP 人物故事卡', category: '内容种草', purpose: '人物设定、IP 介绍、角色成长。', styleKeywords: `Character IP profile card, illustrated persona sheet, expressive details, story-rich clean composition, ${premium}`, layoutDirectives: 'Use portrait focal point, trait modules and role backstory blocks.' },
+  { id: 45, name: '企业培训图谱', category: '信息承载', purpose: '培训体系、岗位知识图谱、流程梳理。', styleKeywords: `Corporate training infographic, structured enterprise visual language, clean process architecture, ${premium}`, layoutDirectives: 'Use process map, department modules and enterprise clarity.' },
+  { id: 46, name: '流体渐变青春风', category: '内容种草', purpose: '年轻化视觉、轻娱乐、话题封面。', styleKeywords: `Fluid gradients, vibrant colors, abstract shapes, youthful energy, social-first poster style, ${premium}`, layoutDirectives: 'Use bold gradient masses, abstract accents and highly visible headline area.' },
+  { id: 47, name: '知识树结构图', category: '信息承载', purpose: '知识体系、章节结构、课程地图。', styleKeywords: `Knowledge tree diagram, educational branching structure, refined infographic icons, premium clarity, ${premium}`, layoutDirectives: 'Use tree hierarchy, roots-branches metaphor and clean node labeling.' },
+  { id: 48, name: '高级黑白排版', category: '高级极简', purpose: '高端表达、观点输出、哲思图文。', styleKeywords: `Monochrome editorial layout, black and white contrast, premium art direction, intellectual magazine feel, ${premium}`, layoutDirectives: 'Use typography contrast, minimal imagery and deliberate whitespace.' },
+  { id: 49, name: '节日活动主视觉', category: '封面转化', purpose: '节日促销、活动预告、海报主图。', styleKeywords: `Festival key visual, celebratory premium poster, vivid festive lighting, decorative motifs, ${premium}`, layoutDirectives: 'Use bold center composition, festive frame and offer-first hierarchy.' },
+  { id: 50, name: '高端知识产品详情', category: '品牌内容', purpose: '知识产品介绍、课程详情、服务包装。', styleKeywords: `Premium knowledge product detail page, elegant educational commerce design, trusted expert tone, ${premium}`, layoutDirectives: 'Use layered product modules, benefit proofs, premium testimonials and clear CTA structure.' },
 ]

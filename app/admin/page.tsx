@@ -17,6 +17,8 @@ interface User {
   username?: string | null
   generationCount?: number
   totalImages?: number
+  lastActiveAt?: string | null
+  isActiveRecently?: boolean
 }
 
 interface QueueItem {
@@ -181,7 +183,7 @@ export default function AdminPage() {
   }
 
   const handleDeleteUser = async (userId: string, email: string) => {
-    if (!window.confirm(`确定要删除用户“${email}”吗？此操作不可恢复。`)) {
+    if (!window.confirm(`确定要删除用户 “${email}” 吗？此操作不可恢复。`)) {
       return
     }
 
@@ -277,11 +279,11 @@ export default function AdminPage() {
         {activeTab === 'dashboard' && stats && (
           <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <StatCard title="总用户" value={String(stats.totalUsers)} />
-              <StatCard title="总生成次数" value={String(stats.totalGenerations)} />
-              <StatCard title="累计消耗积分" value={String(stats.totalConsumed)} />
-              <StatCard title="成功率" value={stats.successRate} />
-              <StatCard title="活跃用户" value={String(stats.activeUsers)} />
+              <StatCard title="总用户" value={String(stats.totalUsers)} hint="已注册账号总数" />
+              <StatCard title="总生成次数" value={String(stats.totalGenerations)} hint="历史累计提交任务" />
+              <StatCard title="累计消耗积分" value={String(stats.totalConsumed)} hint="按 1K/2K/4K 规则统计" />
+              <StatCard title="成功率" value={stats.successRate} hint="成功任务 / 全部任务" />
+              <StatCard title="7天活跃用户" value={String(stats.activeUsers)} hint="最近 7 天内有生成记录" />
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
@@ -328,7 +330,7 @@ export default function AdminPage() {
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold text-white">用户管理</h2>
-                <p className="text-sm text-[#8AA0C2]">查看、封禁、删号和调整积分。</p>
+                <p className="text-sm text-[#8AA0C2]">查看账号、最近活跃时间、积分与任务情况。</p>
               </div>
             </div>
 
@@ -336,9 +338,10 @@ export default function AdminPage() {
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-[#202B3A] text-[#8AA0C2]">
-                    <th className="px-3 py-3">用户</th>
+                    <th className="px-3 py-3">账号</th>
                     <th className="px-3 py-3">积分</th>
                     <th className="px-3 py-3">生成次数</th>
+                    <th className="px-3 py-3">最近活跃</th>
                     <th className="px-3 py-3">状态</th>
                     <th className="px-3 py-3">操作</th>
                   </tr>
@@ -353,9 +356,34 @@ export default function AdminPage() {
                       <td className="px-3 py-3">{item.credits}</td>
                       <td className="px-3 py-3">{item.generationCount || 0}</td>
                       <td className="px-3 py-3">
-                        <span className={`rounded-full px-2 py-1 text-xs ${item.banned ? 'bg-red-500/15 text-red-300' : 'bg-emerald-500/15 text-emerald-300'}`}>
-                          {item.banned ? '已封禁' : '正常'}
-                        </span>
+                        {item.lastActiveAt ? (
+                          <div>
+                            <div className="text-white">{new Date(item.lastActiveAt).toLocaleString('zh-CN')}</div>
+                            <div className={`mt-1 text-xs ${item.isActiveRecently ? 'text-emerald-300' : 'text-[#8AA0C2]'}`}>
+                              {item.isActiveRecently ? '近 7 天活跃' : '近 7 天未活跃'}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-[#8AA0C2]">暂无生成记录</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex flex-col gap-2">
+                          <span
+                            className={`inline-flex w-fit rounded-full px-2 py-1 text-xs ${
+                              item.banned ? 'bg-red-500/15 text-red-300' : 'bg-emerald-500/15 text-emerald-300'
+                            }`}
+                          >
+                            {item.banned ? '已封禁' : '正常'}
+                          </span>
+                          <span
+                            className={`inline-flex w-fit rounded-full px-2 py-1 text-xs ${
+                              item.isActiveRecently ? 'bg-cyan-500/15 text-cyan-300' : 'bg-slate-500/15 text-slate-300'
+                            }`}
+                          >
+                            {item.isActiveRecently ? '活跃用户' : '普通用户'}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex flex-wrap gap-2">
@@ -449,11 +477,12 @@ export default function AdminPage() {
   )
 }
 
-function StatCard({ title, value }: { title: string; value: string }) {
+function StatCard({ title, value, hint }: { title: string; value: string; hint?: string }) {
   return (
     <div className="rounded-2xl border border-[#202B3A] bg-[#101522] p-5">
       <p className="text-sm text-[#8AA0C2]">{title}</p>
       <p className="mt-3 text-3xl font-black text-white">{value}</p>
+      {hint ? <p className="mt-2 text-xs text-[#64748B]">{hint}</p> : null}
     </div>
   )
 }

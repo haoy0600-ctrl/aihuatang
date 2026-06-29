@@ -343,10 +343,81 @@ async function rollbackCredits(profileId: string, amount: number) {
 async function updateGenerationRecord(recordId: string, payload: Record<string, any>) {
   if (!supabaseAdmin || !recordId) return
 
-  const { error } = await supabaseAdmin.from('generation_records').update(payload).eq('id', recordId)
-  if (error) {
-    console.error('[Generate] Update record failed:', { recordId, error })
+  const payloadVariants = [
+    payload,
+    {
+      status: payload.status,
+      image_url: payload.image_url,
+      image_urls: payload.image_urls,
+      image_count: payload.image_count,
+      prompt: payload.prompt,
+      style_name: payload.style_name,
+      style_prompt: payload.style_prompt,
+      resolution: payload.resolution,
+      model: payload.model,
+    },
+    {
+      status: payload.status,
+      image_url: payload.image_url,
+      image_urls: payload.image_urls,
+      image_count: payload.image_count,
+      prompt: payload.prompt,
+    },
+    {
+      status: payload.status,
+    },
+  ]
+
+  for (const variant of payloadVariants) {
+    const { error } = await supabaseAdmin.from('generation_records').update(variant).eq('id', recordId)
+    if (!error) {
+      return
+    }
+    console.error('[Generate] Update record failed with variant:', { recordId, error, variantKeys: Object.keys(variant) })
   }
+}
+
+async function insertGenerationRecord(payload: Record<string, any>) {
+  if (!supabaseAdmin) {
+    return { data: null, error: new Error('Supabase admin not configured') }
+  }
+
+  const payloadVariants = [
+    payload,
+    {
+      user_id: payload.user_id,
+      input_content: payload.input_content,
+      prompt: payload.prompt,
+      style_name: payload.style_name,
+      style_prompt: payload.style_prompt,
+      aspect_ratio: payload.aspect_ratio,
+      model: payload.model,
+      image_count: payload.image_count,
+      image_urls: payload.image_urls,
+      resolution: payload.resolution,
+      status: payload.status,
+    },
+    {
+      user_id: payload.user_id,
+      prompt: payload.prompt,
+      style_name: payload.style_name,
+      image_count: payload.image_count,
+      status: payload.status,
+    },
+  ]
+
+  let lastError: any = null
+
+  for (const variant of payloadVariants) {
+    const result = await supabaseAdmin.from('generation_records').insert(variant).select('id').single()
+    if (!result.error && result.data?.id) {
+      return result
+    }
+    lastError = result.error
+    console.error('[Generate] Insert record variant failed:', { error: result.error, variantKeys: Object.keys(variant) })
+  }
+
+  return { data: null, error: lastError || new Error('Insert failed') }
 }
 
 export async function POST(request: NextRequest) {
@@ -478,11 +549,7 @@ export async function POST(request: NextRequest) {
       status: 'processing',
     }
 
-    const { data: insertedRecord, error: insertError } = await supabaseAdmin
-      .from('generation_records')
-      .insert(recordPayload)
-      .select('id')
-      .single()
+    const { data: insertedRecord, error: insertError } = await insertGenerationRecord(recordPayload)
 
     if (insertError || !insertedRecord?.id) {
       console.error('[Generate] Insert record failed:', insertError)
