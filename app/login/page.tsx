@@ -320,10 +320,14 @@ function LoginPageInner() {
       })
       const loginData = await loginResponse.json()
 
-      if (loginData.success && loginData.user && loginData.session?.accessToken) {
-        saveSession(loginData.user.id, loginData.user.email || email, loginData.session)
+      if (!loginData.success || !loginData.user || !loginData.session?.accessToken) {
+        clearStoredSession()
+        setError(loginData.error || '注册成功，但自动登录失败，请返回登录页用新密码登录。')
+        setIsSubmitting(false)
+        return
       }
 
+      saveSession(loginData.user.id, loginData.user.email || email, loginData.session)
       router.push('/dashboard')
     } catch (registerError) {
       console.error('Register error:', registerError)

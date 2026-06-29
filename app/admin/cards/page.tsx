@@ -18,6 +18,13 @@ interface Card {
   used_at?: string
 }
 
+type CardSummary = {
+  credits: number
+  total: number
+  used: number
+  unused: number
+}
+
 export default function CardsAdminPage() {
   const router = useRouter()
   const [user, setUser] = useState<{ email?: string } | null>(null)
@@ -32,6 +39,7 @@ export default function CardsAdminPage() {
   const [creditFilter, setCreditFilter] = useState<number | 'all'>('all')
   const [keyword, setKeyword] = useState('')
   const [showTermsModal, setShowTermsModal] = useState(false)
+  const [expandedCreditGroups, setExpandedCreditGroups] = useState<number[]>([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,6 +75,61 @@ export default function CardsAdminPage() {
     void fetchData()
   }, [router])
 
+  const creditGroups = useMemo<CardSummary[]>(() => {
+    const groups = new Map<number, Card[]>()
+
+    cards.forEach((card) => {
+      const current = groups.get(card.credits) || []
+      current.push(card)
+      groups.set(card.credits, current)
+    })
+
+    return Array.from(groups.entries())
+      .sort((a, b) => b[0] - a[0])
+      .map(([credits, group]) => ({
+        credits,
+        total: group.length,
+        used: group.filter((card) => card.is_used).length,
+        unused: group.filter((card) => !card.is_used).length,
+      }))
+  }, [cards])
+
+  useEffect(() => {
+    setExpandedCreditGroups((prev) => {
+      if (prev.length > 0) return prev
+      return creditGroups.slice(0, 2).map((item) => item.credits)
+    })
+  }, [creditGroups])
+
+  const filteredCards = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLowerCase()
+
+    return cards.filter((card) => {
+      if (filterStatus === 'unused' && card.is_used) return false
+      if (filterStatus === 'used' && !card.is_used) return false
+      if (creditFilter !== 'all' && card.credits !== creditFilter) return false
+
+      if (!normalizedKeyword) return true
+
+      const haystack = [card.code, card.used_email, card.used_by, String(card.credits)]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+
+      return haystack.includes(normalizedKeyword)
+    })
+  }, [cards, creditFilter, filterStatus, keyword])
+
+  const groupedFilteredCards = useMemo(() => {
+    const groups = new Map<number, Card[]>()
+    filteredCards.forEach((card) => {
+      const current = groups.get(card.credits) || []
+      current.push(card)
+      groups.set(card.credits, current)
+    })
+    return Array.from(groups.entries()).sort((a, b) => b[0] - a[0])
+  }, [filteredCards])
+
   const handleGenerateCards = async () => {
     if (cardCount <= 0 || cardCount > 100) {
       alert('生成数量必须在 1 到 100 之间。')
@@ -95,6 +158,7 @@ export default function CardsAdminPage() {
         setGeneratedCards(data.cards || [])
         setShowResult(true)
         setCards((prev) => [...(data.cards || []), ...prev])
+        setExpandedCreditGroups((prev) => Array.from(new Set([cardCredits, ...prev])))
       } else {
         alert(data.error || '生成卡密失败。')
       }
@@ -133,43 +197,11 @@ export default function CardsAdminPage() {
     alert(`${credits} 积分卡已全部复制。`)
   }
 
-  const filteredCards = useMemo(() => {
-    const normalizedKeyword = keyword.trim().toLowerCase()
-
-    return cards.filter((card) => {
-      if (filterStatus === 'unused' && card.is_used) return false
-      if (filterStatus === 'used' && !card.is_used) return false
-      if (creditFilter !== 'all' && card.credits !== creditFilter) return false
-
-      if (!normalizedKeyword) return true
-
-      const haystack = [card.code, card.used_email, card.used_by, String(card.credits)]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-
-      return haystack.includes(normalizedKeyword)
-    })
-  }, [cards, creditFilter, filterStatus, keyword])
-
-  const creditGroups = useMemo(() => {
-    const groups = new Map<number, Card[]>()
-
-    cards.forEach((card) => {
-      const current = groups.get(card.credits) || []
-      current.push(card)
-      groups.set(card.credits, current)
-    })
-
-    return Array.from(groups.entries())
-      .sort((a, b) => b[0] - a[0])
-      .map(([credits, group]) => ({
-        credits,
-        total: group.length,
-        used: group.filter((card) => card.is_used).length,
-        unused: group.filter((card) => !card.is_used).length,
-      }))
-  }, [cards])
+  const toggleCreditGroup = (credits: number) => {
+    setExpandedCreditGroups((prev) =>
+      prev.includes(credits) ? prev.filter((item) => item !== credits) : [...prev, credits],
+    )
+  }
 
   if (loading) {
     return (
@@ -248,7 +280,7 @@ export default function CardsAdminPage() {
           <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-lg font-bold text-[#10B981]">卡密列表</h2>
-              <p className="mt-1 text-sm text-gray-400">统一列表查看，不用再翻不同面额分组才能找到对应卡密。</p>
+              <p className="mt-1 text-sm text-gray-400">支持按面额、状态、关键字快速筛选，并可折叠查看每个面额分组。</p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:flex">
@@ -289,7 +321,7 @@ export default function CardsAdminPage() {
             </div>
           </div>
 
-          <div className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             {creditGroups.map((group) => (
               <div key={group.credits} className="rounded-xl border border-[#1E293B] bg-[#111827] p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -315,55 +347,84 @@ export default function CardsAdminPage() {
           {filteredCards.length === 0 ? (
             <div className="py-8 text-center text-gray-500">暂无符合条件的卡密记录</div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-[#1E293B]">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[#1E293B] bg-[#111827] text-left">
-                    <th className="px-3 py-3 font-medium text-gray-400">卡密</th>
-                    <th className="px-3 py-3 font-medium text-gray-400">面额</th>
-                    <th className="px-3 py-3 font-medium text-gray-400">状态</th>
-                    <th className="px-3 py-3 font-medium text-gray-400">创建时间</th>
-                    <th className="px-3 py-3 font-medium text-gray-400">使用信息</th>
-                    <th className="px-3 py-3 font-medium text-gray-400">操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCards.map((card) => (
-                    <tr key={card.id} className="border-b border-[#1E293B]/50 transition-colors hover:bg-[#1E293B]/30">
-                      <td className="px-3 py-3 font-mono text-[#10B981]">{card.code}</td>
-                      <td className="px-3 py-3 text-white">{card.credits} 积分</td>
-                      <td className="px-3 py-3">
-                        <span
-                          className={`rounded px-2 py-0.5 text-xs font-medium ${
-                            card.is_used ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
-                          }`}
-                        >
-                          {card.is_used ? '已使用' : '未使用'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-gray-400">{new Date(card.created_at).toLocaleString('zh-CN')}</td>
-                      <td className="px-3 py-3 text-xs text-gray-400">
-                        {card.used_email || card.used_by ? (
-                          <div className="space-y-1">
-                            {card.used_email && <div>{card.used_email}</div>}
-                            {card.used_at && <div>{new Date(card.used_at).toLocaleString('zh-CN')}</div>}
-                          </div>
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                      <td className="px-3 py-3">
-                        <button
-                          onClick={() => void handleCopySingleCard(card.code)}
-                          className="rounded bg-[#10B981]/20 px-2 py-1 text-xs text-[#10B981] transition-colors hover:bg-[#10B981]/30"
-                        >
-                          复制
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-4">
+              {groupedFilteredCards.map(([credits, groupCards]) => {
+                const summary = creditGroups.find((item) => item.credits === credits)
+                const expanded = expandedCreditGroups.includes(credits)
+
+                return (
+                  <section key={credits} className="overflow-hidden rounded-xl border border-[#1E293B] bg-[#111827]">
+                    <button
+                      onClick={() => toggleCreditGroup(credits)}
+                      className="flex w-full items-center justify-between gap-4 border-b border-[#1E293B] px-4 py-4 text-left"
+                    >
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">{credits} 积分卡</h3>
+                        <p className="mt-1 text-sm text-gray-400">
+                          共 {summary?.total || groupCards.length} 张 · 未使用 {summary?.unused || 0} · 已使用 {summary?.used || 0}
+                        </p>
+                      </div>
+                      <span className="text-sm text-[#10B981]">{expanded ? '收起' : '展开'}</span>
+                    </button>
+
+                    {expanded && (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-[#1E293B] bg-[#0F172A] text-left">
+                              <th className="px-3 py-3 font-medium text-gray-400">卡密</th>
+                              <th className="px-3 py-3 font-medium text-gray-400">状态</th>
+                              <th className="px-3 py-3 font-medium text-gray-400">创建时间</th>
+                              <th className="px-3 py-3 font-medium text-gray-400">使用信息</th>
+                              <th className="px-3 py-3 font-medium text-gray-400">操作</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {groupCards.map((card) => (
+                              <tr
+                                key={card.id}
+                                className="border-b border-[#1E293B]/50 transition-colors hover:bg-[#1E293B]/30"
+                              >
+                                <td className="px-3 py-3 font-mono text-[#10B981]">{card.code}</td>
+                                <td className="px-3 py-3">
+                                  <span
+                                    className={`rounded px-2 py-0.5 text-xs font-medium ${
+                                      card.is_used ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
+                                    }`}
+                                  >
+                                    {card.is_used ? '已使用' : '未使用'}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-3 text-gray-400">
+                                  {new Date(card.created_at).toLocaleString('zh-CN')}
+                                </td>
+                                <td className="px-3 py-3 text-xs text-gray-400">
+                                  {card.used_email || card.used_by ? (
+                                    <div className="space-y-1">
+                                      {card.used_email && <div>{card.used_email}</div>}
+                                      {card.used_at && <div>{new Date(card.used_at).toLocaleString('zh-CN')}</div>}
+                                    </div>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </td>
+                                <td className="px-3 py-3">
+                                  <button
+                                    onClick={() => void handleCopySingleCard(card.code)}
+                                    className="rounded bg-[#10B981]/20 px-2 py-1 text-xs text-[#10B981] transition-colors hover:bg-[#10B981]/30"
+                                  >
+                                    复制
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </section>
+                )
+              })}
             </div>
           )}
         </section>

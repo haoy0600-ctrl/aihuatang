@@ -183,7 +183,7 @@ export default function AdminPage() {
   }
 
   const handleDeleteUser = async (userId: string, email: string) => {
-    if (!window.confirm(`确定要删除用户 “${email}” 吗？此操作不可恢复。`)) {
+    if (!window.confirm(`确定要删除用户“${email}”吗？此操作不可恢复。`)) {
       return
     }
 
@@ -274,6 +274,12 @@ export default function AdminPage() {
           <Link href="/admin/cards" className="rounded-xl bg-[#131826] px-4 py-2 text-sm font-semibold text-white">
             卡密管理
           </Link>
+          <Link
+            href="/admin/announcements"
+            className="rounded-xl bg-[#131826] px-4 py-2 text-sm font-semibold text-white"
+          >
+            公告发布
+          </Link>
         </div>
 
         {activeTab === 'dashboard' && stats && (
@@ -281,7 +287,7 @@ export default function AdminPage() {
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
               <StatCard title="总用户" value={String(stats.totalUsers)} hint="已注册账号总数" />
               <StatCard title="总生成次数" value={String(stats.totalGenerations)} hint="历史累计提交任务" />
-              <StatCard title="累计消耗积分" value={String(stats.totalConsumed)} hint="按 1K/2K/4K 规则统计" />
+              <StatCard title="累计消耗积分" value={String(stats.totalConsumed)} hint="按 1K / 2K / 4K 规则统计" />
               <StatCard title="成功率" value={stats.successRate} hint="成功任务 / 全部任务" />
               <StatCard title="7天活跃用户" value={String(stats.activeUsers)} hint="最近 7 天内有生成记录" />
             </div>
@@ -350,8 +356,8 @@ export default function AdminPage() {
                   {users.map((item) => (
                     <tr key={item.id} className="border-b border-[#182033] text-white/92">
                       <td className="px-3 py-3">
-                        <p className="font-semibold text-white">{item.username || item.email}</p>
-                        <p className="mt-1 text-xs text-[#8AA0C2]">{item.email}</p>
+                        <p className="font-semibold text-white">{item.username || item.email || item.id}</p>
+                        <p className="mt-1 text-xs text-[#8AA0C2]">{item.email || '未设置邮箱'}</p>
                       </td>
                       <td className="px-3 py-3">{item.credits}</td>
                       <td className="px-3 py-3">{item.generationCount || 0}</td>

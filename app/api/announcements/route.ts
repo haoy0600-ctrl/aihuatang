@@ -8,7 +8,7 @@ export async function GET() {
   try {
     if (!supabaseAdmin) {
       return NextResponse.json(
-        { success: false, error: 'Supabase 未配置，公告服务暂不可用。' },
+        { success: false, error: 'Supabase 未配置，公告服务暂时不可用。' },
         { status: 500 },
       )
     }
@@ -22,7 +22,14 @@ export async function GET() {
 
     if (error) {
       console.error('Get announcements error:', error)
-      return NextResponse.json({ success: false, error: '获取公告列表失败。' }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            '获取公告列表失败。请检查 Supabase 中是否已创建 announcements 表，并确认服务端环境变量已生效。',
+        },
+        { status: 500 },
+      )
     }
 
     return NextResponse.json({
@@ -39,7 +46,7 @@ export async function POST(request: NextRequest) {
   try {
     if (!supabaseAdmin) {
       return NextResponse.json(
-        { success: false, error: 'Supabase 未配置，公告服务暂不可用。' },
+        { success: false, error: 'Supabase 未配置，公告服务暂时不可用。' },
         { status: 500 },
       )
     }

@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     if (!supabaseAdmin) {
       return NextResponse.json(
-        { success: false, error: 'Supabase 未配置，公告服务暂不可用。' },
+        { success: false, error: 'Supabase 未配置，公告服务暂时不可用。' },
         { status: 500 },
       )
     }
@@ -30,7 +30,10 @@ export async function GET(request: NextRequest) {
 
     const readIds = (reads || []).map((item) => item.announcement_id)
 
-    let query = supabaseAdmin.from('announcements').select('id, title, type, is_pinned, created_at').eq('is_active', true)
+    let query = supabaseAdmin
+      .from('announcements')
+      .select('id, title, type, is_pinned, created_at')
+      .eq('is_active', true)
 
     if (readIds.length > 0) {
       query = query.not('id', 'in', `(${readIds.join(',')})`)
@@ -58,7 +61,7 @@ export async function POST(request: NextRequest) {
   try {
     if (!supabaseAdmin) {
       return NextResponse.json(
-        { success: false, error: 'Supabase 未配置，公告服务暂不可用。' },
+        { success: false, error: 'Supabase 未配置，公告服务暂时不可用。' },
         { status: 500 },
       )
     }

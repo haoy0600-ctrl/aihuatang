@@ -34,16 +34,16 @@ export default function AnnouncementsPage() {
       const data = await response.json()
 
       if (!response.ok || !data.success) {
-        setErrorMessage(data.error || '获取公告失败。')
         setAnnouncements([])
+        setErrorMessage(data.error || '获取公告失败，请稍后再试。')
         return
       }
 
       setAnnouncements(data.announcements || [])
     } catch (error) {
       console.error('Fetch announcements error:', error)
-      setErrorMessage('网络异常，暂时无法加载公告。')
       setAnnouncements([])
+      setErrorMessage('网络异常，暂时无法加载公告。')
     } finally {
       setLoading(false)
     }
@@ -77,7 +77,6 @@ export default function AnnouncementsPage() {
         return { label: '维护提醒', className: 'border border-amber-500/20 bg-amber-500/15 text-amber-300' }
       case 'important':
         return { label: '重要通知', className: 'border border-rose-500/20 bg-rose-500/15 text-rose-300' }
-      case 'system':
       default:
         return { label: '系统通知', className: 'border border-sky-500/20 bg-sky-500/15 text-sky-300' }
     }
@@ -97,7 +96,7 @@ export default function AnnouncementsPage() {
       <main className="mx-auto max-w-3xl px-4 py-8">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">站内公告</h1>
+            <h1 className="text-3xl font-black text-white">站内公告</h1>
             <p className="mt-2 text-sm text-gray-400">这里会展示维护通知、活动动态和重要更新。</p>
           </div>
           <button
@@ -124,7 +123,6 @@ export default function AnnouncementsPage() {
           <div className="space-y-4">
             {announcements.map((announcement) => {
               const typeMeta = getTypeMeta(announcement.type)
-
               return (
                 <button
                   key={announcement.id}
@@ -206,7 +204,7 @@ export default function AnnouncementsPage() {
 
       <footer className="border-t border-[#142D24]/50 bg-[#040D0A]/95 py-3 backdrop-blur-sm">
         <div className="mx-auto max-w-6xl px-4 text-center text-sm text-gray-400">
-          登录或使用本站即代表你已阅读并同意
+          登录或使用本网站即代表你已阅读并同意
           <button
             onClick={() => setShowTermsModal(true)}
             className="ml-1 rounded px-1 text-[#00E676] underline underline-offset-2 transition-colors hover:text-[#00F2FE]"
