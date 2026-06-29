@@ -847,7 +847,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-[#040D0A]">
+    <div className="flex min-h-screen w-full flex-col bg-[#040D0A]">
       <header className="border-b border-[#142D24] bg-[#040D0A]">
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-1 sm:py-2">
@@ -984,7 +984,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-x-hidden overflow-y-auto pb-28 sm:pb-32">
         <div className="mx-auto max-w-[1400px] px-4 py-2 sm:px-6 lg:px-8">
           <div className="mb-2">
             <h2 className="mb-1 text-lg font-bold text-white">创作中心</h2>
@@ -1372,11 +1372,11 @@ export default function DashboardPage() {
 
               <div className="flex min-h-0 flex-1 flex-col">
                 <div
-                  className={`flex flex-1 items-center justify-center overflow-hidden rounded-lg border-2 border-[#142D24] bg-[#040D0A] ${getAspectClass()}`}
+                  className={`flex flex-1 items-center justify-center overflow-hidden rounded-lg border-2 border-[#142D24] bg-[#040D0A] min-h-[320px] max-h-[52vh] md:min-h-0 md:max-h-none ${getAspectClass()}`}
                 >
                   {generationStatus === 'idle' && (
-                    <div className="p-8 text-center">
-                      <div className="mb-4 text-5xl">等待</div>
+                    <div className="p-6 text-center sm:p-8">
+                      <div className="mb-3 text-4xl sm:mb-4 sm:text-5xl">等待</div>
                       <p className="mb-2 text-base text-[#10B981]">暂无生成结果</p>
                       <p className="text-sm text-[#64748B]">
                         请在左侧输入内容并选择风格后
@@ -1387,8 +1387,8 @@ export default function DashboardPage() {
                   )}
 
                   {generationStatus === 'loading' && (
-                    <div className="w-full text-center">
-                      <div className="mb-4 text-5xl">生成中</div>
+                    <div className="w-full px-4 text-center">
+                      <div className="mb-3 text-4xl sm:mb-4 sm:text-5xl">生成中</div>
                       <p className="mt-2 text-xs text-[#64748B]/70">预计需要 1 到 3 分钟，请耐心等待</p>
                       <div className="mx-auto mt-4 h-2 w-48 overflow-hidden rounded-full bg-[#142D24]">
                         <div

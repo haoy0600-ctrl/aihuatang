@@ -169,7 +169,7 @@ export default function AdminAnnouncementsPage() {
 
       <main className="mx-auto max-w-4xl space-y-6 px-4 py-6">
         <section className="rounded-2xl border border-[#1e293b] bg-[#0f172a] p-6">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-[#10B981]">发布新公告</h2>
               <p className="mt-1 text-sm text-gray-400">这里发布的内容会展示给站内用户。</p>
@@ -190,7 +190,7 @@ export default function AdminAnnouncementsPage() {
                   type="text"
                   value={formTitle}
                   onChange={(event) => setFormTitle(event.target.value)}
-                  placeholder="例如：本周四晚上 11 点系统维护通知"
+                  placeholder="例如：本周四晚 11 点系统维护通知"
                   className="w-full rounded-lg border border-[#334155] bg-[#1e293b] px-4 py-3 text-white outline-none transition-colors focus:border-[#10B981]"
                 />
               </div>
@@ -258,7 +258,7 @@ export default function AdminAnnouncementsPage() {
         </section>
 
         <section className="rounded-2xl border border-[#1e293b] bg-[#0f172a] p-6">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-[#10B981]">公告列表</h2>
               <p className="mt-1 text-sm text-gray-400">当前展示的是正在生效的公告内容。</p>
