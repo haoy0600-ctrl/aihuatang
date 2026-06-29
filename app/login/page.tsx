@@ -1,12 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
-  LoginSession,
+  type LoginSession,
   authHeaders,
   clearRememberedAccount,
+  clearStoredSession,
   getRememberedAccount,
   getStoredSession,
   saveRememberedAccount,
@@ -15,8 +17,24 @@ import {
 
 const QQ_EMAIL_REGEX = /^[^\s@]+@qq\.com$/
 
+function validateQQEmail(value: string, fieldName = 'QQ 邮箱') {
+  if (!value) return `请输入${fieldName}`
+  if (!QQ_EMAIL_REGEX.test(value)) return `请输入有效的${fieldName}`
+  return ''
+}
+
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginPageFallback />}>
+      <LoginPageInner />
+    </Suspense>
+  )
+}
+
+function LoginPageInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+
   const [isRegister, setIsRegister] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -24,18 +42,27 @@ export default function LoginPage() {
   const [username, setUsername] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
+  const [sendSuccess, setSendSuccess] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [rememberAccount, setRememberAccount] = useState(true)
+
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
   const [forgotError, setForgotError] = useState('')
   const [isSendingReset, setIsSendingReset] = useState(false)
   const [resetSent, setResetSent] = useState(false)
-  const [sendSuccess, setSendSuccess] = useState('')
-  const [rememberAccount, setRememberAccount] = useState(true)
+
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false)
+  const [recoveryAccessToken, setRecoveryAccessToken] = useState('')
+  const [recoveryRefreshToken, setRecoveryRefreshToken] = useState('')
+  const [recoveryPassword, setRecoveryPassword] = useState('')
+  const [recoveryConfirmPassword, setRecoveryConfirmPassword] = useState('')
+  const [recoverySubmitting, setRecoverySubmitting] = useState(false)
+  const [recoveryMessage, setRecoveryMessage] = useState('')
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | undefined
@@ -44,31 +71,55 @@ export default function LoginPage() {
         setCountdown((prev) => (prev <= 1 ? 0 : prev - 1))
       }, 1000)
     }
-
     return () => {
       if (timer) clearInterval(timer)
     }
   }, [countdown])
 
   useEffect(() => {
-    try {
-      const remembered = getRememberedAccount()
-      if (remembered) {
-        setEmail(remembered)
-        setForgotEmail(remembered)
-        setRememberAccount(true)
-      } else {
-        setRememberAccount(false)
-      }
+    const mode = searchParams.get('mode')
 
-      const session = getStoredSession()
-      if (session) {
-        router.push('/dashboard')
-      }
-    } catch (sessionError) {
-      console.error('Failed to restore session:', sessionError)
+    const remembered = getRememberedAccount()
+    if (remembered) {
+      setEmail(remembered)
+      setForgotEmail(remembered)
+      setRememberAccount(true)
+    } else {
+      setRememberAccount(false)
     }
-  }, [router])
+
+    const session = getStoredSession()
+    if (session && mode !== 'recovery') {
+      router.push('/dashboard')
+    }
+  }, [router, searchParams])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const mode = searchParams.get('mode')
+    const queryType = searchParams.get('type')
+    const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : ''
+    const hashParams = new URLSearchParams(hash)
+    const hashType = hashParams.get('type')
+    const accessToken = hashParams.get('access_token') || ''
+    const refreshToken = hashParams.get('refresh_token') || ''
+
+    const shouldEnterRecovery = mode === 'recovery' || queryType === 'recovery' || hashType === 'recovery'
+    if (!shouldEnterRecovery) return
+
+    setIsRecoveryMode(true)
+    setShowForgotPassword(false)
+    setError('')
+    setForgotError('')
+    setResetSent(false)
+    setRecoveryAccessToken(accessToken)
+    setRecoveryRefreshToken(refreshToken)
+
+    if (accessToken || refreshToken || hash) {
+      window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}?mode=recovery`)
+    }
+  }, [searchParams])
 
   const saveSession = (userId: string, userEmail: string, authSession: any) => {
     const session: LoginSession = {
@@ -102,12 +153,6 @@ export default function LoginPage() {
     } catch (profileError) {
       console.error('Failed to ensure profile:', profileError)
     }
-  }
-
-  const validateQQEmail = (value: string, fieldName = 'QQ 邮箱') => {
-    if (!value) return `请输入${fieldName}`
-    if (!QQ_EMAIL_REGEX.test(value)) return `请输入有效的${fieldName}`
-    return ''
   }
 
   const openForgotPassword = () => {
@@ -155,7 +200,7 @@ export default function LoginPage() {
     setError('')
     setSendSuccess('')
 
-    if (!email) {
+    if (!email.trim()) {
       setError('请输入邮箱或用户名。')
       return
     }
@@ -226,6 +271,7 @@ export default function LoginPage() {
     }
 
     setIsSubmitting(true)
+
     try {
       const verifyResponse = await fetch('/api/auth/verify-otp', {
         method: 'POST',
@@ -319,6 +365,71 @@ export default function LoginPage() {
     }
   }
 
+  const handleRecoveryPasswordReset = async () => {
+    setError('')
+    setRecoveryMessage('')
+
+    if (!recoveryAccessToken) {
+      setError('重置链接无效或已过期，请重新发送重置邮件。')
+      return
+    }
+
+    if (!recoveryPassword) {
+      setError('请输入新密码。')
+      return
+    }
+
+    if (recoveryPassword.length < 6) {
+      setError('新密码长度至少 6 位。')
+      return
+    }
+
+    if (recoveryPassword !== recoveryConfirmPassword) {
+      setError('两次输入的新密码不一致。')
+      return
+    }
+
+    setRecoverySubmitting(true)
+
+    try {
+      saveStoredSession({
+        id: 'recovery-temp-user',
+        email: forgotEmail || email || 'recovery@aihuatang.top',
+        accessToken: recoveryAccessToken,
+        refreshToken: recoveryRefreshToken || undefined,
+        expiresAt: Date.now() + 30 * 60 * 1000,
+      })
+
+      const response = await fetch('/api/auth/update-password', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ password: recoveryPassword }),
+      })
+
+      const data = await response.json()
+      if (!response.ok || !data.success) {
+        clearStoredSession()
+        setError(data.error || '重置密码失败，请重新获取邮件。')
+        setRecoverySubmitting(false)
+        return
+      }
+
+      clearStoredSession()
+      setRecoveryMessage('密码重置成功，请使用新密码登录。')
+      setIsRecoveryMode(false)
+      setRecoveryPassword('')
+      setRecoveryConfirmPassword('')
+      setRecoveryAccessToken('')
+      setRecoveryRefreshToken('')
+    } catch (resetError) {
+      console.error('Recovery reset error:', resetError)
+      clearStoredSession()
+      setError('重置密码失败，请稍后重试。')
+    } finally {
+      setRecoverySubmitting(false)
+    }
+  }
+
   return (
     <div className="grid min-h-screen w-full grid-cols-1 bg-[#0D111A] md:grid-cols-2">
       <div className="relative hidden items-center justify-center overflow-hidden bg-[#0D111A] p-8 md:flex lg:p-12">
@@ -362,90 +473,152 @@ export default function LoginPage() {
           {!isRegister ? (
             <div className="border border-[#334155] bg-[#1E293B] p-4 sm:p-6">
               <div className="mb-6 text-center">
-                <h2 className="text-xl font-bold text-white">欢迎回来</h2>
-                <p className="mt-1 text-sm text-[#64748B]">登录后继续你的创作</p>
+                <h2 className="text-xl font-bold text-white">{isRecoveryMode ? '重置密码' : '欢迎回来'}</h2>
+                <p className="mt-1 text-sm text-[#64748B]">
+                  {isRecoveryMode ? '请设置新的登录密码' : '登录后继续你的创作'}
+                </p>
               </div>
 
               {error && <MessageBox tone="error">{error}</MessageBox>}
               {sendSuccess && <MessageBox tone="success">{sendSuccess}</MessageBox>}
+              {recoveryMessage && <MessageBox tone="success">{recoveryMessage}</MessageBox>}
 
-              <div className="space-y-4">
-                <div>
-                  <FieldLabel>邮箱 / 用户名</FieldLabel>
-                  <input
-                    type="text"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    placeholder="请输入邮箱或用户名"
-                    className="w-full border border-[#334155] bg-[#0D111A] px-4 py-3 text-white outline-none transition-all placeholder:text-[#475569] focus:border-[#00E676]"
-                    disabled={isSubmitting}
-                  />
+              {isRecoveryMode ? (
+                <div className="space-y-4">
+                  <div className="rounded-lg border border-[#00E676]/30 bg-[#00E676]/10 px-4 py-3 text-sm text-[#8CF5CA]">
+                    已验证重置邮件，请直接设置新的登录密码。
+                  </div>
+
+                  <div>
+                    <FieldLabel>新密码</FieldLabel>
+                    <PasswordInput
+                      value={recoveryPassword}
+                      onChange={setRecoveryPassword}
+                      visible={showPassword}
+                      onToggleVisible={() => setShowPassword((prev) => !prev)}
+                      placeholder="请输入新密码"
+                      disabled={recoverySubmitting}
+                    />
+                  </div>
+
+                  <div>
+                    <FieldLabel>确认新密码</FieldLabel>
+                    <PasswordInput
+                      value={recoveryConfirmPassword}
+                      onChange={setRecoveryConfirmPassword}
+                      visible={showConfirmPassword}
+                      onToggleVisible={() => setShowConfirmPassword((prev) => !prev)}
+                      placeholder="请再次输入新密码"
+                      disabled={recoverySubmitting}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleRecoveryPasswordReset}
+                    disabled={recoverySubmitting}
+                    className={`w-full bg-[#00E676] py-3.5 text-base font-bold text-[#0D111A] shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all ${
+                      recoverySubmitting ? 'cursor-not-allowed opacity-50' : 'hover:shadow-[0_0_25px_rgba(0,230,118,0.6)]'
+                    }`}
+                  >
+                    {recoverySubmitting ? '重置中...' : '确认重置密码'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsRecoveryMode(false)
+                      setRecoveryPassword('')
+                      setRecoveryConfirmPassword('')
+                      setRecoveryAccessToken('')
+                      setRecoveryRefreshToken('')
+                      setError('')
+                    }}
+                    className="w-full border border-[#334155] bg-[#0D111A] py-3 text-sm text-white transition-all hover:border-[#00E676]"
+                  >
+                    返回登录
+                  </button>
                 </div>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    <div>
+                      <FieldLabel>邮箱 / 用户名</FieldLabel>
+                      <input
+                        type="text"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        placeholder="请输入邮箱或用户名"
+                        className="w-full border border-[#334155] bg-[#0D111A] px-4 py-3 text-white outline-none transition-all placeholder:text-[#475569] focus:border-[#00E676]"
+                        disabled={isSubmitting}
+                      />
+                    </div>
 
-                <div>
-                  <FieldLabel>密码</FieldLabel>
-                  <PasswordInput
-                    value={password}
-                    onChange={setPassword}
-                    visible={showPassword}
-                    onToggleVisible={() => setShowPassword((prev) => !prev)}
-                    placeholder="请输入密码"
-                    disabled={isSubmitting}
-                  />
-                </div>
+                    <div>
+                      <FieldLabel>密码</FieldLabel>
+                      <PasswordInput
+                        value={password}
+                        onChange={setPassword}
+                        visible={showPassword}
+                        onToggleVisible={() => setShowPassword((prev) => !prev)}
+                        placeholder="请输入密码"
+                        disabled={isSubmitting}
+                      />
+                    </div>
 
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-[#94A3B8]">
-                  <input
-                    type="checkbox"
-                    checked={rememberAccount}
-                    onChange={(event) => setRememberAccount(event.target.checked)}
-                    className="h-4 w-4 accent-[#00E676]"
-                  />
-                  记住账号
-                </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-[#94A3B8]">
+                      <input
+                        type="checkbox"
+                        checked={rememberAccount}
+                        onChange={(event) => setRememberAccount(event.target.checked)}
+                        className="h-4 w-4 accent-[#00E676]"
+                      />
+                      记住账号
+                    </label>
 
-                <button
-                  onClick={handlePasswordLogin}
-                  disabled={isSubmitting}
-                  className={`mt-6 w-full bg-[#00E676] py-3.5 text-base font-bold text-[#0D111A] shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all ${
-                    isSubmitting ? 'cursor-not-allowed opacity-50' : 'hover:shadow-[0_0_25px_rgba(0,230,118,0.6)]'
-                  }`}
-                >
-                  {isSubmitting ? '登录中...' : '登录'}
-                </button>
-              </div>
+                    <button
+                      onClick={handlePasswordLogin}
+                      disabled={isSubmitting}
+                      className={`w-full bg-[#00E676] py-3.5 text-base font-bold text-[#0D111A] shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all ${
+                        isSubmitting ? 'cursor-not-allowed opacity-50' : 'hover:shadow-[0_0_25px_rgba(0,230,118,0.6)]'
+                      }`}
+                    >
+                      {isSubmitting ? '登录中...' : '登录'}
+                    </button>
+                  </div>
 
-              <p className="mt-6 text-center text-sm text-[#64748B]">
-                还没有账号？
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsRegister(true)
-                    setError('')
-                    setSendSuccess('')
-                  }}
-                  className="ml-1 text-[#00E676] hover:underline"
-                >
-                  立即注册
-                </button>
-              </p>
+                  <p className="mt-6 text-center text-sm text-[#64748B]">
+                    还没有账号？
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRegister(true)
+                        setError('')
+                        setSendSuccess('')
+                      }}
+                      className="ml-1 text-[#00E676] hover:underline"
+                    >
+                      立即注册
+                    </button>
+                  </p>
 
-              <p className="mt-2 text-center text-xs text-[#475569]">
-                <button onClick={openForgotPassword} className="text-[#00E676] transition-colors hover:underline">
-                  忘记密码？
-                </button>
-              </p>
+                  <p className="mt-2 text-center text-xs text-[#475569]">
+                    <button onClick={openForgotPassword} className="text-[#00E676] transition-colors hover:underline">
+                      忘记密码？
+                    </button>
+                  </p>
 
-              <div className="mt-6 text-center text-xs text-[#64748B]">
-                登录即表示你同意
-                <Link href="/terms" className="mx-1 text-[#00E676] hover:underline">
-                  使用条款
-                </Link>
-                与
-                <Link href="/privacy" className="ml-1 text-[#00E676] hover:underline">
-                  隐私政策
-                </Link>
-              </div>
+                  <div className="mt-6 text-center text-xs text-[#64748B]">
+                    登录即表示你同意
+                    <Link href="/terms" className="mx-1 text-[#00E676] hover:underline">
+                      使用条款
+                    </Link>
+                    与
+                    <Link href="/privacy" className="ml-1 text-[#00E676] hover:underline">
+                      隐私政策
+                    </Link>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <div className="border border-[#334155] bg-[#1E293B] p-4 sm:p-6">
@@ -534,7 +707,7 @@ export default function LoginPage() {
                 <button
                   onClick={handleRegister}
                   disabled={isSubmitting}
-                  className={`mt-6 w-full bg-[#00E676] py-3.5 text-base font-bold text-[#0D111A] shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all ${
+                  className={`w-full bg-[#00E676] py-3.5 text-base font-bold text-[#0D111A] shadow-[0_0_15px_rgba(0,230,118,0.4)] transition-all ${
                     isSubmitting ? 'cursor-not-allowed opacity-50' : 'hover:shadow-[0_0_25px_rgba(0,230,118,0.6)]'
                   }`}
                 >
@@ -606,6 +779,14 @@ export default function LoginPage() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function LoginPageFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#0D111A] text-sm text-[#8CF5CA]">
+      正在加载登录页面...
     </div>
   )
 }

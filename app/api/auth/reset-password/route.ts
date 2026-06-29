@@ -15,8 +15,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://aihuatang.top'
     const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://aihuatang.top'}/login`,
+      redirectTo: `${appUrl}/login?mode=recovery`,
     })
 
     if (error) {
