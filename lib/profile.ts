@@ -76,6 +76,10 @@ function buildProfileUpdateVariants(payload: Record<string, any>) {
   })
 }
 
+function hasColumn(profile: SafeProfile, key: keyof SafeProfile) {
+  return Object.prototype.hasOwnProperty.call(profile, key)
+}
+
 export async function getProfileById(userId: string) {
   if (!supabaseAdmin) return { profile: null as SafeProfile | null, error: new Error('Supabase admin not configured') }
 
@@ -141,11 +145,11 @@ export async function ensureProfileRecord(params: {
     updatePayload.credits = typeof params.credits === 'number' ? params.credits : DEFAULT_PROFILE_CREDITS
   }
 
-  if (params.username && !profile.username) {
+  if (params.username && hasColumn(profile, 'username') && !profile.username) {
     updatePayload.username = params.username.trim()
   }
 
-  if (profile.avatar_url === null || profile.avatar_url === undefined) {
+  if (hasColumn(profile, 'avatar_url') && !profile.avatar_url) {
     updatePayload.avatar_url = DEFAULT_AVATAR_URL
   }
 
