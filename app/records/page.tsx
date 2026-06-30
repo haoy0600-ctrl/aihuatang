@@ -538,7 +538,7 @@ export default function RecordsPage() {
           ) : filteredRecords.length === 0 ? (
             <EmptyRecords />
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <div className="grid grid-cols-1 gap-3 min-[981px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {columns.map((column, colIndex) => (
                 <div key={colIndex} className="contents">
                   {column.map((record) => {
@@ -556,7 +556,7 @@ export default function RecordsPage() {
                     return (
                       <div
                         key={record.id}
-                        className="group overflow-hidden rounded-lg border border-[#1E293B] bg-[#0D111A] transition-all duration-300 hover:border-[#00F2FE]/50"
+                        className="group min-w-0 overflow-hidden rounded-lg border border-[#1E293B] bg-[#0D111A] transition-all duration-300 hover:border-[#00F2FE]/50"
                       >
                         <div className="relative overflow-hidden bg-[#161A2B]">
                           {coverUrl ? (
@@ -622,10 +622,10 @@ export default function RecordsPage() {
 
                         <div className="p-2">
                           <div className="mb-1 flex flex-wrap items-center gap-1">
-                            <span className="rounded border border-[#10B981]/50 bg-[#10B981]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#10B981]">
+                            <span className="max-w-full rounded border border-[#10B981]/50 bg-[#10B981]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#10B981]">
                               {record.style_name || '未命名风格'}
                             </span>
-                            <span className="rounded border border-[#00F2FE]/50 bg-[#00F2FE]/20 px-2 py-0.5 text-xs font-bold text-[#00F2FE]">
+                            <span className="max-w-full break-all rounded border border-[#00F2FE]/50 bg-[#00F2FE]/20 px-2 py-0.5 text-xs font-bold text-[#00F2FE]">
                               {record.model}
                             </span>
                             <span className="rounded border border-[#F59E0B]/50 bg-[#F59E0B]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#F59E0B]">
@@ -634,7 +634,7 @@ export default function RecordsPage() {
                           </div>
 
                           <div className="flex items-center justify-between gap-2">
-                            <p className="flex-1 truncate text-[10px] text-[#94A3B8]">{firstSentence}</p>
+                            <p className="min-w-0 flex-1 break-words text-xs leading-5 text-[#94A3B8]">{firstSentence}</p>
                             <button
                               onClick={() => setSelectedRecord(record)}
                               className="text-[10px] text-[#00F2FE] transition-colors hover:text-[#00E676]"
@@ -873,7 +873,7 @@ function LoadingState() {
         <p className="text-[#00F2FE]">正在读取生成记录...</p>
         <p className="mt-2 text-xs text-[#6B7D97]">如果持续超过 10 秒，请刷新页面重新获取。</p>
       </div>
-      <div className="mx-auto mt-8 grid max-w-6xl grid-cols-1 gap-3 px-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="mx-auto mt-8 grid max-w-6xl grid-cols-1 gap-3 px-4 min-[981px]:grid-cols-3 xl:grid-cols-5">
         {[1, 2, 3, 4, 5].map((column) => (
           <div key={column} className="space-y-3">
             {[1, 2, 3].map((row) => (

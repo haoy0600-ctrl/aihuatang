@@ -1075,7 +1075,7 @@ export default function DashboardPage() {
                       className="h-40 w-full resize-none rounded-lg border border-[#142D24] bg-[#040D0A] px-3 py-3 text-sm text-white outline-none transition-colors placeholder:text-[#64748B] focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
                     />
 
-                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                    <div className="mt-2 grid grid-cols-1 gap-2 min-[981px]:grid-cols-[1fr_150px]">
                       <button
                         onClick={handleAIExpand}
                         disabled={isExpanding}
@@ -1094,12 +1094,16 @@ export default function DashboardPage() {
                         className={`rounded-lg border px-4 py-2.5 text-sm font-bold transition-all ${
                           lastExpandHistory
                             ? 'border-[#10B981]/40 bg-[#091511]/70 text-[#8CF5CA] hover:border-[#10B981]'
-                            : 'cursor-not-allowed border-[#142D24] bg-[#091511]/40 text-[#43564E]'
+                            : 'cursor-not-allowed border-[#1A3A2D] bg-[#07110E] text-[#6E8D82]'
                         }`}
                       >
-                        撤回优化
+                        {lastExpandHistory ? '撤回上次优化' : '暂无可撤回'}
                       </button>
                     </div>
+
+                    <p className="mt-1 text-[11px] leading-5 text-[#6E8D82]">
+                      AI 优化后可点击“撤回上次优化”恢复上一版内容。
+                    </p>
 
                     <div className="mt-2 flex items-center justify-between">
                       <span className="text-xs text-[#10B981]">第 {activeTab} / {totalTabs} 段</span>
