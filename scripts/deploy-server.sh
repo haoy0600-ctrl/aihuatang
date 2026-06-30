@@ -2,7 +2,12 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_DIR="${APP_DIR:-${SCRIPT_DIR}}"
+if [ -f "${SCRIPT_DIR}/package.json" ]; then
+  DEFAULT_APP_DIR="${SCRIPT_DIR}"
+else
+  DEFAULT_APP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+fi
+APP_DIR="${APP_DIR:-${DEFAULT_APP_DIR}}"
 BRANCH="${BRANCH:-main}"
 LOCK_FILE="/tmp/aihuatang-deploy.lock"
 LOG_FILE="${APP_DIR}/deploy.log"
