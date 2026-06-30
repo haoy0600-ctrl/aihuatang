@@ -7,8 +7,8 @@ import { getClientIP, isUserCurrentlyBanned, recordSensitiveWordViolation } from
 export const maxDuration = 300
 
 const GRS_API_KEY = process.env.GRSAI_API_KEY || ''
-const GRS_API_BASE_URL = (process.env.GRS_API_BASE_URL || 'https://grsapiapi.com').replace(/\/+$/, '')
-const REPLICATE_API_TOKEN = ''
+const GRS_API_BASE_URL = (process.env.GRS_API_BASE_URL || 'https://grsai.dakka.com.cn').replace(/\/+$/, '')
+
 const SENSITIVE_WORDS = [
   '台独',
   '港独',
@@ -55,6 +55,8 @@ const SENSITIVE_WORDS = [
   '泄密',
 ]
 
+type ResolutionLevel = '1K' | '2K' | '4K'
+
 type GenerateRequest = {
   inputContents?: string[]
   referenceImages?: string[]
@@ -62,11 +64,32 @@ type GenerateRequest = {
   customStyle?: string
   aspectRatio?: string
   modelType?: string
-  resolution?: '1K' | '2K' | '4K'
-  ResolutionLevel?: '1K' | '2K' | '4K'
+  resolution?: ResolutionLevel
+  ResolutionLevel?: ResolutionLevel
   imageSize?: string
   mode?: 'text' | 'image'
   clientRequestId?: string
+}
+
+type CreditResult = {
+  success: boolean
+  currentCredits: number
+  profileId: string
+}
+
+const BASE_IMAGE_SIZE_BY_RATIO: Record<string, string> = {
+  auto: '1024x1024',
+  '16:9': '16:9',
+  '9:16': '9:16',
+  '4:3': '4:3',
+  '3:4': '3:4',
+  '1:1': '1:1',
+  '3:2': '3:2',
+  '2:3': '2:3',
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function sanitizePromptText(text: string) {
@@ -79,47 +102,18 @@ function sanitizePromptText(text: string) {
     .trim()
 }
 
-function getResolutionPrice(resolution: string) {
+function normalizeResolution(value?: string): ResolutionLevel {
+  return value === '1K' || value === '2K' || value === '4K' ? value : '1K'
+}
+
+function getResolutionPrice(resolution: ResolutionLevel) {
   if (resolution === '2K') return 4
   if (resolution === '4K') return 8
   return 2
 }
 
-const ASPECT_RATIO_PIXELS: Record<string, Record<string, string>> = {
-  '1K': {
-    auto: '1024x1024',
-    '16:9': '16:9',
-    '9:16': '9:16',
-    '4:3': '4:3',
-    '3:4': '3:4',
-    '1:1': '1:1',
-    '3:2': '3:2',
-    '2:3': '2:3',
-  },
-  '2K': {
-    auto: '2048x2048',
-    '16:9': '2048x1152',
-    '9:16': '1152x2048',
-    '4:3': '1536x1152',
-    '3:4': '1152x1536',
-    '1:1': '1536x1536',
-    '3:2': '1792x1216',
-    '2:3': '1216x1792',
-  },
-  '4K': {
-    auto: '4096x4096',
-    '16:9': '3840x2160',
-    '9:16': '2160x3840',
-    '4:3': '3072x2304',
-    '3:4': '2304x3072',
-    '1:1': '3072x3072',
-    '3:2': '3840x2560',
-    '2:3': '2560x3840',
-  },
-}
-
-function getImageSizeByResolution(resolution: string, aspectRatio: string) {
-  return ASPECT_RATIO_PIXELS[resolution]?.[aspectRatio] || ASPECT_RATIO_PIXELS[resolution]?.auto || '1024x1024'
+function getBaseImageSize(aspectRatio: string) {
+  return BASE_IMAGE_SIZE_BY_RATIO[aspectRatio] || BASE_IMAGE_SIZE_BY_RATIO.auto
 }
 
 function getStyleByName(styleName: string) {
@@ -132,6 +126,16 @@ function detectSensitiveWords(prompt: string) {
     .toLowerCase()
 
   return SENSITIVE_WORDS.some((word) => cleaned.includes(word.toLowerCase()))
+}
+
+function getGrsModelConfig(modelType: string) {
+  const normalized = modelType.toLowerCase()
+  const isNanoBanana = normalized.includes('banana') || normalized.includes('nano')
+
+  return {
+    endpoint: isNanoBanana ? `${GRS_API_BASE_URL}/v1/draw/nano-banana` : `${GRS_API_BASE_URL}/v1/draw/completions`,
+    model: isNanoBanana ? 'nano-banana-pro' : 'gpt-image-2',
+  }
 }
 
 function buildFinalPrompt(inputText: string, styleName: string, customStyle?: string, isImageMode = false) {
@@ -187,22 +191,30 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
   }
 }
 
-async function submitGrsTask(prompt: string, imageSize: string, referenceImage?: string) {
+async function parseJsonResponse(response: Response, label: string) {
+  const raw = await response.text()
+
+  try {
+    return JSON.parse(raw)
+  } catch {
+    throw new Error(`${label}返回了异常响应：${raw.slice(0, 160)}`)
+  }
+}
+
+async function submitGrsTask(prompt: string, imageSize: string, modelType: string, referenceImage?: string) {
   if (!GRS_API_KEY) {
     throw new Error('绘图服务尚未配置，请联系管理员补全 GRS API。')
   }
 
-  const isImageMode = Boolean(referenceImage)
-  const endpoint = `${GRS_API_BASE_URL}/v1/draw/completions`
-
+  const { endpoint, model } = getGrsModelConfig(modelType)
   const payload: Record<string, any> = {
-    model: 'gpt-image-2',
+    model,
     prompt,
     imageSize,
     webHook: '-1',
   }
 
-  if (isImageMode && referenceImage) {
+  if (referenceImage) {
     payload.images = [referenceImage]
   }
 
@@ -220,20 +232,13 @@ async function submitGrsTask(prompt: string, imageSize: string, referenceImage?:
     '提交生成任务',
   )
 
-  const raw = await response.text()
+  const json = await parseJsonResponse(response, '绘图服务')
 
   if (!response.ok) {
-    throw new Error(`绘图服务请求失败：${response.status} ${raw.slice(0, 160)}`)
+    throw new Error(json.message || json.error || `绘图服务请求失败：${response.status}`)
   }
 
-  let json: any
-  try {
-    json = JSON.parse(raw)
-  } catch {
-    throw new Error('绘图服务返回了异常响应，请稍后重试。')
-  }
-
-  const taskId = json.data?.id
+  const taskId = json.data?.id || json.id
   if (!taskId) {
     throw new Error(json.message || json.error || '绘图任务创建失败。')
   }
@@ -243,7 +248,7 @@ async function submitGrsTask(prompt: string, imageSize: string, referenceImage?:
 
 async function pollGrsResult(taskId: string) {
   const pollUrl = `${GRS_API_BASE_URL}/v1/draw/result`
-  const maxRetries = 30
+  const maxRetries = 60
 
   for (let index = 0; index < maxRetries; index += 1) {
     const response = await fetchWithTimeout(
@@ -261,37 +266,30 @@ async function pollGrsResult(taskId: string) {
     )
 
     if (!response.ok) {
-      await new Promise((resolve) => setTimeout(resolve, 4000))
+      await sleep(3000)
       continue
     }
 
     const json = await response.json()
     const status = json.status || json.data?.status
     const results = json.results || json.data?.results
+    const firstUrl = results?.[0]?.url || results?.[0]
 
-    if (status === 'succeeded' && results?.[0]?.url) {
-      return results[0].url as string
+    if (status === 'succeeded' && typeof firstUrl === 'string') {
+      return firstUrl
     }
 
-    if (status === 'failed') {
+    if (status === 'failed' || status === 'canceled') {
       throw new Error(json.error || json.data?.error || '图片生成失败。')
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 4000))
+    await sleep(3000)
   }
 
   throw new Error('生成任务超时，请稍后到记录页查看结果。')
 }
 
-async function upscaleImage(imageUrl: string, _scale: number) {
-  return imageUrl
-}
-
-async function checkVipPermission(_userId: string) {
-  return true
-}
-
-async function deductCredits(userId: string, amount: number) {
+async function deductCredits(userId: string, amount: number): Promise<CreditResult> {
   if (!supabaseAdmin) {
     return { success: false, currentCredits: 0, profileId: '' }
   }
@@ -340,84 +338,25 @@ async function rollbackCredits(profileId: string, amount: number) {
     .eq('id', profileId)
 }
 
-async function updateGenerationRecord(recordId: string, payload: Record<string, any>) {
-  if (!supabaseAdmin || !recordId) return
-
-  const payloadVariants = [
-    payload,
-    {
-      status: payload.status,
-      image_url: payload.image_url,
-      image_urls: payload.image_urls,
-      image_count: payload.image_count,
-      prompt: payload.prompt,
-      style_name: payload.style_name,
-      style_prompt: payload.style_prompt,
-      resolution: payload.resolution,
-      model: payload.model,
-    },
-    {
-      status: payload.status,
-      image_url: payload.image_url,
-      image_urls: payload.image_urls,
-      image_count: payload.image_count,
-      prompt: payload.prompt,
-    },
-    {
-      status: payload.status,
-    },
-  ]
-
-  for (const variant of payloadVariants) {
-    const { error } = await supabaseAdmin.from('generation_records').update(variant).eq('id', recordId)
-    if (!error) {
-      return
-    }
-    console.error('[Generate] Update record failed with variant:', { recordId, error, variantKeys: Object.keys(variant) })
-  }
-}
-
 async function insertGenerationRecord(payload: Record<string, any>) {
   if (!supabaseAdmin) {
     return { data: null, error: new Error('Supabase admin not configured') }
   }
 
-  const payloadVariants = [
-    payload,
-    {
-      user_id: payload.user_id,
-      input_content: payload.input_content,
-      prompt: payload.prompt,
-      style_name: payload.style_name,
-      style_prompt: payload.style_prompt,
-      aspect_ratio: payload.aspect_ratio,
-      model: payload.model,
-      image_count: payload.image_count,
-      image_urls: payload.image_urls,
-      resolution: payload.resolution,
-      status: payload.status,
-    },
-    {
-      user_id: payload.user_id,
-      prompt: payload.prompt,
-      style_name: payload.style_name,
-      image_count: payload.image_count,
-      status: payload.status,
-    },
-  ]
+  const { data, error } = await supabaseAdmin.from('generation_records').insert(payload).select('id').single()
+  return { data, error }
+}
 
-  let lastError: any = null
+async function updateGenerationRecord(recordId: string, payload: Record<string, any>) {
+  if (!supabaseAdmin || !recordId) return false
 
-  for (const variant of payloadVariants) {
-    const result = await supabaseAdmin.from('generation_records').insert(variant).select('id').single()
-    if (!result.error && result.data?.id) {
-      return result
-    }
-    lastError = result.error
-    console.error('[Generate] Insert record variant failed:', { error: result.error, variantKeys: Object.keys(variant) })
+  const { error } = await supabaseAdmin.from('generation_records').update(payload).eq('id', recordId)
+  if (error) {
+    console.error('[Generate] Update record failed:', { recordId, error })
+    return false
   }
 
-  return { data: null, error: lastError || new Error('Insert failed') }
+  return true
 }
 
 export async function POST(request: NextRequest) {
@@ -434,56 +373,35 @@ export async function POST(request: NextRequest) {
     }
 
     if (!supabaseAdmin) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: '系统配置未完成，请稍后重试。',
-        },
-        { status: 500 },
-      )
+      return NextResponse.json({ success: false, error: '系统配置未完成，请稍后重试。' }, { status: 500 })
     }
 
     const body = (await request.json()) as GenerateRequest
     const inputContents = Array.isArray(body.inputContents) ? body.inputContents : []
-    const referenceImages = Array.isArray(body.referenceImages) ? body.referenceImages : []
+    const referenceImages = Array.isArray(body.referenceImages) ? body.referenceImages.filter(Boolean) : []
     const styleName = String(body.styleName || '').trim()
     const customStyle = String(body.customStyle || '').trim()
     const aspectRatio = String(body.aspectRatio || '9:16')
     const modelType = String(body.modelType || 'GPT-Image-2')
-    const resolution = String(body.ResolutionLevel || body.resolution || '1K')
+    const resolution = normalizeResolution(body.ResolutionLevel || body.resolution)
     const clientRequestId = body.clientRequestId || null
     const ipAddress = getClientIP(request)
 
     const sanitizedInputContents = inputContents.map((item) => sanitizePromptText(item)).filter(Boolean)
     const isTextMode = sanitizedInputContents.length > 0
-    const isImageMode = referenceImages.length > 0
+    const isImageMode = !isTextMode && referenceImages.length > 0
 
     if (!isTextMode && !isImageMode) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: '请先输入内容或上传参考图。',
-        },
-        { status: 400 },
-      )
+      return NextResponse.json({ success: false, error: '请先输入内容或上传参考图。' }, { status: 400 })
     }
 
     if (!styleName) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: '请选择风格后再创建任务。',
-        },
-        { status: 400 },
-      )
+      return NextResponse.json({ success: false, error: '请选择风格后再创建任务。' }, { status: 400 })
     }
 
     if (await isUserCurrentlyBanned(auth.user.id)) {
       return NextResponse.json(
-        {
-          success: false,
-          error: '当前账号因违规触发安全限制，暂时无法继续创建任务。',
-        },
+        { success: false, error: '当前账号因违规触发安全限制，暂时无法继续创建任务。' },
         { status: 403 },
       )
     }
@@ -502,17 +420,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: shouldBan
-            ? '检测到违禁词汇，账号已暂时限制使用，请稍后再试。'
-            : '检测到违禁词汇，请调整内容后重试。',
+          error: shouldBan ? '检测到违禁词汇，账号已暂时限制使用，请稍后再试。' : '检测到违禁词汇，请调整内容后重试。',
         },
         { status: 400 },
       )
     }
 
+    const sourceItems = isTextMode ? sanitizedInputContents : referenceImages
+    const totalImageCount = Math.max(1, sourceItems.length)
     const costPerImage = getResolutionPrice(resolution)
-    const totalImageCount = isTextMode ? sanitizedInputContents.length : referenceImages.length
-    totalCost = Math.max(1, totalImageCount) * costPerImage
+    totalCost = totalImageCount * costPerImage
 
     const deductResult = await deductCredits(auth.user.id, totalCost)
     if (!deductResult.success) {
@@ -530,26 +447,28 @@ export async function POST(request: NextRequest) {
     currentCredits = deductResult.currentCredits
     profileId = deductResult.profileId
 
-    const recordPayload = {
+    const baseRecordMeta = {
+      clientRequestId,
+      mode: isTextMode ? 'text' : 'image',
+      items: isTextMode ? sanitizedInputContents : [],
+      referenceCount: referenceImages.length,
+    }
+
+    const { data: insertedRecord, error: insertError } = await insertGenerationRecord({
       user_id: auth.user.id,
-      input_content: {
-        clientRequestId,
-        mode: isTextMode ? 'text' : 'image',
-        items: isTextMode ? sanitizedInputContents : [],
-        referenceCount: referenceImages.length,
-      },
+      input_content: baseRecordMeta,
       prompt: isTextMode ? sanitizedInputContents.join('\n') : '[Image Mode]',
       style_name: styleName,
       style_prompt: customStyle,
       aspect_ratio: aspectRatio,
       model: modelType,
-      image_count: Math.max(1, totalImageCount),
+      image_count: totalImageCount,
+      image_url: null,
       image_urls: JSON.stringify([]),
+      image_url_4k: null,
       resolution,
       status: 'processing',
-    }
-
-    const { data: insertedRecord, error: insertError } = await insertGenerationRecord(recordPayload)
+    })
 
     if (insertError || !insertedRecord?.id) {
       console.error('[Generate] Insert record failed:', insertError)
@@ -557,7 +476,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: '创建生成任务失败，积分已退回，请稍后重试。',
+          error: '创建生成记录失败，积分已退回，请稍后重试。',
           creditsRemaining: currentCredits + totalCost,
         },
         { status: 500 },
@@ -568,16 +487,15 @@ export async function POST(request: NextRequest) {
 
     const imageUrls: string[] = []
     const finalPrompts: string[] = []
+    const baseImageSize = getBaseImageSize(aspectRatio)
 
     try {
       if (isTextMode) {
         for (const sentence of sanitizedInputContents) {
           const finalPrompt = buildFinalPrompt(sentence, styleName, customStyle, false)
           finalPrompts.push(finalPrompt)
-          const taskId = await submitGrsTask(
-            finalPrompt,
-            getImageSizeByResolution('1K', aspectRatio),
-          )
+
+          const taskId = await submitGrsTask(finalPrompt, baseImageSize, modelType)
           const imageUrl = await pollGrsResult(taskId)
           imageUrls.push(imageUrl)
         }
@@ -585,11 +503,8 @@ export async function POST(request: NextRequest) {
         for (let index = 0; index < referenceImages.length; index += 1) {
           const finalPrompt = buildFinalPrompt(`参考图风格重绘 ${index + 1}`, styleName, customStyle, true)
           finalPrompts.push(finalPrompt)
-          const taskId = await submitGrsTask(
-            finalPrompt,
-            getImageSizeByResolution('1K', aspectRatio),
-            referenceImages[index],
-          )
+
+          const taskId = await submitGrsTask(finalPrompt, baseImageSize, modelType, referenceImages[index])
           const imageUrl = await pollGrsResult(taskId)
           imageUrls.push(imageUrl)
         }
@@ -599,13 +514,8 @@ export async function POST(request: NextRequest) {
         throw new Error('没有成功生成任何图片。')
       }
 
-      if ((resolution === '2K' || resolution === '4K') && REPLICATE_API_TOKEN) {
-        const scale = resolution === '2K' ? 2 : 4
-        const refinedUrls = await Promise.all(imageUrls.map((url) => upscaleImage(url, scale).catch(() => url)))
-        for (let index = 0; index < refinedUrls.length; index += 1) {
-          imageUrls[index] = refinedUrls[index] || imageUrls[index]
-        }
-      }
+      // 2K/4K no longer calls a paid server-side upscaler here.
+      // The selected resolution is stored and applied by the browser Canvas during download.
     } catch (error: any) {
       const errorMessage = error?.message || '生成失败，请稍后重试。'
       if (creditsDeducted) {
@@ -615,10 +525,7 @@ export async function POST(request: NextRequest) {
       await updateGenerationRecord(recordId, {
         status: 'failed',
         input_content: {
-          clientRequestId,
-          mode: isTextMode ? 'text' : 'image',
-          items: isTextMode ? sanitizedInputContents : [],
-          referenceCount: referenceImages.length,
+          ...baseRecordMeta,
           errorMessage,
         },
       })
@@ -633,7 +540,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    await updateGenerationRecord(recordId, {
+    const updateOk = await updateGenerationRecord(recordId, {
       prompt: isTextMode ? sanitizedInputContents.join('\n') : '[Image Mode]',
       style_name: styleName,
       style_prompt: finalPrompts.join('\n---\n'),
@@ -642,15 +549,23 @@ export async function POST(request: NextRequest) {
       image_count: imageUrls.length,
       image_urls: JSON.stringify(imageUrls),
       image_url: imageUrls[0] || null,
+      image_url_4k: null,
       resolution,
       status: 'success',
-      input_content: {
-        clientRequestId,
-        mode: isTextMode ? 'text' : 'image',
-        items: isTextMode ? sanitizedInputContents : [],
-        referenceCount: referenceImages.length,
-      },
+      input_content: baseRecordMeta,
     })
+
+    if (!updateOk) {
+      await rollbackCredits(profileId, totalCost)
+      return NextResponse.json(
+        {
+          success: false,
+          error: '图片已生成，但保存生成记录失败，积分已退回，请联系管理员查看服务器日志。',
+          creditsRemaining: currentCredits + totalCost,
+        },
+        { status: 500 },
+      )
+    }
 
     return NextResponse.json({
       success: true,
@@ -658,6 +573,7 @@ export async function POST(request: NextRequest) {
       imageUrls,
       imageUrl: imageUrls[0],
       creditsRemaining: currentCredits,
+      recordSaved: true,
     })
   } catch (error: any) {
     console.error('[Generate] Fatal error:', error)
@@ -667,9 +583,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (recordId) {
-      await updateGenerationRecord(recordId, {
-        status: 'failed',
-      })
+      await updateGenerationRecord(recordId, { status: 'failed' })
     }
 
     return NextResponse.json(

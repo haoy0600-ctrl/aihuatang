@@ -54,8 +54,6 @@ export default function RecordsPage() {
   const [selectedRecord, setSelectedRecord] = useState<GenerationRecord | null>(null)
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
-  const [upscalingIds, setUpscalingIds] = useState<Set<string>>(new Set())
-  const [image4kUrls, setImage4kUrls] = useState<Record<string, string>>({})
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
@@ -89,16 +87,6 @@ export default function RecordsPage() {
     } catch {
       return value.trim() ? [value.trim()] : []
     }
-  }, [])
-
-  const hydrate4kMap = useCallback((list: GenerationRecord[]) => {
-    const next4k: Record<string, string> = {}
-    list.forEach((item) => {
-      if (item.image_url_4k) {
-        next4k[item.id] = item.image_url_4k
-      }
-    })
-    setImage4kUrls(next4k)
   }, [])
 
   const fetchRecords = useCallback(
@@ -178,12 +166,10 @@ export default function RecordsPage() {
 
         if (reset) {
           setRecords(incomingRecords)
-          hydrate4kMap(incomingRecords)
         } else {
           setRecords((prev) => {
             const merged = [...prev, ...incomingRecords]
             const deduped = Array.from(new Map(merged.map((item) => [item.id, item])).values())
-            hydrate4kMap(deduped)
             return deduped
           })
         }
@@ -204,7 +190,7 @@ export default function RecordsPage() {
         setLoadingMore(false)
       }
     },
-    [filterStatus, hydrate4kMap],
+    [filterStatus],
   )
 
   useEffect(() => {
@@ -368,47 +354,6 @@ export default function RecordsPage() {
     }
   }
 
-  const handleUpscale = async (recordId: string, imageUrl: string) => {
-    if (!imageUrl || upscalingIds.has(recordId)) return
-
-    setUpscalingIds((prev) => new Set([...prev, recordId]))
-
-    try {
-      const response = await fetch('/api/upscale', {
-        method: 'POST',
-        headers: {
-          ...authHeaders(),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ imageUrl, recordId }),
-      })
-      const data = await response.json()
-
-      if (data.success && data.url) {
-        setImage4kUrls((prev) => ({
-          ...prev,
-          [recordId]: data.url,
-        }))
-        const costText =
-          typeof data.creditsCost === 'number' && data.creditsCost > 0
-            ? `，本次已扣除 ${data.creditsCost} 积分`
-            : ''
-        alert(`4K 放大已完成${costText}。`)
-      } else {
-        alert(data.error || '4K 放大失败，请稍后重试。')
-      }
-    } catch (error) {
-      console.error('Upscale failed:', error)
-      alert('4K 放大失败，请稍后重试。')
-    } finally {
-      setUpscalingIds((prev) => {
-        const next = new Set(prev)
-        next.delete(recordId)
-        return next
-      })
-    }
-  }
-
   const handleCopyPrompt = async (prompt: string, id: string) => {
     try {
       await navigator.clipboard.writeText(prompt)
@@ -434,11 +379,6 @@ export default function RecordsPage() {
       }
 
       setRecords((prev) => prev.filter((item) => item.id !== recordId))
-      setImage4kUrls((prev) => {
-        const next = { ...prev }
-        delete next[recordId]
-        return next
-      })
       setTotalRecords((prev) => Math.max(0, prev - 1))
     } catch (error) {
       console.error('Delete record failed:', error)
@@ -459,7 +399,6 @@ export default function RecordsPage() {
       )
 
       setRecords([])
-      setImage4kUrls({})
       setTotalRecords(0)
       setHasMore(false)
       setShowDeleteAllModal(false)
@@ -689,7 +628,7 @@ export default function RecordsPage() {
                       record.resolution === '1K' || record.resolution === '2K' || record.resolution === '4K'
                         ? record.resolution
                         : '1K'
-                    const coverUrl = image4kUrls[record.id] || record.image_url_4k || imageUrls[0] || ''
+                    const coverUrl = imageUrls[0] || ''
                     const totalCost = getModelPrice() * Math.max(1, record.image_count || 1)
                     const firstSentence = getFirstSentence(record.prompt)
                     const success = record.status === 'success' || record.status === 'completed'
@@ -723,17 +662,6 @@ export default function RecordsPage() {
                                 </ActionButton>
                                 <ActionButton onClick={() => void handleCopyLink(coverUrl)} tone="white">
                                   复制链接
-                                </ActionButton>
-                                <ActionButton
-                                  onClick={() => void handleUpscale(record.id, imageUrls[0] || '')}
-                                  tone={image4kUrls[record.id] ? 'success' : 'amber'}
-                                  disabled={upscalingIds.has(record.id) || Boolean(image4kUrls[record.id])}
-                                >
-                                  {image4kUrls[record.id]
-                                    ? '已完成 4K'
-                                    : upscalingIds.has(record.id)
-                                      ? '处理中...'
-                                      : '一键 4K 放大'}
                                 </ActionButton>
                               </>
                             )}
@@ -877,15 +805,12 @@ export default function RecordsPage() {
                 : '1K',
             )
           }
-          onUpscale={handleUpscale}
           onDelete={async () => {
             if (window.confirm('确定要删除这条记录吗？')) {
               await handleDeleteRecord(selectedRecord.id)
               setSelectedRecord(null)
             }
           }}
-          image4kUrl={image4kUrls[selectedRecord.id]}
-          isUpscaling={upscalingIds.has(selectedRecord.id)}
           parseImageUrls={parseImageUrls}
         />
       )}
@@ -1072,10 +997,7 @@ function RecordDetailModal({
   onPreview,
   onDownload,
   onDownloadAll,
-  onUpscale,
   onDelete,
-  image4kUrl,
-  isUpscaling,
   parseImageUrls,
 }: {
   record: GenerationRecord
@@ -1085,10 +1007,7 @@ function RecordDetailModal({
   onPreview: (url: string) => void
   onDownload: (url: string, index: number) => void
   onDownloadAll: (urls: string[]) => void
-  onUpscale: (recordId: string, imageUrl: string) => void
   onDelete: () => void
-  image4kUrl?: string
-  isUpscaling: boolean
   parseImageUrls: (value: string | string[] | null | undefined) => string[]
 }) {
   const urls = parseImageUrls(record.image_urls)
@@ -1178,19 +1097,6 @@ function RecordDetailModal({
                   className="min-w-[160px] flex-1 rounded-lg border border-[#00F2FE] bg-[#00F2FE] py-3 text-sm font-bold text-[#0A0F1D] shadow-[0_0_15px_rgba(0,242,254,0.4)] transition-all hover:shadow-[0_0_20px_rgba(0,242,254,0.6)]"
                 >
                   批量下载图片
-                </button>
-                <button
-                  onClick={() => urls[0] && onUpscale(record.id, urls[0])}
-                  disabled={isUpscaling || Boolean(image4kUrl)}
-                  className={`min-w-[160px] flex-1 rounded-lg border py-3 text-sm font-bold transition-all ${
-                    image4kUrl
-                      ? 'border-[#10B981] bg-[#10B981] text-[#0A0F1D]'
-                      : isUpscaling
-                        ? 'cursor-not-allowed border-gray-500/50 bg-gray-500/50 text-gray-400'
-                        : 'border-[#F59E0B] bg-[#F59E0B] text-[#0A0F1D] hover:bg-[#FBBF24]'
-                  }`}
-                >
-                  {image4kUrl ? '已生成 4K' : isUpscaling ? '处理中...' : '一键 4K 放大'}
                 </button>
               </>
             )}
