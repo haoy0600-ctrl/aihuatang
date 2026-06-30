@@ -5,6 +5,12 @@ import { promisify } from 'util'
 
 const execFileAsync = promisify(execFile)
 
+type ExecError = Error & {
+  stdout?: string
+  stderr?: string
+  code?: number | string
+}
+
 function isAllowedRequest(request: Request, rawBody: string, deploySecret: string) {
   const manualSecret = request.headers.get('x-deploy-secret')
   if (manualSecret && manualSecret === deploySecret) {
@@ -31,17 +37,17 @@ export async function POST(request: Request) {
   const deployScriptPath = process.env.DEPLOY_SCRIPT_PATH
 
   if (!deploySecret) {
-    return NextResponse.json({ success: false, message: 'DEPLOY_SECRET 未配置' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'DEPLOY_SECRET is not configured' }, { status: 500 })
   }
 
   if (!deployScriptPath) {
-    return NextResponse.json({ success: false, message: 'DEPLOY_SCRIPT_PATH 未配置' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'DEPLOY_SCRIPT_PATH is not configured' }, { status: 500 })
   }
 
   const rawBody = await request.text()
 
   if (!isAllowedRequest(request, rawBody, deploySecret)) {
-    return NextResponse.json({ success: false, message: '部署密钥校验失败' }, { status: 401 })
+    return NextResponse.json({ success: false, message: 'Invalid deploy secret' }, { status: 401 })
   }
 
   let payload: { ref?: string } = {}
@@ -52,24 +58,34 @@ export async function POST(request: Request) {
   }
 
   if (payload.ref && payload.ref !== 'refs/heads/main') {
-    return NextResponse.json({ success: true, message: '非 main 分支，已忽略' })
+    return NextResponse.json({ success: true, message: 'Ignored non-main branch' })
   }
 
   try {
     const { stdout, stderr } = await execFileAsync(deployScriptPath, [], {
       timeout: 1000 * 60 * 10,
-      maxBuffer: 1024 * 1024 * 5,
+      maxBuffer: 1024 * 1024 * 10,
     })
 
     return NextResponse.json({
       success: true,
-      message: '部署完成',
+      message: 'Deploy completed',
       stdout,
       stderr,
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : '未知错误'
-    console.error('Deploy failed:', error)
-    return NextResponse.json({ success: false, message: `部署失败：${message}` }, { status: 500 })
+    const execError = error as ExecError
+
+    console.error('Deploy failed:', execError)
+    return NextResponse.json(
+      {
+        success: false,
+        message: execError.message || 'Deploy failed',
+        code: execError.code,
+        stdout: execError.stdout || '',
+        stderr: execError.stderr || '',
+      },
+      { status: 500 },
+    )
   }
 }

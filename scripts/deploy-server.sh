@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-APP_DIR="${APP_DIR:-/www/wwwroot/手绘网站}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="${APP_DIR:-${SCRIPT_DIR}}"
 BRANCH="${BRANCH:-main}"
 LOCK_FILE="/tmp/aihuatang-deploy.lock"
 LOG_FILE="${APP_DIR}/deploy.log"
@@ -21,7 +22,7 @@ cd "${APP_DIR}"
 
   git fetch origin "${BRANCH}"
   git reset --hard "origin/${BRANCH}"
-  git clean -fd -e .env.local -e deploy.log -e node_modules
+  git clean -fd -e .env.local -e deploy.log -e node_modules -e deploy-server.sh
 
   npm install
   npm run build
@@ -37,8 +38,8 @@ cd "${APP_DIR}"
       pm2 restart all --update-env || true
     fi
     pm2 save || true
-  elif command -v bt >/dev/null 2>&1; then
-    echo "PM2 not found. Please restart the BaoTa Node project if BaoTa did not auto-restart it."
+  else
+    echo "PM2 not found. Restart the BaoTa Node project after this deploy if needed."
   fi
 
   echo "Deploy finished: $(date '+%Y-%m-%d %H:%M:%S')"
