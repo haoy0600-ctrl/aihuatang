@@ -1,6 +1,6 @@
 const fs = require('fs')
 const path = require('path')
-const { fork } = require('child_process')
+const { fork, spawnSync } = require('child_process')
 const { loadEnvConfig } = require('@next/env')
 
 const appRoot = __dirname
@@ -18,8 +18,18 @@ process.env.PORT = port
 process.env.HOSTNAME = hostname
 
 if (!fs.existsSync(standaloneServer)) {
-  console.error('Missing .next/standalone/server.js. Run npm run build first.')
-  process.exit(1)
+  console.log('Missing .next/standalone/server.js, building project first...')
+  const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+  const buildResult = spawnSync(npmCmd, ['run', 'build'], {
+    cwd: appRoot,
+    stdio: 'inherit',
+    env: process.env,
+  })
+
+  if (buildResult.status !== 0 || !fs.existsSync(standaloneServer)) {
+    console.error('Missing .next/standalone/server.js. Run npm run build first.')
+    process.exit(1)
+  }
 }
 
 if (process.env.AIHUATANG_CHILD === '1') {
