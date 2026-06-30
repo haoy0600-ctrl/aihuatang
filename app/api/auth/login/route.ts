@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { ensureProfileRecord, findEmailByUsername } from '@/lib/profile'
 import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
@@ -8,46 +9,22 @@ export async function POST(request: NextRequest) {
     const password = String(body.password || '')
 
     if (!supabaseAdmin) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: '系统配置未完成，请稍后重试。',
-        },
-        { status: 500 },
-      )
+      return NextResponse.json({ success: false, error: '系统配置未完成，请稍后重试。' }, { status: 500 })
     }
 
     if (!rawAccount || !password) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: '邮箱/用户名和密码不能为空。',
-        },
-        { status: 400 },
-      )
+      return NextResponse.json({ success: false, error: '邮箱/用户名和密码不能为空。' }, { status: 400 })
     }
 
     let loginEmail = rawAccount.toLowerCase()
     const isEmail = rawAccount.includes('@')
 
     if (!isEmail) {
-      const { data: profile, error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .select('email')
-        .eq('username', rawAccount)
-        .single()
-
-      if (profileError || !profile?.email) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: '用户名不存在。',
-          },
-          { status: 401 },
-        )
+      const { email: usernameEmail } = await findEmailByUsername(rawAccount)
+      if (!usernameEmail) {
+        return NextResponse.json({ success: false, error: '用户名不存在。' }, { status: 401 })
       }
-
-      loginEmail = String(profile.email).trim().toLowerCase()
+      loginEmail = String(usernameEmail).trim().toLowerCase()
     }
 
     const { data, error } = await supabaseAdmin.auth.signInWithPassword({
@@ -57,12 +34,20 @@ export async function POST(request: NextRequest) {
 
     if (error || !data.user) {
       return NextResponse.json(
-        {
-          success: false,
-          error: '账号未注册或密码错误，请检查后重试。',
-        },
+        { success: false, error: '账号未注册或密码错误，请检查后重试。' },
         { status: 401 },
       )
+    }
+
+    if (data.user.email) {
+      const ensured = await ensureProfileRecord({
+        userId: data.user.id,
+        email: data.user.email,
+      })
+
+      if (!ensured.success && ensured.error) {
+        console.error('[Auth/Login] Failed to ensure profile:', ensured.error)
+      }
     }
 
     return NextResponse.json({
@@ -82,14 +67,8 @@ export async function POST(request: NextRequest) {
           }
         : null,
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Auth/Login] Error:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: '登录失败，请稍后重试。',
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ success: false, error: '登录失败，请稍后重试。' }, { status: 500 })
   }
 }

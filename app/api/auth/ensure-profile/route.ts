@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { DEFAULT_PROFILE_CREDITS, ensureProfileRecord, getProfileById } from '@/lib/profile'
 import { requireAuthenticatedUser } from '@/lib/auth'
-import { DEFAULT_AVATAR_URL } from '@/lib/avatar'
-
-const DEFAULT_CREDITS = 8
+import { supabaseAdmin } from '@/lib/supabase'
 
 async function sendDingTalkNotification(userEmail: string, username?: string) {
   const webhookUrl = process.env.DINGTALK_WEBHOOK_URL
@@ -26,7 +24,7 @@ async function sendDingTalkNotification(userEmail: string, username?: string) {
             `- 用户邮箱：${userEmail}`,
             `- 用户名：${username || '未设置'}`,
             `- 注册时间：${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`,
-            `- 初始积分：${DEFAULT_CREDITS}`,
+            `- 初始积分：${DEFAULT_PROFILE_CREDITS}`,
           ].join('\n'),
         },
       }),
@@ -49,90 +47,32 @@ export async function POST(request: NextRequest) {
     }
 
     if (!supabaseAdmin) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: '系统配置未完成，请稍后重试。',
-        },
-        { status: 500 },
-      )
+      return NextResponse.json({ success: false, error: '系统配置未完成，请稍后重试。' }, { status: 500 })
     }
 
     const body = await request.json().catch(() => ({}))
     const username = typeof body.username === 'string' ? body.username.trim() : ''
+    const before = await getProfileById(auth.user.id)
 
-    const { data: existingProfile, error: queryError } = await supabaseAdmin
-      .from('profiles')
-      .select('id, username, avatar_url, credits')
-      .eq('id', auth.user.id)
-      .maybeSingle()
+    const ensured = await ensureProfileRecord({
+      userId: auth.user.id,
+      email: auth.user.email,
+      username,
+      credits: DEFAULT_PROFILE_CREDITS,
+    })
 
-    if (queryError) {
-      console.error('[EnsureProfile] Query failed:', queryError)
-      return NextResponse.json(
-        {
-          success: false,
-          error: '读取用户资料失败。',
-        },
-        { status: 500 },
-      )
+    if (!ensured.success) {
+      console.error('[EnsureProfile] Ensure failed:', ensured.error)
+      return NextResponse.json({ success: false, error: '创建用户资料失败。' }, { status: 500 })
     }
 
-    if (!existingProfile) {
-      const { error: insertError } = await supabaseAdmin.from('profiles').insert({
-        id: auth.user.id,
-        email: auth.user.email,
-        username: username || null,
-        credits: DEFAULT_CREDITS,
-        avatar_url: DEFAULT_AVATAR_URL,
-        created_at: new Date().toISOString(),
-      })
-
-      if (insertError) {
-        console.error('[EnsureProfile] Insert failed:', insertError)
-        return NextResponse.json(
-          {
-            success: false,
-            error: '创建用户资料失败。',
-          },
-          { status: 500 },
-        )
-      }
-
+    if (!before.profile) {
       await sendDingTalkNotification(auth.user.email, username)
-      return NextResponse.json({ success: true })
-    }
-
-    const updatePayload: Record<string, any> = {}
-
-    if (username && !existingProfile.username) {
-      updatePayload.username = username
-    }
-
-    if (!existingProfile.avatar_url) {
-      updatePayload.avatar_url = DEFAULT_AVATAR_URL
-    }
-
-    if (typeof existingProfile.credits !== 'number') {
-      updatePayload.credits = DEFAULT_CREDITS
-    }
-
-    if (Object.keys(updatePayload).length > 0) {
-      const { error: updateError } = await supabaseAdmin.from('profiles').update(updatePayload).eq('id', auth.user.id)
-      if (updateError) {
-        console.error('[EnsureProfile] Update failed:', updateError)
-      }
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[EnsureProfile] Error:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: '创建用户资料失败，请稍后重试。',
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ success: false, error: '创建用户资料失败，请稍后重试。' }, { status: 500 })
   }
 }

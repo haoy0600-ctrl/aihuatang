@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { ensureProfileRecord } from '@/lib/profile'
 import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
@@ -8,23 +9,11 @@ export async function POST(request: NextRequest) {
     const normalizedToken = String(token || '').trim()
 
     if (!supabaseAdmin) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: '系统配置未完成，请稍后重试。',
-        },
-        { status: 500 },
-      )
+      return NextResponse.json({ success: false, error: '系统配置未完成，请稍后重试。' }, { status: 500 })
     }
 
     if (!normalizedEmail || !normalizedToken) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: '邮箱和验证码不能为空。',
-        },
-        { status: 400 },
-      )
+      return NextResponse.json({ success: false, error: '邮箱和验证码不能为空。' }, { status: 400 })
     }
 
     const { data, error } = await supabaseAdmin.auth.verifyOtp({
@@ -35,12 +24,20 @@ export async function POST(request: NextRequest) {
 
     if (error || !data.user) {
       return NextResponse.json(
-        {
-          success: false,
-          error: error?.message || '验证码错误或已过期。',
-        },
+        { success: false, error: error?.message || '验证码错误或已过期。' },
         { status: 400 },
       )
+    }
+
+    if (data.user.email) {
+      const ensured = await ensureProfileRecord({
+        userId: data.user.id,
+        email: data.user.email,
+      })
+
+      if (!ensured.success && ensured.error) {
+        console.error('[Auth/VerifyOtp] Failed to ensure profile:', ensured.error)
+      }
     }
 
     return NextResponse.json({
@@ -61,12 +58,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('[Auth/VerifyOtp] Error:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: '验证码校验失败，请稍后重试。',
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ success: false, error: '验证码校验失败，请稍后重试。' }, { status: 500 })
   }
 }
