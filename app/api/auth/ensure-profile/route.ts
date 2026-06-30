@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { DEFAULT_PROFILE_CREDITS, ensureProfileRecord, isUsernameTaken, USERNAME_PATTERN } from '@/lib/profile'
+import {
+  DEFAULT_PROFILE_CREDITS,
+  ensureProfileRecord,
+  getProfileById,
+  isUsernameTaken,
+  USERNAME_PATTERN,
+} from '@/lib/profile'
 import { requireAuthenticatedUser } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
 import { RegisterNotificationChannel, sendRegisterNotifications } from '@/lib/register-notification'
@@ -49,6 +55,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}))
     const username = typeof body.username === 'string' ? body.username.trim() : ''
+    const notifyRegister = body.notifyRegister === true
+    const existing = await getProfileById(auth.user.id)
+
     if (username) {
       if (!USERNAME_PATTERN.test(username)) {
         return NextResponse.json(
@@ -82,16 +91,18 @@ export async function POST(request: NextRequest) {
 
     if (!ensured.success) {
       console.error('[EnsureProfile] Ensure failed:', ensured.error)
-      return NextResponse.json({ success: false, error: '创建用户资料失败。' }, { status: 500 })
+      const message = ensured.error instanceof Error ? ensured.error.message : ''
+      return NextResponse.json({ success: false, error: message || '创建用户资料失败。' }, { status: 500 })
     }
 
-    const shouldNotify = !(await hasSentRegisterNotification(auth.user.id))
+    const isNewProfile = !existing.profile
+    const shouldNotify = notifyRegister && isNewProfile && !(await hasSentRegisterNotification(auth.user.id))
     if (shouldNotify) {
       const channels = await sendRegisterNotifications(auth.user.email, username)
       await markRegisterNotificationSent(auth.user.id, auth.user.email, channels)
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, isNewProfile })
   } catch (error) {
     console.error('[EnsureProfile] Error:', error)
     return NextResponse.json({ success: false, error: '创建用户资料失败，请稍后重试。' }, { status: 500 })

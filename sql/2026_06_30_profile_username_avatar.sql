@@ -1,5 +1,9 @@
 -- AI画堂用户资料字段修复
 -- 在 Supabase SQL Editor 执行一次即可。
+-- 作用：
+-- 1. 增加 username / avatar_url / banned / vip_level 字段。
+-- 2. 清理历史重复用户名，只保留最早注册的账号。
+-- 3. 建立大小写不敏感的用户名唯一索引，避免两个 QQ 邮箱使用同一个用户名。
 
 ALTER TABLE profiles
 ADD COLUMN IF NOT EXISTS username text;

@@ -2,6 +2,7 @@ import { DEFAULT_AVATAR_URL } from '@/lib/avatar'
 import { supabaseAdmin } from '@/lib/supabase'
 
 export const DEFAULT_PROFILE_CREDITS = 8
+export const USERNAME_PATTERN = /^[a-zA-Z0-9_-]{3,20}$/
 
 export type SafeProfile = {
   id: string
@@ -14,14 +15,26 @@ export type SafeProfile = {
   vip_level?: number | null
 }
 
-export const USERNAME_PATTERN = /^[a-zA-Z0-9_-]{3,20}$/
-
 const PROFILE_SELECT_VARIANTS = [
   'id, email, username, avatar_url, credits, created_at, banned, vip_level',
   'id, email, username, credits, created_at, banned, vip_level',
   'id, email, avatar_url, credits, created_at, banned, vip_level',
   'id, email, credits, created_at, banned, vip_level',
 ] as const
+
+function hasColumn(profile: SafeProfile, key: keyof SafeProfile) {
+  return Object.prototype.hasOwnProperty.call(profile, key)
+}
+
+function isDuplicateUsernameError(error: any) {
+  const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase()
+  return (
+    error?.code === '23505' &&
+    (message.includes('username') ||
+      message.includes('idx_profiles_username') ||
+      message.includes('profiles_username'))
+  )
+}
 
 function buildProfileInsertVariants(params: {
   userId: string
@@ -78,12 +91,10 @@ function buildProfileUpdateVariants(payload: Record<string, any>) {
   })
 }
 
-function hasColumn(profile: SafeProfile, key: keyof SafeProfile) {
-  return Object.prototype.hasOwnProperty.call(profile, key)
-}
-
 export async function getProfileById(userId: string) {
-  if (!supabaseAdmin) return { profile: null as SafeProfile | null, error: new Error('Supabase admin not configured') }
+  if (!supabaseAdmin) {
+    return { profile: null as SafeProfile | null, error: new Error('Supabase admin not configured') }
+  }
 
   let lastError: any = null
 
@@ -99,9 +110,17 @@ export async function getProfileById(userId: string) {
 }
 
 export async function findEmailByUsername(username: string) {
-  if (!supabaseAdmin) return { email: null as string | null, error: new Error('Supabase admin not configured') }
+  if (!supabaseAdmin) {
+    return { email: null as string | null, error: new Error('Supabase admin not configured') }
+  }
 
-  const { data, error } = await supabaseAdmin.from('profiles').select('email').eq('username', username).maybeSingle()
+  const normalized = username.trim()
+  const { data, error } = await supabaseAdmin
+    .from('profiles')
+    .select('email')
+    .ilike('username', normalized)
+    .maybeSingle()
+
   if (error) {
     return { email: null as string | null, error }
   }
@@ -110,12 +129,14 @@ export async function findEmailByUsername(username: string) {
 }
 
 export async function isUsernameTaken(username: string, exceptUserId?: string) {
-  if (!supabaseAdmin) return { taken: false, supported: false, error: new Error('Supabase admin not configured') }
+  if (!supabaseAdmin) {
+    return { taken: false, supported: false, error: new Error('Supabase admin not configured') }
+  }
 
   const normalized = username.trim()
   if (!normalized) return { taken: false, supported: true, error: null }
 
-  let query = supabaseAdmin.from('profiles').select('id').eq('username', normalized).limit(1)
+  let query = supabaseAdmin.from('profiles').select('id').ilike('username', normalized).limit(1)
   if (exceptUserId) {
     query = query.neq('id', exceptUserId)
   }
@@ -131,7 +152,9 @@ export async function isUsernameTaken(username: string, exceptUserId?: string) {
 }
 
 export async function updateProfileWithFallback(userId: string, payload: Record<string, any>) {
-  if (!supabaseAdmin) return { success: false, error: new Error('Supabase admin not configured') }
+  if (!supabaseAdmin) {
+    return { success: false, error: new Error('Supabase admin not configured') }
+  }
 
   const variants = buildProfileUpdateVariants(payload)
   if (variants.length === 0) {
@@ -146,6 +169,9 @@ export async function updateProfileWithFallback(userId: string, payload: Record<
       return { success: true, error: null }
     }
     lastError = error
+    if (isDuplicateUsernameError(error)) {
+      return { success: false, error: new Error('该用户名已被使用，请换一个。') }
+    }
   }
 
   return { success: false, error: lastError }
@@ -157,11 +183,27 @@ export async function ensureProfileRecord(params: {
   username?: string
   credits?: number
 }) {
-  if (!supabaseAdmin) return { success: false, profile: null as SafeProfile | null, error: new Error('Supabase admin not configured') }
+  if (!supabaseAdmin) {
+    return { success: false, profile: null as SafeProfile | null, error: new Error('Supabase admin not configured') }
+  }
 
   const { profile, error } = await getProfileById(params.userId)
   if (error) {
     return { success: false, profile: null as SafeProfile | null, error }
+  }
+
+  const username = params.username?.trim()
+  if (username) {
+    const usernameStatus = await isUsernameTaken(username, params.userId)
+    if (usernameStatus.taken) {
+      return { success: false, profile, error: new Error('该用户名已被使用，请换一个。') }
+    }
+    if (!usernameStatus.supported) {
+      return { success: false, profile, error: new Error('系统尚未启用用户名字段，请管理员先执行数据库修复脚本。') }
+    }
+    if (usernameStatus.error) {
+      return { success: false, profile, error: usernameStatus.error }
+    }
   }
 
   if (!profile) {
@@ -173,7 +215,11 @@ export async function ensureProfileRecord(params: {
         const next = await getProfileById(params.userId)
         return { success: true, profile: next.profile, error: null }
       }
+
       lastError = insertError
+      if (username && isDuplicateUsernameError(insertError)) {
+        return { success: false, profile: null, error: new Error('该用户名已被使用，请换一个。') }
+      }
     }
 
     return { success: false, profile: null as SafeProfile | null, error: lastError }
@@ -189,22 +235,12 @@ export async function ensureProfileRecord(params: {
     updatePayload.credits = typeof params.credits === 'number' ? params.credits : DEFAULT_PROFILE_CREDITS
   }
 
-  if (params.username && hasColumn(profile, 'username') && !profile.username) {
-    const username = params.username.trim()
-    const usernameStatus = await isUsernameTaken(username, params.userId)
-    if (usernameStatus.taken) {
-      return { success: false, profile, error: new Error('用户名已被使用。') }
-    }
+  if (username && hasColumn(profile, 'username') && !profile.username) {
     updatePayload.username = username
   }
 
   if (hasColumn(profile, 'avatar_url') && !profile.avatar_url) {
     updatePayload.avatar_url = DEFAULT_AVATAR_URL
-  }
-
-  const updateVariants = buildProfileUpdateVariants(updatePayload)
-  if (updateVariants.length === 0) {
-    return { success: true, profile, error: null }
   }
 
   const updated = await updateProfileWithFallback(params.userId, updatePayload)

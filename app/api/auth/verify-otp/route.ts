@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ensureProfileRecord } from '@/lib/profile'
 import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
@@ -23,21 +22,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (error || !data.user) {
-      return NextResponse.json(
-        { success: false, error: error?.message || '验证码错误或已过期。' },
-        { status: 400 },
-      )
-    }
-
-    if (data.user.email) {
-      const ensured = await ensureProfileRecord({
-        userId: data.user.id,
-        email: data.user.email,
-      })
-
-      if (!ensured.success && ensured.error) {
-        console.error('[Auth/VerifyOtp] Failed to ensure profile:', ensured.error)
-      }
+      return NextResponse.json({ success: false, error: error?.message || '验证码错误或已过期。' }, { status: 400 })
     }
 
     return NextResponse.json({

@@ -7,23 +7,11 @@ export async function POST(request: NextRequest) {
     const normalizedEmail = String(email || '').trim().toLowerCase()
 
     if (!supabaseAdmin) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: '系统配置未完成，请稍后重试。',
-        },
-        { status: 500 },
-      )
+      return NextResponse.json({ success: false, error: '系统配置未完成，请稍后重试。' }, { status: 500 })
     }
 
     if (!normalizedEmail || !normalizedEmail.includes('@')) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: '请输入有效的邮箱地址。',
-        },
-        { status: 400 },
-      )
+      return NextResponse.json({ success: false, error: '请输入有效的邮箱地址。' }, { status: 400 })
     }
 
     const { data: existingProfiles } = await supabaseAdmin
@@ -54,13 +42,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('[Auth/SendCode] signInWithOtp failed:', error)
-      return NextResponse.json(
-        {
-          success: false,
-          error: error.message,
-        },
-        { status: 400 },
-      )
+      return NextResponse.json({ success: false, error: error.message }, { status: 400 })
     }
 
     return NextResponse.json({
@@ -70,12 +52,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('[Auth/SendCode] Error:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: '发送验证码失败，请稍后重试。',
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ success: false, error: '发送验证码失败，请稍后重试。' }, { status: 500 })
   }
 }

@@ -1,9 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Suspense } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
 import {
   type LoginSession,
   authHeaders,
@@ -15,11 +14,12 @@ import {
   saveStoredSession,
 } from '@/lib/session'
 
-const QQ_EMAIL_REGEX = /^[^\s@]+@qq\.com$/
+const QQ_EMAIL_REGEX = /^[^\s@]+@qq\.com$/i
+const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,20}$/
 
 function validateQQEmail(value: string, fieldName = 'QQ 邮箱') {
   if (!value) return `请输入${fieldName}`
-  if (!QQ_EMAIL_REGEX.test(value)) return `请输入有效的${fieldName}`
+  if (!QQ_EMAIL_REGEX.test(value.trim())) return `请输入有效的${fieldName}`
   return ''
 }
 
@@ -36,11 +36,12 @@ function LoginPageInner() {
   const searchParams = useSearchParams()
 
   const [isRegister, setIsRegister] = useState(false)
+  const [account, setAccount] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [token, setToken] = useState('')
   const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [token, setToken] = useState('')
   const [error, setError] = useState('')
   const [sendSuccess, setSendSuccess] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -78,10 +79,9 @@ function LoginPageInner() {
 
   useEffect(() => {
     const mode = searchParams.get('mode')
-
     const remembered = getRememberedAccount()
     if (remembered) {
-      setEmail(remembered)
+      setAccount(remembered)
       setForgotEmail(remembered)
       setRememberAccount(true)
     } else {
@@ -138,17 +138,21 @@ function LoginPageInner() {
     }
   }
 
-  const ensureProfileExists = async (userId: string, userEmail: string, nextUsername?: string) => {
+  const ensureProfileExists = async (
+    userId: string,
+    userEmail: string,
+    nextUsername?: string,
+    notifyRegister = false,
+  ) => {
     try {
       const response = await fetch('/api/auth/ensure-profile', {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ userId, userEmail, username: nextUsername }),
+        body: JSON.stringify({ userId, userEmail, username: nextUsername, notifyRegister }),
       })
 
       const data = await response.json()
-      if (!data.success) {
-        console.error('Failed to ensure profile:', data.error)
+      if (!response.ok || !data.success) {
         return { success: false, error: data.error || '创建用户资料失败。' }
       }
       return { success: true, error: '' }
@@ -158,16 +162,19 @@ function LoginPageInner() {
     }
   }
 
-  const openForgotPassword = () => {
-    setShowForgotPassword(true)
-    setForgotEmail(email)
-    setForgotError('')
-    setResetSent(false)
-  }
-
   const handleSendCode = async () => {
     setError('')
     setSendSuccess('')
+
+    const usernameValue = username.trim()
+    if (!usernameValue) {
+      setError('请先输入用户名。')
+      return
+    }
+    if (!USERNAME_REGEX.test(usernameValue)) {
+      setError('用户名只能使用 3-20 位字母、数字、下划线或短横线。')
+      return
+    }
 
     const emailError = validateQQEmail(email)
     if (emailError) {
@@ -177,6 +184,17 @@ function LoginPageInner() {
 
     setIsSending(true)
     try {
+      const checkResponse = await fetch('/api/auth/register-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, username: usernameValue }),
+      })
+      const checkData = await checkResponse.json()
+      if (!checkResponse.ok || !checkData.success) {
+        setError(checkData.error || '注册检查失败，请稍后重试。')
+        return
+      }
+
       const response = await fetch('/api/auth/send-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -184,8 +202,8 @@ function LoginPageInner() {
       })
 
       const data = await response.json()
-      if (!data.success) {
-        setError(`发送失败：${data.error}`)
+      if (!response.ok || !data.success) {
+        setError(data.error || '验证码发送失败。')
         return
       }
 
@@ -203,11 +221,10 @@ function LoginPageInner() {
     setError('')
     setSendSuccess('')
 
-    if (!email.trim()) {
+    if (!account.trim()) {
       setError('请输入邮箱或用户名。')
       return
     }
-
     if (!password) {
       setError('请输入密码。')
       return
@@ -218,22 +235,22 @@ function LoginPageInner() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: account.trim(), password }),
       })
 
       const data = await response.json()
-      if (!data.success || !data.user || !data.session?.accessToken) {
+      if (!response.ok || !data.success || !data.user || !data.session?.accessToken) {
         setError(data.error || '登录失败，请稍后重试。')
-        setIsSubmitting(false)
         return
       }
 
-      saveSession(data.user.id, data.user.email || email, data.session)
-      await ensureProfileExists(data.user.id, data.user.email || email)
+      saveSession(data.user.id, data.user.email || account, data.session)
+      await ensureProfileExists(data.user.id, data.user.email || account)
       router.push('/dashboard')
     } catch (loginError) {
       console.error('Login error:', loginError)
       setError('登录失败，请稍后重试。')
+    } finally {
       setIsSubmitting(false)
     }
   }
@@ -242,12 +259,12 @@ function LoginPageInner() {
     setError('')
     setSendSuccess('')
 
-    if (!username.trim()) {
+    const usernameValue = username.trim()
+    if (!usernameValue) {
       setError('请输入用户名。')
       return
     }
-
-    if (!/^[a-zA-Z0-9_-]{3,20}$/.test(username.trim())) {
+    if (!USERNAME_REGEX.test(usernameValue)) {
       setError('用户名只能使用 3-20 位字母、数字、下划线或短横线。')
       return
     }
@@ -257,22 +274,14 @@ function LoginPageInner() {
       setError(emailError)
       return
     }
-
     if (!token || token.length !== 6) {
-      setError('请输入 6 位验证码。')
+      setError('请输入 6 位邮箱验证码。')
       return
     }
-
-    if (!password) {
-      setError('请输入密码。')
-      return
-    }
-
-    if (password.length < 6) {
+    if (!password || password.length < 6) {
       setError('密码长度至少 6 位。')
       return
     }
-
     if (password !== confirmPassword) {
       setError('两次输入的密码不一致。')
       return
@@ -284,12 +293,11 @@ function LoginPageInner() {
       const checkResponse = await fetch('/api/auth/register-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, username: username.trim() }),
+        body: JSON.stringify({ email, username: usernameValue }),
       })
       const checkData = await checkResponse.json()
-      if (!checkData.success) {
+      if (!checkResponse.ok || !checkData.success) {
         setError(checkData.error || '注册检查失败，请稍后重试。')
-        setIsSubmitting(false)
         return
       }
 
@@ -300,9 +308,8 @@ function LoginPageInner() {
       })
 
       const verifyData = await verifyResponse.json()
-      if (!verifyData.success || !verifyData.user || !verifyData.session?.accessToken) {
+      if (!verifyResponse.ok || !verifyData.success || !verifyData.user || !verifyData.session?.accessToken) {
         setError(verifyData.error || '验证码错误或已过期，请重新获取。')
-        setIsSubmitting(false)
         return
       }
 
@@ -315,9 +322,19 @@ function LoginPageInner() {
       })
 
       const updateData = await updateResponse.json()
-      if (!updateData.success) {
-        setError(`注册失败：${updateData.error}`)
-        setIsSubmitting(false)
+      if (!updateResponse.ok || !updateData.success) {
+        setError(updateData.error || '注册失败，密码设置未完成。')
+        return
+      }
+
+      const profileResult = await ensureProfileExists(
+        verifyData.user.id,
+        verifyData.user.email || email,
+        usernameValue,
+        true,
+      )
+      if (!profileResult.success) {
+        setError(profileResult.error)
         return
       }
 
@@ -331,13 +348,6 @@ function LoginPageInner() {
         console.error('Failed to record register success:', recordError)
       }
 
-      const profileResult = await ensureProfileExists(verifyData.user.id, verifyData.user.email || email, username.trim())
-      if (!profileResult.success) {
-        setError(profileResult.error)
-        setIsSubmitting(false)
-        return
-      }
-
       const loginResponse = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -345,10 +355,9 @@ function LoginPageInner() {
       })
       const loginData = await loginResponse.json()
 
-      if (!loginData.success || !loginData.user || !loginData.session?.accessToken) {
+      if (!loginResponse.ok || !loginData.success || !loginData.user || !loginData.session?.accessToken) {
         clearStoredSession()
-        setError(loginData.error || '注册成功，但自动登录失败，请返回登录页用新密码登录。')
-        setIsSubmitting(false)
+        setError(loginData.error || '注册成功，但自动登录失败，请返回登录页使用新密码登录。')
         return
       }
 
@@ -357,6 +366,7 @@ function LoginPageInner() {
     } catch (registerError) {
       console.error('Register error:', registerError)
       setError('注册失败，请稍后重试。')
+    } finally {
       setIsSubmitting(false)
     }
   }
@@ -379,9 +389,8 @@ function LoginPageInner() {
       })
 
       const data = await response.json()
-      if (!data.success) {
-        setForgotError(`发送失败：${data.error}`)
-        setIsSendingReset(false)
+      if (!response.ok || !data.success) {
+        setForgotError(data.error || '发送失败，请稍后重试。')
         return
       }
 
@@ -402,17 +411,10 @@ function LoginPageInner() {
       setError('重置链接无效或已过期，请重新发送重置邮件。')
       return
     }
-
-    if (!recoveryPassword) {
-      setError('请输入新密码。')
-      return
-    }
-
-    if (recoveryPassword.length < 6) {
+    if (!recoveryPassword || recoveryPassword.length < 6) {
       setError('新密码长度至少 6 位。')
       return
     }
-
     if (recoveryPassword !== recoveryConfirmPassword) {
       setError('两次输入的新密码不一致。')
       return
@@ -423,7 +425,7 @@ function LoginPageInner() {
     try {
       saveStoredSession({
         id: 'recovery-temp-user',
-        email: forgotEmail || email || 'recovery@aihuatang.top',
+        email: forgotEmail || account || 'recovery@aihuatang.top',
         accessToken: recoveryAccessToken,
         refreshToken: recoveryRefreshToken || undefined,
         expiresAt: Date.now() + 30 * 60 * 1000,
@@ -439,7 +441,6 @@ function LoginPageInner() {
       if (!response.ok || !data.success) {
         clearStoredSession()
         setError(data.error || '重置密码失败，请重新获取邮件。')
-        setRecoverySubmitting(false)
         return
       }
 
@@ -457,6 +458,13 @@ function LoginPageInner() {
     } finally {
       setRecoverySubmitting(false)
     }
+  }
+
+  const openForgotPassword = () => {
+    setShowForgotPassword(true)
+    setForgotEmail(account)
+    setForgotError('')
+    setResetSent(false)
   }
 
   return (
@@ -514,9 +522,7 @@ function LoginPageInner() {
 
               {isRecoveryMode ? (
                 <div className="space-y-4">
-                  <div className="rounded-lg border border-[#00E676]/30 bg-[#00E676]/10 px-4 py-3 text-sm text-[#8CF5CA]">
-                    已验证重置邮件，请直接设置新的登录密码。
-                  </div>
+                  <MessageBox tone="success">已验证重置邮件，请直接设置新的登录密码。</MessageBox>
 
                   <div>
                     <FieldLabel>新密码</FieldLabel>
@@ -551,21 +557,6 @@ function LoginPageInner() {
                   >
                     {recoverySubmitting ? '重置中...' : '确认重置密码'}
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsRecoveryMode(false)
-                      setRecoveryPassword('')
-                      setRecoveryConfirmPassword('')
-                      setRecoveryAccessToken('')
-                      setRecoveryRefreshToken('')
-                      setError('')
-                    }}
-                    className="w-full border border-[#334155] bg-[#0D111A] py-3 text-sm text-white transition-all hover:border-[#00E676]"
-                  >
-                    返回登录
-                  </button>
                 </div>
               ) : (
                 <>
@@ -574,8 +565,8 @@ function LoginPageInner() {
                       <FieldLabel>邮箱 / 用户名</FieldLabel>
                       <input
                         type="text"
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
+                        value={account}
+                        onChange={(event) => setAccount(event.target.value)}
                         placeholder="请输入邮箱或用户名"
                         className="w-full border border-[#334155] bg-[#0D111A] px-4 py-3 text-white outline-none transition-all placeholder:text-[#475569] focus:border-[#00E676]"
                         disabled={isSubmitting}
@@ -653,7 +644,7 @@ function LoginPageInner() {
             <div className="border border-[#334155] bg-[#1E293B] p-4 sm:p-6">
               <div className="mb-6 text-center">
                 <h2 className="text-xl font-bold text-white">创建账号</h2>
-                <p className="mt-1 text-sm text-[#64748B]">注册后即可开始体验 AI画堂</p>
+                <p className="mt-1 text-sm text-[#64748B]">注册后赠送 8 积分，可直接测试生成</p>
               </div>
 
               {error && <MessageBox tone="error">{error}</MessageBox>}
