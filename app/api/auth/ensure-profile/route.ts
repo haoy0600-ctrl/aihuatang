@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { DEFAULT_PROFILE_CREDITS, ensureProfileRecord, getProfileById } from '@/lib/profile'
+import { DEFAULT_PROFILE_CREDITS, ensureProfileRecord, getProfileById, isUsernameTaken, USERNAME_PATTERN } from '@/lib/profile'
 import { requireAuthenticatedUser } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
 import { RegisterNotificationChannel, sendRegisterNotifications } from '@/lib/register-notification'
@@ -51,6 +51,30 @@ export async function POST(request: NextRequest) {
     const username = typeof body.username === 'string' ? body.username.trim() : ''
     const before = await getProfileById(auth.user.id)
 
+    if (username) {
+      if (!USERNAME_PATTERN.test(username)) {
+        return NextResponse.json(
+          { success: false, error: '用户名只能使用 3-20 位字母、数字、下划线或短横线。' },
+          { status: 400 },
+        )
+      }
+
+      const usernameStatus = await isUsernameTaken(username, auth.user.id)
+      if (usernameStatus.taken) {
+        return NextResponse.json({ success: false, error: '该用户名已被使用，请换一个。' }, { status: 400 })
+      }
+      if (!usernameStatus.supported) {
+        return NextResponse.json(
+          { success: false, error: '系统尚未启用用户名字段，请管理员先执行数据库修复脚本。' },
+          { status: 500 },
+        )
+      }
+      if (usernameStatus.error) {
+        console.error('[EnsureProfile] Username check failed:', usernameStatus.error)
+        return NextResponse.json({ success: false, error: '用户名检查失败，请稍后重试。' }, { status: 500 })
+      }
+    }
+
     const ensured = await ensureProfileRecord({
       userId: auth.user.id,
       email: auth.user.email,
@@ -63,7 +87,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '创建用户资料失败。' }, { status: 500 })
     }
 
-    const shouldNotify = !before.profile || !(await hasSentRegisterNotification(auth.user.id))
+    const shouldNotify = !(await hasSentRegisterNotification(auth.user.id))
     if (shouldNotify) {
       const channels = await sendRegisterNotifications(auth.user.email, username)
       await markRegisterNotificationSent(auth.user.id, auth.user.email, channels)

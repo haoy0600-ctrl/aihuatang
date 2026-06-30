@@ -1,14 +1,15 @@
 'use client'
 
 import Link from 'next/link'
+import { BrandLogo } from '@/components/BrandLogo'
 
 export default function TermsPage() {
   return (
     <div className="flex min-h-screen flex-col bg-[#091511]">
       <header className="border-b border-[#142D24]">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
-          <Link href="/" className="flex items-center">
-            <img src="/logo.svg?v=3" alt="AI画堂" className="h-12 w-12 object-contain" />
+          <Link href="/" className="flex min-w-0 items-center">
+            <BrandLogo compact />
           </Link>
           <Link
             href="/dashboard"

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { TermsModal } from '@/components/TermsModal'
+import { BrandLogo } from '@/components/BrandLogo'
 import { isAdminEmail } from '@/lib/auth'
 import { getStoredSession } from '@/lib/session'
 
@@ -51,14 +52,11 @@ export default function HomePage() {
     <div className="relative min-h-screen overflow-x-hidden bg-[#050816] text-white">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,0.18),transparent_30%),radial-gradient(circle_at_80%_15%,rgba(34,211,238,0.14),transparent_28%),linear-gradient(180deg,#060914_0%,#09111f_45%,#050816_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-40 [background-image:linear-gradient(rgba(148,163,184,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.04)_1px,transparent_1px)] [background-size:64px_64px]" />
-      <div className="pointer-events-none absolute -top-24 left-[10%] h-72 w-72 rounded-full bg-[#10B981]/18 blur-[110px] animate-pulse" />
-      <div className="pointer-events-none absolute right-[8%] top-24 h-64 w-64 rounded-full bg-[#22D3EE]/14 blur-[100px] animate-pulse" />
-      <div className="pointer-events-none absolute bottom-8 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full bg-[#0EA5E9]/8 blur-[120px]" />
 
       <header className="sticky top-0 z-50 border-b border-white/6 bg-[#050816]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1320px] items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" className="flex items-center">
-            <img src="/logo.svg?v=3" alt="AI画堂" className="h-12 w-auto object-contain sm:h-14" />
+          <Link href="/" className="min-w-0 flex-1 sm:flex-none">
+            <BrandLogo className="max-w-[132px] sm:max-w-none" />
           </Link>
 
           <nav className="hidden items-center gap-2 md:flex">
@@ -93,6 +91,7 @@ export default function HomePage() {
           <button
             onClick={() => setMobileMenuOpen((value) => !value)}
             className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] md:hidden"
+            aria-label="打开导航"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               {mobileMenuOpen ? (
@@ -147,18 +146,22 @@ export default function HomePage() {
               </div>
 
               <h1 className="max-w-3xl text-3xl font-black leading-tight text-white sm:text-5xl">
-                <span className="bg-gradient-to-r from-[#18F2A1] via-[#20E3FF] to-[#B0F6E0] bg-clip-text text-transparent">
+                <span className="block bg-gradient-to-r from-[#18F2A1] via-[#20E3FF] to-[#B0F6E0] bg-clip-text text-transparent">
                   AI画堂
                 </span>
-                <span className="text-white/96"> · 自媒体高质感图文设计与智能排版工具</span>
+                <span className="mt-3 block text-white/96 sm:mt-4">自媒体高质感图文设计与智能排版工具</span>
               </h1>
 
-              <p className="mt-5 max-w-2xl text-sm leading-7 text-[#9FB0C8] sm:text-base">
+              <div className="mt-6 inline-flex max-w-full items-center rounded-2xl border border-[#10B981]/25 bg-[#10B981]/10 px-4 py-2 text-sm font-semibold text-[#8CF5CA]">
+                新用户注册邮箱后赠送 8 积分，可直接用于测试生成。
+              </div>
+
+              <p className="mt-6 max-w-2xl text-sm leading-7 text-[#9FB0C8] sm:text-base">
                 让长文总结、课程知识点、公众号图文和封面图不再只像“AI 生成”。我们把内容组织、风格约束、画面完成度和输出规格做成了一条更稳的创作链路。
               </p>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-[#6BE5C2] sm:text-base">
-                支持 1K、2K、4K 分档导出，适合先试稿，再定稿，再按发布场景放大保存。
+                支持 1K、2K、4K 分档输出，适合先试稿，再定稿，再按发布场景放大保存。
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">

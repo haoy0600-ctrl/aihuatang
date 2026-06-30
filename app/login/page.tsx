@@ -149,9 +149,12 @@ function LoginPageInner() {
       const data = await response.json()
       if (!data.success) {
         console.error('Failed to ensure profile:', data.error)
+        return { success: false, error: data.error || '创建用户资料失败。' }
       }
+      return { success: true, error: '' }
     } catch (profileError) {
       console.error('Failed to ensure profile:', profileError)
+      return { success: false, error: '创建用户资料失败，请稍后重试。' }
     }
   }
 
@@ -244,6 +247,11 @@ function LoginPageInner() {
       return
     }
 
+    if (!/^[a-zA-Z0-9_-]{3,20}$/.test(username.trim())) {
+      setError('用户名只能使用 3-20 位字母、数字、下划线或短横线。')
+      return
+    }
+
     const emailError = validateQQEmail(email)
     if (emailError) {
       setError(emailError)
@@ -273,6 +281,18 @@ function LoginPageInner() {
     setIsSubmitting(true)
 
     try {
+      const checkResponse = await fetch('/api/auth/register-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, username: username.trim() }),
+      })
+      const checkData = await checkResponse.json()
+      if (!checkData.success) {
+        setError(checkData.error || '注册检查失败，请稍后重试。')
+        setIsSubmitting(false)
+        return
+      }
+
       const verifyResponse = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -311,7 +331,12 @@ function LoginPageInner() {
         console.error('Failed to record register success:', recordError)
       }
 
-      await ensureProfileExists(verifyData.user.id, verifyData.user.email || email, username.trim())
+      const profileResult = await ensureProfileExists(verifyData.user.id, verifyData.user.email || email, username.trim())
+      if (!profileResult.success) {
+        setError(profileResult.error)
+        setIsSubmitting(false)
+        return
+      }
 
       const loginResponse = await fetch('/api/auth/login', {
         method: 'POST',

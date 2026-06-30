@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
+import { BrandLogo } from '@/components/BrandLogo'
+import { UserAvatar } from '@/components/UserAvatar'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
-import { resolveAvatarUrl } from '@/lib/avatar'
 
 interface UserProfile {
   id: string
   email: string
+  username?: string | null
   credits: number
   created_at?: string
   avatar_url?: string
@@ -205,8 +207,8 @@ export default function ProfilePage() {
       <header className="border-b border-[#142D24] bg-[#040D0A]">
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-2 sm:py-3">
-            <Link href="/" className="flex items-center select-none transition-opacity hover:opacity-80">
-              <img src="/logo.svg?v=3" alt="AI画堂" className="h-20 w-20 object-contain" />
+            <Link href="/" className="min-w-0 flex-1 select-none transition-opacity hover:opacity-80 sm:flex-none">
+              <BrandLogo className="max-w-[132px] sm:max-w-none" />
             </Link>
 
             <nav className="hidden items-center gap-4 md:flex">
@@ -218,7 +220,7 @@ export default function ProfilePage() {
               </NavLink>
             </nav>
 
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-4">
               <div className="hidden items-center gap-2 text-xs text-[#10B981] sm:flex">
                 <span>{new Date().toLocaleDateString('zh-CN')}</span>
                 <span className="font-mono text-sm font-bold text-white">{currentTime}</span>
@@ -235,7 +237,7 @@ export default function ProfilePage() {
                   onClick={() => setShowUserMenu((prev) => !prev)}
                   className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-[#142D24] bg-[#091511]/60 transition-colors hover:border-[#10B981] sm:h-9 sm:w-9"
                 >
-                  <img src={resolveAvatarUrl(profile.avatar_url)} alt="头像" className="h-full w-full object-cover" />
+                  <UserAvatar avatarUrl={profile.avatar_url} className="h-full w-full object-cover" />
                 </button>
 
                 {showUserMenu && (
@@ -291,12 +293,12 @@ export default function ProfilePage() {
       <main className="mx-auto w-full max-w-[900px] flex-1 px-4 py-8">
         <div className="rounded-3xl border border-[#142D24] bg-[#091511]/70 p-6 shadow-2xl backdrop-blur-md">
           <div className="flex flex-col gap-6 md:flex-row md:items-center">
-            <div className="flex items-center gap-5">
+            <div className="flex min-w-0 items-center gap-5">
               <button
                 onClick={handleAvatarClick}
                 className="relative h-24 w-24 overflow-hidden rounded-3xl border border-[#10B981]/30 bg-[#0B1511]"
               >
-                <img src={resolveAvatarUrl(profile.avatar_url)} alt="头像" className="h-full w-full object-cover" />
+                <UserAvatar avatarUrl={profile.avatar_url} className="h-full w-full object-cover" />
                 <div className="absolute inset-x-0 bottom-0 bg-black/55 py-1 text-xs text-white">更换头像</div>
               </button>
               <input
@@ -307,9 +309,11 @@ export default function ProfilePage() {
                 onChange={handleAvatarUpload}
               />
 
-              <div>
-                <h1 className="text-3xl font-black text-white">{user.email}</h1>
-                <p className="mt-2 text-sm text-[#10B981]">账号 ID：{profile.id}</p>
+              <div className="min-w-0">
+                <h1 className="truncate text-2xl font-black text-white sm:text-3xl">
+                  {profile.username || '未设置用户名'}
+                </h1>
+                <p className="mt-2 truncate text-sm text-[#10B981]">{user.email}</p>
                 {uploading && <p className="mt-2 text-xs text-[#8CF5CA]">头像上传中 {uploadProgress}%</p>}
               </div>
             </div>
@@ -325,10 +329,10 @@ export default function ProfilePage() {
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
+            <InfoCard label="用户名" value={profile.username || '未设置'} />
             <InfoCard label="邮箱地址" value={profile.email} />
             <InfoCard label="当前积分" value={`${profile.credits}`} strong />
             <InfoCard label="注册时间" value={formatDate(profile.created_at)} />
-            <InfoCard label="默认头像策略" value={profile.avatar_url ? '已生效' : '待补齐'} />
           </div>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-2">

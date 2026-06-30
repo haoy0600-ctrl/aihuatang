@@ -156,7 +156,7 @@ export default function AdminAnnouncementsPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-400">管理员：{userEmail}</span>
+            <span className="hidden text-sm text-gray-400 sm:inline">管理员：{userEmail}</span>
             <button
               onClick={handleLogout}
               className="rounded-md bg-red-500/15 px-3 py-1 text-sm text-red-300 transition-colors hover:bg-red-500/25"
@@ -220,7 +220,7 @@ export default function AdminAnnouncementsPage() {
                   type="checkbox"
                   checked={formPinned}
                   onChange={(event) => setFormPinned(event.target.checked)}
-                  className="h-4 w-4 accent-[#10B981]"
+                  className="h-4 w-4 rounded border-[#334155] bg-[#1e293b]"
                 />
                 置顶显示
               </label>
@@ -230,38 +230,30 @@ export default function AdminAnnouncementsPage() {
                 <textarea
                   value={formContent}
                   onChange={(event) => setFormContent(event.target.value)}
-                  placeholder="请填写完整公告内容，支持多行。"
-                  rows={8}
-                  className="w-full resize-none rounded-lg border border-[#334155] bg-[#1e293b] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-[#10B981]"
+                  rows={6}
+                  placeholder="填写要发给用户看的公告内容。"
+                  className="w-full resize-none rounded-lg border border-[#334155] bg-[#1e293b] px-4 py-3 text-white outline-none transition-colors focus:border-[#10B981]"
                 />
               </div>
-
-              {feedback && (
-                <div className={`text-sm ${feedback.includes('成功') ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {feedback}
-                </div>
-              )}
 
               <button
                 type="submit"
                 disabled={submitting}
-                className={`w-full rounded-lg py-3 font-semibold transition-all ${
-                  submitting
-                    ? 'cursor-not-allowed bg-[#334155] text-gray-500'
-                    : 'bg-gradient-to-r from-[#10B981] to-[#059669] text-white hover:shadow-[0_0_20px_rgba(16,185,129,0.35)]'
-                }`}
+                className="w-full rounded-lg bg-[#10B981] py-3 font-semibold text-[#030712] transition-colors hover:bg-[#34d399] disabled:cursor-not-allowed disabled:bg-[#334155] disabled:text-gray-500"
               >
-                {submitting ? '正在发布...' : '发布公告'}
+                {submitting ? '发布中...' : '发布公告'}
               </button>
             </form>
           )}
+
+          {feedback && <p className="mt-4 rounded-lg bg-[#1e293b] px-4 py-3 text-sm text-gray-200">{feedback}</p>}
         </section>
 
         <section className="rounded-2xl border border-[#1e293b] bg-[#0f172a] p-6">
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-[#10B981]">公告列表</h2>
-              <p className="mt-1 text-sm text-gray-400">当前展示的是正在生效的公告内容。</p>
+              <p className="mt-1 text-sm text-gray-400">当前仅展示启用中的公告。</p>
             </div>
             <button
               onClick={() => void fetchAnnouncements()}
@@ -272,38 +264,32 @@ export default function AdminAnnouncementsPage() {
           </div>
 
           {loading ? (
-            <div className="py-10 text-center text-gray-400">正在加载公告列表...</div>
+            <div className="py-12 text-center text-gray-500">正在加载公告...</div>
           ) : errorMessage ? (
-            <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-300">
               {errorMessage}
             </div>
           ) : announcements.length === 0 ? (
-            <div className="py-10 text-center text-gray-500">还没有可展示的公告。</div>
+            <div className="py-12 text-center text-gray-500">暂时还没有公告。</div>
           ) : (
             <div className="space-y-3">
               {announcements.map((announcement) => {
-                const typeMeta = getTypeMeta(announcement.type)
-
+                const meta = getTypeMeta(announcement.type)
                 return (
-                  <article key={announcement.id} className="rounded-xl border border-[#334155]/50 bg-[#1e293b]/40 p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          {announcement.is_pinned && (
-                            <span className="rounded-md bg-[#10B981]/15 px-2 py-1 text-xs text-[#10B981]">置顶</span>
-                          )}
-                          <span className={`rounded-md px-2 py-1 text-xs ${typeMeta.className}`}>{typeMeta.label}</span>
-                        </div>
-
-                        <h3 className="text-base font-semibold text-white">{announcement.title}</h3>
-                        <p className="mt-1 text-xs text-gray-500">
-                          {new Date(announcement.created_at).toLocaleString('zh-CN')}
-                          {announcement.created_by ? ` · ${announcement.created_by}` : ''}
-                        </p>
-                      </div>
+                  <article key={announcement.id} className="rounded-xl border border-[#1e293b] bg-[#111827] p-4">
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      {announcement.is_pinned && (
+                        <span className="rounded-md bg-[#10B981]/15 px-2 py-1 text-xs text-[#10B981]">置顶</span>
+                      )}
+                      <span className={`rounded-md px-2 py-1 text-xs ${meta.className}`}>{meta.label}</span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(announcement.created_at).toLocaleString('zh-CN')}
+                      </span>
                     </div>
-
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-300">{announcement.content}</p>
+                    <h3 className="break-words text-base font-semibold text-white">{announcement.title}</h3>
+                    <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-gray-400">
+                      {announcement.content}
+                    </p>
                   </article>
                 )
               })}
@@ -311,6 +297,18 @@ export default function AdminAnnouncementsPage() {
           )}
         </section>
       </main>
+
+      <footer className="border-t border-[#1e293b]/60 bg-[#030712]/95 py-3">
+        <div className="mx-auto max-w-4xl px-4 text-center text-sm text-gray-500">
+          登录或使用本站即代表您同意
+          <button
+            onClick={() => setShowTermsModal(true)}
+            className="ml-1 text-[#10B981] underline underline-offset-2"
+          >
+            《安全合规与使用须知》
+          </button>
+        </div>
+      </footer>
 
       <TermsModal show={showTermsModal} onClose={() => setShowTermsModal(false)} />
     </div>

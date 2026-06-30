@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation'
 import { HANDDRAWN_STYLES, HanddrawnStyle } from '@/config/styles'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
+import { BrandLogo } from '@/components/BrandLogo'
+import { UserAvatar } from '@/components/UserAvatar'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
-import { resolveAvatarUrl } from '@/lib/avatar'
 import {
   createExportedImageBlob,
   downloadBlob,
@@ -36,6 +37,7 @@ type ResolutionLevel = '1K' | '2K' | '4K'
 const PENDING_GENERATION_KEY = 'ai_huatang_pending_generation_request'
 const STYLE_STORAGE_VERSION_KEY = 'ai_huatang_style_storage_version'
 const CURRENT_STYLE_STORAGE_VERSION = '2026-06-28-v2'
+const EXPAND_HISTORY_KEY = 'ai_huatang_expand_history'
 
 const ASPECT_RATIOS = [
   { label: 'auto', value: 'auto', note: '自动适配' },
@@ -84,6 +86,13 @@ const sanitizeDisplayText = (value: string) =>
     .trim()
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+type ExpandHistory = {
+  tab: number
+  previousText: string
+  nextText: string
+  createdAt: number
+}
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -161,6 +170,10 @@ export default function DashboardPage() {
   const [isGuideOpen, setIsGuideOpen] = useState(false)
   const [isApiNoticeOpen, setIsApiNoticeOpen] = useState(false)
   const [isExpanding, setIsExpanding] = useState(false)
+  const [lastExpandHistory, setLastExpandHistory] = useState<ExpandHistory | null>(() => {
+    if (typeof window === 'undefined') return null
+    return getStoredJson<ExpandHistory | null>(EXPAND_HISTORY_KEY, null)
+  })
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
@@ -254,6 +267,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    if (!selectedStyleId && HANDDRAWN_STYLES.length > 0) {
+      handleStyleChange(HANDDRAWN_STYLES[9]?.id || HANDDRAWN_STYLES[0].id)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStyleId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
 
     localStorage.setItem('ai_huatang_draft_genMode', genMode)
     localStorage.setItem('ai_huatang_draft_activeTab', String(activeTab))
@@ -300,6 +321,15 @@ export default function DashboardPage() {
       localStorage.removeItem('ai_huatang_last_preview')
     }
   }, [customStylesList, generatedImages])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (lastExpandHistory) {
+      localStorage.setItem(EXPAND_HISTORY_KEY, JSON.stringify(lastExpandHistory))
+    } else {
+      localStorage.removeItem(EXPAND_HISTORY_KEY)
+    }
+  }, [lastExpandHistory])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -434,14 +464,32 @@ export default function DashboardPage() {
       }
 
       const nextSegments = [...textSegments]
-      nextSegments[activeTab - 1] = sanitizeDisplayText(data.expandedText)
+      const nextText = sanitizeDisplayText(data.expandedText)
+      nextSegments[activeTab - 1] = nextText
       setTextSegments(nextSegments)
+      setLastExpandHistory({
+        tab: activeTab,
+        previousText: currentText,
+        nextText,
+        createdAt: Date.now(),
+      })
     } catch (error) {
       console.error('AI expand error:', error)
       alert('AI 优化请求失败，请检查网络后重试。')
     } finally {
       setIsExpanding(false)
     }
+  }
+
+  const handleUndoAIExpand = () => {
+    if (!lastExpandHistory) return
+
+    const nextSegments = [...textSegments]
+    const targetIndex = Math.max(0, Math.min(lastExpandHistory.tab - 1, nextSegments.length - 1))
+    nextSegments[targetIndex] = lastExpandHistory.previousText
+    setTextSegments(nextSegments)
+    setActiveTab(lastExpandHistory.tab)
+    setLastExpandHistory(null)
   }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -794,8 +842,8 @@ export default function DashboardPage() {
       <header className="border-b border-[#142D24] bg-[#040D0A]">
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-1 sm:py-2">
-            <Link href="/" className="flex items-center transition-opacity hover:opacity-80">
-              <img src="/logo.svg?v=3" alt="AI画堂" className="h-20 w-20 object-contain" />
+            <Link href="/" className="min-w-0 flex-1 transition-opacity hover:opacity-80 sm:flex-none">
+              <BrandLogo className="max-w-[132px] sm:max-w-none" />
             </Link>
 
             <nav className="hidden items-center gap-4 md:flex">
@@ -825,7 +873,7 @@ export default function DashboardPage() {
               </Link>
             </nav>
 
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-4">
               <Link
                 href="/records"
                 className="rounded-lg border border-[#142D24] bg-[#091511]/60 px-3 py-1.5 text-xs font-bold text-white transition-all hover:border-[#10B981] md:hidden"
@@ -847,9 +895,9 @@ export default function DashboardPage() {
               <div className="relative">
                 <button
                   onClick={() => setShowUserMenu((value) => !value)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#142D24] bg-[#091511]/60 transition-colors hover:border-[#10B981] sm:h-9 sm:w-9"
+                  className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-[#142D24] bg-[#091511]/60 transition-colors hover:border-[#10B981] sm:h-9 sm:w-9"
                 >
-                  <img src={resolveAvatarUrl(profile?.avatar_url)} alt="头像" className="h-full w-full rounded-lg object-cover" />
+                  <UserAvatar avatarUrl={profile?.avatar_url} className="h-full w-full rounded-lg object-cover" />
                 </button>
 
                 {showUserMenu && (
@@ -927,7 +975,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-x-hidden overflow-y-auto pb-28 sm:pb-32">
+      <main className="flex-1 overflow-x-hidden overflow-y-auto pb-36 sm:pb-32">
         <div className="mx-auto max-w-[1400px] px-4 py-2 sm:px-6 lg:px-8">
           <div className="mb-2">
             <h2 className="mb-1 text-lg font-bold text-white">创作中心</h2>
@@ -1027,17 +1075,31 @@ export default function DashboardPage() {
                       className="h-40 w-full resize-none rounded-lg border border-[#142D24] bg-[#040D0A] px-3 py-3 text-sm text-white outline-none transition-colors placeholder:text-[#64748B] focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981]"
                     />
 
-                    <button
-                      onClick={handleAIExpand}
-                      disabled={isExpanding}
-                      className={`mt-2 flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-bold transition-all ${
-                        isExpanding
-                          ? 'cursor-not-allowed border-[#142D24] bg-[#091511]/60 text-[#64748B]'
-                          : 'border-[#03F09C]/50 bg-gradient-to-r from-[#03F09C]/20 to-[#00F2FE]/20 text-[#03F09C] hover:border-[#03F09C] hover:shadow-[0_0_15px_rgba(3,240,156,0.3)]'
-                      }`}
-                    >
-                      {isExpanding ? 'AI 正在优化中...' : 'AI 一键优化'}
-                    </button>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                      <button
+                        onClick={handleAIExpand}
+                        disabled={isExpanding}
+                        className={`flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-bold transition-all ${
+                          isExpanding
+                            ? 'cursor-not-allowed border-[#142D24] bg-[#091511]/60 text-[#64748B]'
+                            : 'border-[#03F09C]/50 bg-gradient-to-r from-[#03F09C]/20 to-[#00F2FE]/20 text-[#03F09C] hover:border-[#03F09C] hover:shadow-[0_0_15px_rgba(3,240,156,0.3)]'
+                        }`}
+                      >
+                        {isExpanding ? 'AI 正在优化中...' : 'AI 一键优化'}
+                      </button>
+
+                      <button
+                        onClick={handleUndoAIExpand}
+                        disabled={!lastExpandHistory}
+                        className={`rounded-lg border px-4 py-2.5 text-sm font-bold transition-all ${
+                          lastExpandHistory
+                            ? 'border-[#10B981]/40 bg-[#091511]/70 text-[#8CF5CA] hover:border-[#10B981]'
+                            : 'cursor-not-allowed border-[#142D24] bg-[#091511]/40 text-[#43564E]'
+                        }`}
+                      >
+                        撤回优化
+                      </button>
+                    </div>
 
                     <div className="mt-2 flex items-center justify-between">
                       <span className="text-xs text-[#10B981]">第 {activeTab} / {totalTabs} 段</span>
@@ -1155,7 +1217,10 @@ export default function DashboardPage() {
 
               <div className="space-y-3">
                 <div>
-                  <label className="mb-1.5 block text-xs text-[#10B981]">风格选择</label>
+                  <div className="mb-1.5 flex items-center justify-between gap-3">
+                    <label className="block text-xs text-[#10B981]">风格选择</label>
+                    <span className="text-xs text-[#6E8D82]">系统风格 {HANDDRAWN_STYLES.length} 个</span>
+                  </div>
                   <select
                     value={selectedStyleId || ''}
                     onChange={(event) => handleStyleChange(Number(event.target.value))}
@@ -1286,7 +1351,7 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            <section className="flex flex-col rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
+            <section className="flex min-h-0 flex-col rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h3 className="text-base font-bold text-white">生成预览</h3>
@@ -1315,7 +1380,7 @@ export default function DashboardPage() {
 
               <div className="flex min-h-0 flex-1 flex-col">
                 <div
-                  className={`flex flex-1 items-center justify-center overflow-hidden rounded-lg border-2 border-[#142D24] bg-[#040D0A] min-h-[320px] max-h-[52vh] md:min-h-0 md:max-h-none ${getAspectClass()}`}
+                  className={`flex w-full items-center justify-center overflow-hidden rounded-lg border-2 border-[#142D24] bg-[#040D0A] min-h-[220px] max-h-[calc(100svh-220px)] md:min-h-0 md:max-h-none md:flex-1 ${getAspectClass()}`}
                 >
                   {generationStatus === 'idle' && (
                     <div className="p-6 text-center sm:p-8">

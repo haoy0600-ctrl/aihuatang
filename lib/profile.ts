@@ -14,6 +14,8 @@ export type SafeProfile = {
   vip_level?: number | null
 }
 
+export const USERNAME_PATTERN = /^[a-zA-Z0-9_-]{3,20}$/
+
 const PROFILE_SELECT_VARIANTS = [
   'id, email, username, avatar_url, credits, created_at, banned, vip_level',
   'id, email, username, credits, created_at, banned, vip_level',
@@ -107,6 +109,27 @@ export async function findEmailByUsername(username: string) {
   return { email: typeof data?.email === 'string' ? data.email : null, error: null }
 }
 
+export async function isUsernameTaken(username: string, exceptUserId?: string) {
+  if (!supabaseAdmin) return { taken: false, supported: false, error: new Error('Supabase admin not configured') }
+
+  const normalized = username.trim()
+  if (!normalized) return { taken: false, supported: true, error: null }
+
+  let query = supabaseAdmin.from('profiles').select('id').eq('username', normalized).limit(1)
+  if (exceptUserId) {
+    query = query.neq('id', exceptUserId)
+  }
+
+  const { data, error } = await query
+  if (error) {
+    const message = `${error.message || ''} ${error.details || ''}`.toLowerCase()
+    const missingColumn = message.includes('username') && (message.includes('column') || message.includes('schema'))
+    return { taken: false, supported: !missingColumn, error }
+  }
+
+  return { taken: Boolean(data && data.length > 0), supported: true, error: null }
+}
+
 export async function updateProfileWithFallback(userId: string, payload: Record<string, any>) {
   if (!supabaseAdmin) return { success: false, error: new Error('Supabase admin not configured') }
 
@@ -167,7 +190,12 @@ export async function ensureProfileRecord(params: {
   }
 
   if (params.username && hasColumn(profile, 'username') && !profile.username) {
-    updatePayload.username = params.username.trim()
+    const username = params.username.trim()
+    const usernameStatus = await isUsernameTaken(username, params.userId)
+    if (usernameStatus.taken) {
+      return { success: false, profile, error: new Error('用户名已被使用。') }
+    }
+    updatePayload.username = username
   }
 
   if (hasColumn(profile, 'avatar_url') && !profile.avatar_url) {

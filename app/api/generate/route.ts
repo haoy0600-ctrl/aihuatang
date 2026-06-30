@@ -343,20 +343,81 @@ async function insertGenerationRecord(payload: Record<string, any>) {
     return { data: null, error: new Error('Supabase admin not configured') }
   }
 
-  const { data, error } = await supabaseAdmin.from('generation_records').insert(payload).select('id').single()
-  return { data, error }
+  const candidates = [
+    payload,
+    Object.fromEntries(Object.entries(payload).filter(([key]) => key !== 'image_url_4k')),
+    Object.fromEntries(Object.entries(payload).filter(([key]) => key !== 'image_url_4k' && key !== 'resolution')),
+    Object.fromEntries(
+      Object.entries(payload).filter(
+        ([key]) => key !== 'image_url_4k' && key !== 'resolution' && key !== 'input_content',
+      ),
+    ),
+  ]
+
+  let lastError: any = null
+  for (const candidate of candidates) {
+    const { data, error } = await supabaseAdmin.from('generation_records').insert(candidate).select('id').single()
+    if (!error) {
+      return { data, error: null }
+    }
+
+    lastError = error
+    const message = String(error.message || '')
+    const isSchemaError =
+      error.code === 'PGRST204' ||
+      error.code === '42703' ||
+      message.includes('schema cache') ||
+      message.includes('column') ||
+      message.includes('input_content') ||
+      message.includes('image_url_4k') ||
+      message.includes('resolution')
+
+    if (!isSchemaError) {
+      break
+    }
+  }
+
+  return { data: null, error: lastError }
 }
 
 async function updateGenerationRecord(recordId: string, payload: Record<string, any>) {
   if (!supabaseAdmin || !recordId) return false
 
-  const { error } = await supabaseAdmin.from('generation_records').update(payload).eq('id', recordId)
-  if (error) {
-    console.error('[Generate] Update record failed:', { recordId, error })
-    return false
+  const candidates = [
+    payload,
+    Object.fromEntries(Object.entries(payload).filter(([key]) => key !== 'image_url_4k')),
+    Object.fromEntries(Object.entries(payload).filter(([key]) => key !== 'image_url_4k' && key !== 'resolution')),
+    Object.fromEntries(
+      Object.entries(payload).filter(
+        ([key]) => key !== 'image_url_4k' && key !== 'resolution' && key !== 'input_content',
+      ),
+    ),
+  ]
+
+  for (const candidate of candidates) {
+    const { error } = await supabaseAdmin.from('generation_records').update(candidate).eq('id', recordId)
+    if (!error) {
+      return true
+    }
+
+    const message = String(error.message || '')
+    const isSchemaError =
+      error.code === 'PGRST204' ||
+      error.code === '42703' ||
+      message.includes('schema cache') ||
+      message.includes('column') ||
+      message.includes('input_content') ||
+      message.includes('image_url_4k') ||
+      message.includes('resolution')
+
+    if (!isSchemaError) {
+      console.error('[Generate] Update record failed:', { recordId, error })
+      return false
+    }
   }
 
-  return true
+  console.error('[Generate] Update record failed: no compatible payload', { recordId })
+  return false
 }
 
 export async function POST(request: NextRequest) {

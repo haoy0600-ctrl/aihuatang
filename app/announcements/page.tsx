@@ -112,7 +112,7 @@ export default function AnnouncementsPage() {
             正在加载公告...
           </div>
         ) : errorMessage ? (
-          <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-4 text-sm text-rose-300">
+          <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-4 text-sm leading-6 text-rose-300">
             {errorMessage}
           </div>
         ) : announcements.length === 0 ? (
@@ -131,7 +131,7 @@ export default function AnnouncementsPage() {
                   className="w-full rounded-2xl border border-[#142D24] bg-[#0A1612] p-5 text-left transition-all hover:border-[#00E676]/50 hover:shadow-[0_0_20px_rgba(0,230,118,0.1)]"
                 >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
+                    <div className="min-w-0 flex-1">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         {announcement.is_pinned && (
                           <span className="rounded-md bg-[#00E676]/15 px-2 py-1 text-xs text-[#00E676]">置顶</span>
@@ -139,7 +139,7 @@ export default function AnnouncementsPage() {
                         <span className={`rounded-md px-2 py-1 text-xs ${typeMeta.className}`}>{typeMeta.label}</span>
                       </div>
 
-                      <h2 className="text-lg font-semibold text-white">{announcement.title}</h2>
+                      <h2 className="break-words text-lg font-semibold text-white">{announcement.title}</h2>
                       <p className="mt-2 text-sm text-gray-500">
                         {new Date(announcement.created_at).toLocaleString('zh-CN', {
                           year: 'numeric',
@@ -151,7 +151,7 @@ export default function AnnouncementsPage() {
                       </p>
                     </div>
 
-                    <span className="mt-1 text-gray-500">查看</span>
+                    <span className="mt-1 shrink-0 text-gray-500">查看</span>
                   </div>
                 </button>
               )
@@ -184,7 +184,7 @@ export default function AnnouncementsPage() {
               </button>
             </div>
 
-            <h2 className="text-xl font-bold text-white">{selectedAnnouncement.title}</h2>
+            <h2 className="break-words text-xl font-bold text-white">{selectedAnnouncement.title}</h2>
             <p className="mt-2 text-sm text-gray-500">
               {new Date(selectedAnnouncement.created_at).toLocaleString('zh-CN', {
                 year: 'numeric',
@@ -196,7 +196,7 @@ export default function AnnouncementsPage() {
             </p>
 
             <div className="mt-5 border-t border-[#142D24] pt-5">
-              <p className="whitespace-pre-wrap text-sm leading-7 text-gray-300">{selectedAnnouncement.content}</p>
+              <p className="whitespace-pre-wrap break-words text-sm leading-7 text-gray-300">{selectedAnnouncement.content}</p>
             </div>
           </div>
         </div>
@@ -204,7 +204,7 @@ export default function AnnouncementsPage() {
 
       <footer className="border-t border-[#142D24]/50 bg-[#040D0A]/95 py-3 backdrop-blur-sm">
         <div className="mx-auto max-w-6xl px-4 text-center text-sm text-gray-400">
-          登录或使用本网站即代表你已阅读并同意
+          登录或使用本站即代表你已阅读并同意
           <button
             onClick={() => setShowTermsModal(true)}
             className="ml-1 rounded px-1 text-[#00E676] underline underline-offset-2 transition-colors hover:text-[#00F2FE]"

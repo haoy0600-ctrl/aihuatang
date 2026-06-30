@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminUser } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
 
+const MAX_GENERATE_COUNT = 1000
+
 const generateRandomCard = (): string => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let result = ''
@@ -34,18 +36,20 @@ export async function POST(request: NextRequest) {
     }
 
     const { count, credits } = await request.json()
+    const cardCount = Number.parseInt(String(count), 10)
+    const cardCredits = Number.parseInt(String(credits), 10)
 
-    if (!count || count <= 0 || count > 100) {
+    if (!Number.isFinite(cardCount) || cardCount <= 0 || cardCount > MAX_GENERATE_COUNT) {
       return NextResponse.json(
         {
           success: false,
-          error: '生成数量必须在 1 到 100 之间。',
+          error: `生成数量必须在 1 到 ${MAX_GENERATE_COUNT} 之间。`,
         },
         { status: 400 },
       )
     }
 
-    if (!credits || credits <= 0) {
+    if (!Number.isFinite(cardCredits) || cardCredits <= 0) {
       return NextResponse.json(
         {
           success: false,
@@ -61,11 +65,11 @@ export async function POST(request: NextRequest) {
       status: 'unused'
       created_at: string
     }> = []
+    const batchSize = 100
+    const generatedCodes = new Set<string>()
 
-    const batchSize = 20
-
-    for (let i = 0; i < count; i += batchSize) {
-      const currentBatchSize = Math.min(batchSize, count - i)
+    for (let i = 0; i < cardCount; i += batchSize) {
+      const currentBatchSize = Math.min(batchSize, cardCount - i)
       const batchCards = []
 
       for (let j = 0; j < currentBatchSize; j += 1) {
@@ -73,7 +77,13 @@ export async function POST(request: NextRequest) {
         let exists = true
         let attempts = 0
 
-        while (exists && attempts < 10) {
+        while (exists && attempts < 20) {
+          if (generatedCodes.has(cardCode)) {
+            attempts += 1
+            cardCode = generateRandomCard()
+            continue
+          }
+
           const { data: existingCards, error: checkError } = await supabaseAdmin
             .from('card_codes')
             .select('id')
@@ -87,9 +97,8 @@ export async function POST(request: NextRequest) {
             continue
           }
 
-          if (!existingCards || existingCards.length === 0) {
-            exists = false
-          } else {
+          exists = Boolean(existingCards && existingCards.length > 0)
+          if (exists) {
             attempts += 1
             cardCode = generateRandomCard()
           }
@@ -105,9 +114,10 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        generatedCodes.add(cardCode)
         batchCards.push({
           code: cardCode,
-          credits,
+          credits: cardCredits,
           status: 'unused' as const,
           created_at: new Date().toISOString(),
         })
@@ -131,7 +141,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `成功生成 ${count} 张卡密。`,
+      message: `成功生成 ${cardCount} 张卡密。`,
       cards,
     })
   } catch (error) {

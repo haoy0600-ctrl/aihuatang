@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { countRecentIpEvents, getClientIP, logSecurityEvent } from '@/lib/security'
+import { isUsernameTaken, USERNAME_PATTERN } from '@/lib/profile'
 
 const REGISTER_LIMIT_MAX = 2
 const REGISTER_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000
@@ -11,10 +12,37 @@ async function getRecentRegisterCount(ipAddress: string) {
 export async function POST(request: NextRequest) {
   try {
     const clientIP = getClientIP(request)
-    const { email } = await request.json()
+    const { email, username } = await request.json()
+    const normalizedUsername = typeof username === 'string' ? username.trim() : ''
 
     if (!email) {
       return NextResponse.json({ success: false, error: '邮箱地址不能为空。' }, { status: 400 })
+    }
+
+    if (normalizedUsername) {
+      if (!USERNAME_PATTERN.test(normalizedUsername)) {
+        return NextResponse.json(
+          { success: false, error: '用户名只能使用 3-20 位字母、数字、下划线或短横线。' },
+          { status: 400 },
+        )
+      }
+
+      const usernameStatus = await isUsernameTaken(normalizedUsername)
+      if (usernameStatus.taken) {
+        return NextResponse.json({ success: false, error: '该用户名已被使用，请换一个。' }, { status: 400 })
+      }
+
+      if (!usernameStatus.supported) {
+        return NextResponse.json(
+          { success: false, error: '系统尚未启用用户名字段，请管理员先执行数据库修复脚本。' },
+          { status: 500 },
+        )
+      }
+
+      if (usernameStatus.error) {
+        console.error('[RegisterCheck] Username check error:', usernameStatus.error)
+        return NextResponse.json({ success: false, error: '用户名检查失败，请稍后重试。' }, { status: 500 })
+      }
     }
 
     const recentRegisterCount = await getRecentRegisterCount(clientIP)

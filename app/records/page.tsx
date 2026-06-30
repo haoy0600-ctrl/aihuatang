@@ -7,8 +7,9 @@ import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
+import { BrandLogo } from '@/components/BrandLogo'
+import { UserAvatar } from '@/components/UserAvatar'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
-import { resolveAvatarUrl } from '@/lib/avatar'
 import {
   createExportedImageBlob,
   downloadBlob,
@@ -396,8 +397,8 @@ export default function RecordsPage() {
       <header className="border-b border-[#202B3A] bg-[#0B0D17]">
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-2 sm:py-3">
-            <Link href="/" className="flex items-center select-none transition-opacity hover:opacity-80">
-              <img src="/logo.svg?v=3" alt="AI画堂" className="h-20 w-20 object-contain" />
+            <Link href="/" className="min-w-0 flex-1 select-none transition-opacity hover:opacity-80 sm:flex-none">
+              <BrandLogo className="max-w-[132px] sm:max-w-none" />
             </Link>
 
             <nav className="hidden items-center gap-4 md:flex">
@@ -408,7 +409,7 @@ export default function RecordsPage() {
               <NavLink href="/recharge">卡密兑换</NavLink>
             </nav>
 
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-4">
               <div className="hidden items-center gap-2 text-xs text-[#00F2FE] sm:flex">
                 <span>{new Date().toLocaleDateString('zh-CN')}</span>
                 <span className="font-mono text-sm font-bold text-white">{currentTime}</span>
@@ -425,7 +426,7 @@ export default function RecordsPage() {
                   onClick={() => setShowUserMenu((prev) => !prev)}
                   className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-[#202B3A] bg-[#141923] transition-colors hover:border-[#00F2FE] sm:h-9 sm:w-9"
                 >
-                  <img src={resolveAvatarUrl(profile?.avatar_url)} alt="用户头像" className="h-full w-full object-cover" />
+                  <UserAvatar avatarUrl={profile?.avatar_url} alt="用户头像" className="h-full w-full object-cover" />
                 </button>
 
                 {showUserMenu && (

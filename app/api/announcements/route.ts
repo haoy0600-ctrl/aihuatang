@@ -4,6 +4,9 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
+const missingAnnouncementTableMessage =
+  '公告表尚未创建。请在 Supabase SQL Editor 执行 sql/2026_06_30_announcements.sql 后，再回到本页刷新。'
+
 export async function GET() {
   try {
     if (!supabaseAdmin) {
@@ -22,11 +25,13 @@ export async function GET() {
 
     if (error) {
       console.error('Get announcements error:', error)
+      const message = String(error.message || '')
+      const isMissingTable = message.includes('announcements') || error.code === '42P01'
+
       return NextResponse.json(
         {
           success: false,
-          error:
-            '获取公告列表失败。请检查 Supabase 中是否已创建 announcements 表，并确认服务端环境变量已生效。',
+          error: isMissingTable ? missingAnnouncementTableMessage : '获取公告列表失败，请稍后再试。',
         },
         { status: 500 },
       )
@@ -81,7 +86,12 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Create announcement error:', error)
-      return NextResponse.json({ success: false, error: '发布公告失败，请稍后再试。' }, { status: 500 })
+      const message = String(error.message || '')
+      const isMissingTable = message.includes('announcements') || error.code === '42P01'
+      return NextResponse.json(
+        { success: false, error: isMissingTable ? missingAnnouncementTableMessage : '发布公告失败，请稍后再试。' },
+        { status: 500 },
+      )
     }
 
     return NextResponse.json({
