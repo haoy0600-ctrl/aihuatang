@@ -8,6 +8,12 @@ import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
 import { resolveAvatarUrl } from '@/lib/avatar'
+import {
+  createExportedImageBlob,
+  downloadBlob,
+  downloadOriginalImage,
+  getExportResolutionLabel,
+} from '@/lib/client-image-export'
 
 interface UserProfile {
   id: string
@@ -635,13 +641,6 @@ export default function DashboardPage() {
     try {
       const clientRequestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       localStorage.setItem(PENDING_GENERATION_KEY, clientRequestId)
-      const resolutionMap: Record<ResolutionLevel, string> = {
-        '1K': '1024x1024',
-        '2K': '2048x2048',
-        '4K': '4096x4096',
-      }
-
-      const imageSize = resolutionMap[selectedResolution] || '2048x2048'
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: authHeaders(),
@@ -655,7 +654,6 @@ export default function DashboardPage() {
           modelType: selectedModel,
           resolution: selectedResolution,
           ResolutionLevel: selectedResolution,
-          imageSize,
           mode: genMode,
           clientRequestId,
         }),
@@ -691,7 +689,7 @@ export default function DashboardPage() {
 
         if (String(errorMessage).includes('VIP 4K')) {
           const confirmed = confirm(
-            '当前账号没有 VIP 4K 权限，无法使用 4K 超清生成功能。\n\n4K 需要更高等级卡密或高级权益解锁。\n\n现在前往充值页吗？',
+            '当前账号没有 VIP 4K 权限，无法使用 4K 导出规格。\n\n4K 需要更高等级卡密或高级权益解锁。\n\n现在前往充值页吗？',
           )
           if (confirmed) {
             router.push('/recharge')
@@ -766,75 +764,20 @@ export default function DashboardPage() {
     index: number,
     resolutionLevel: ResolutionLevel = currentResolutionLevel,
   ) => {
-    const resolutionScaleMap: Record<ResolutionLevel, number> = {
-      '1K': 1,
-      '2K': 2,
-      '4K': 4,
-    }
-    const resolutionLabelMap: Record<ResolutionLevel, string> = {
-      '1K': '1K高清',
-      '2K': '2K超清',
-      '4K': '4K至臻超清',
-    }
-
-    const scale = resolutionScaleMap[resolutionLevel] || 1
+    const resolutionLabel = getExportResolutionLabel(resolutionLevel)
+    const filename = `AI画堂_${resolutionLabel}生成_${index + 1}.png`
 
     try {
-      const image = new Image()
-      image.crossOrigin = 'anonymous'
+      const exported = await createExportedImageBlob(url, resolutionLevel)
+      downloadBlob(exported.blob, filename)
 
-      await new Promise<void>((resolve, reject) => {
-        image.onload = () => resolve()
-        image.onerror = () => reject(new Error('图片加载失败，暂时无法导出超清文件。'))
-        image.src = `${url}${url.includes('?') ? '&' : '?'}download_ts=${Date.now()}`
-      })
-
-      const sourceWidth = image.naturalWidth || image.width
-      const sourceHeight = image.naturalHeight || image.height
-      if (!sourceWidth || !sourceHeight) {
-        throw new Error('原图尺寸异常，无法执行下载。')
+      if (exported.limited) {
+        alert(`已按当前设备可承受的最大尺寸导出：${exported.width} × ${exported.height}`)
       }
-
-      const canvas = document.createElement('canvas')
-      canvas.width = sourceWidth * scale
-      canvas.height = sourceHeight * scale
-
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        throw new Error('浏览器画布初始化失败。')
-      }
-
-      ctx.imageSmoothingEnabled = true
-      ctx.imageSmoothingQuality = 'high'
-      ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
-
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((result) => {
-          if (result) {
-            resolve(result)
-            return
-          }
-          reject(new Error('超清图片导出失败，请稍后重试。'))
-        }, 'image/png')
-      })
-
-      const blobUrl = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = blobUrl
-      link.download = `AI画堂_${resolutionLabelMap[resolutionLevel]}生成_${index + 1}.png`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(blobUrl)
     } catch (error) {
       console.error('Canvas download failed:', error)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `AI画堂_${resolutionLabelMap[resolutionLevel]}生成_${index + 1}.png`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      alert(error instanceof Error ? error.message : '超清导出失败，已回退为原图下载。')
+      downloadOriginalImage(url, filename)
+      alert(error instanceof Error ? error.message : '高清导出失败，已回退为原图下载。')
     }
   }
 
@@ -1483,7 +1426,7 @@ export default function DashboardPage() {
                   <ul className="mt-2 space-y-1 text-gray-300">
                     <li>中文知识图卡、封面图：优先使用 `GPT-Image-2`</li>
                     <li>更快出图、参考图改写：可以试试 `NanoBanana2`</li>
-                    <li>4K 会额外消耗更多积分，建议先用 2K 试稿</li>
+                    <li>2K/4K 为本地高清导出规格，建议先用 2K 试稿</li>
                   </ul>
                 </section>
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { DEFAULT_AVATAR_URL } from '@/lib/avatar'
+import { ensureProfileRecord } from '@/lib/profile'
 
 const QQ_EMAIL_BONUS = 3
 const DEFAULT_CREDITS = 6
@@ -64,13 +64,15 @@ export async function POST(request: NextRequest) {
       const qqEmail = isQQEmail(normalizedEmail)
       const initialCredits = qqEmail ? QQ_EMAIL_BONUS_CREDITS : DEFAULT_CREDITS
 
-      await supabaseAdmin.from('profiles').upsert({
-        id: data.user.id,
+      const ensured = await ensureProfileRecord({
+        userId: data.user.id,
         email: data.user.email || normalizedEmail,
         credits: initialCredits,
-        avatar_url: DEFAULT_AVATAR_URL,
-        created_at: new Date().toISOString(),
       })
+
+      if (!ensured.success) {
+        console.error('[Auth/Register] Ensure profile failed:', ensured.error)
+      }
     }
 
     return NextResponse.json({

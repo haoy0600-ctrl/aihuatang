@@ -107,6 +107,27 @@ export async function findEmailByUsername(username: string) {
   return { email: typeof data?.email === 'string' ? data.email : null, error: null }
 }
 
+export async function updateProfileWithFallback(userId: string, payload: Record<string, any>) {
+  if (!supabaseAdmin) return { success: false, error: new Error('Supabase admin not configured') }
+
+  const variants = buildProfileUpdateVariants(payload)
+  if (variants.length === 0) {
+    return { success: true, error: null }
+  }
+
+  let lastError: any = null
+
+  for (const variant of variants) {
+    const { error } = await supabaseAdmin.from('profiles').update(variant as any).eq('id', userId)
+    if (!error) {
+      return { success: true, error: null }
+    }
+    lastError = error
+  }
+
+  return { success: false, error: lastError }
+}
+
 export async function ensureProfileRecord(params: {
   userId: string
   email: string
@@ -158,16 +179,11 @@ export async function ensureProfileRecord(params: {
     return { success: true, profile, error: null }
   }
 
-  let lastError: any = null
-
-  for (const variant of updateVariants) {
-    const { error: updateError } = await supabaseAdmin.from('profiles').update(variant as any).eq('id', params.userId)
-    if (!updateError) {
-      const next = await getProfileById(params.userId)
-      return { success: true, profile: next.profile, error: null }
-    }
-    lastError = updateError
+  const updated = await updateProfileWithFallback(params.userId, updatePayload)
+  if (updated.success) {
+    const next = await getProfileById(params.userId)
+    return { success: true, profile: next.profile, error: null }
   }
 
-  return { success: false, profile, error: lastError }
+  return { success: false, profile, error: updated.error }
 }

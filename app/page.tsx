@@ -158,7 +158,7 @@ export default function HomePage() {
               </p>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-[#6BE5C2] sm:text-base">
-                支持 1K、2K、4K 分档输出，适合先试稿，再定稿，再放大，不用一上来就把预算打满。
+                支持 1K、2K、4K 分档导出，适合先试稿，再定稿，再按发布场景放大保存。
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">

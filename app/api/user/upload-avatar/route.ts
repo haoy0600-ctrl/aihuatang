@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuthenticatedUser } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
+import { updateProfileWithFallback } from '@/lib/profile'
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
@@ -177,13 +178,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { error: updateError } = await supabaseAdmin
-      .from('profiles')
-      .update({ avatar_url: avatarUrl })
-      .eq('id', auth.user.id)
+    const updateResult = await updateProfileWithFallback(auth.user.id, { avatar_url: avatarUrl })
 
-    if (updateError) {
-      console.error('[UploadAvatar] Update profile failed:', updateError)
+    if (!updateResult.success) {
+      console.error('[UploadAvatar] Update profile failed:', updateResult.error)
+      await storage.remove([safeFileName])
       return NextResponse.json(
         {
           success: false,

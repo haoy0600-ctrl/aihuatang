@@ -2,40 +2,37 @@ import { NextRequest, NextResponse } from 'next/server'
 import { DEFAULT_PROFILE_CREDITS, ensureProfileRecord, getProfileById } from '@/lib/profile'
 import { requireAuthenticatedUser } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
+import { RegisterNotificationChannel, sendRegisterNotifications } from '@/lib/register-notification'
 
-async function sendDingTalkNotification(userEmail: string, username?: string) {
-  const webhookUrl = process.env.DINGTALK_WEBHOOK_URL
-  if (!webhookUrl) {
-    console.log('[DingTalk] No webhook configured, skip notification')
-    return
+async function hasSentRegisterNotification(userId: string) {
+  if (!supabaseAdmin) return true
+
+  const { count, error } = await supabaseAdmin
+    .from('security_logs')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .in('type', ['register_notification_sent', 'register_dingtalk_sent'])
+
+  if (error) {
+    console.error('[RegisterNotification] Query sent marker failed:', error)
+    return true
   }
 
-  try {
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        msgtype: 'markdown',
-        markdown: {
-          title: 'AI画堂新用户注册通知',
-          text: [
-            '### AI画堂新用户注册通知',
-            '',
-            `- 用户邮箱：${userEmail}`,
-            `- 用户名：${username || '未设置'}`,
-            `- 注册时间：${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`,
-            `- 初始积分：${DEFAULT_PROFILE_CREDITS}`,
-          ].join('\n'),
-        },
-      }),
-    })
+  return Boolean(count && count > 0)
+}
 
-    if (!response.ok) {
-      const text = await response.text()
-      console.error('[DingTalk] Send failed:', response.status, text)
-    }
-  } catch (error) {
-    console.error('[DingTalk] Send error:', error)
+async function markRegisterNotificationSent(userId: string, email: string, channels: RegisterNotificationChannel[]) {
+  if (!supabaseAdmin || channels.length === 0) return
+
+  const { error } = await supabaseAdmin.from('security_logs').insert({
+    user_id: userId,
+    type: 'register_notification_sent',
+    prompt: JSON.stringify({ email, channels }),
+    created_at: new Date().toISOString(),
+  })
+
+  if (error) {
+    console.error('[RegisterNotification] Mark sent failed:', error)
   }
 }
 
@@ -66,8 +63,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '创建用户资料失败。' }, { status: 500 })
     }
 
-    if (!before.profile) {
-      await sendDingTalkNotification(auth.user.email, username)
+    const shouldNotify = !before.profile || !(await hasSentRegisterNotification(auth.user.id))
+    if (shouldNotify) {
+      const channels = await sendRegisterNotifications(auth.user.email, username)
+      await markRegisterNotificationSent(auth.user.id, auth.user.email, channels)
     }
 
     return NextResponse.json({ success: true })
