@@ -10,7 +10,7 @@ import { getStoredSession } from '@/lib/session'
 const FEATURE_CARDS = [
   {
     title: '智能优化成稿',
-    desc: '自动整理长文重点、优化提示词结构，把内容密度和画面完成度一起提上来。',
+    desc: '自动整理长文重点，优化提示词结构，把内容密度和画面完成度一起提上来。',
   },
   {
     title: '多风格高质输出',
@@ -53,7 +53,7 @@ export default function HomePage() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,0.18),transparent_30%),radial-gradient(circle_at_80%_15%,rgba(34,211,238,0.14),transparent_28%),linear-gradient(180deg,#060914_0%,#09111f_45%,#050816_100%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-40 [background-image:linear-gradient(rgba(148,163,184,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.04)_1px,transparent_1px)] [background-size:64px_64px]" />
 
-      <header className="sticky top-0 z-50 border-b border-white/6 bg-[#050816]/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050816]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1320px] items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/" className="min-w-0 flex-1 sm:flex-none">
             <BrandLogo className="max-w-[132px] sm:max-w-none" />
@@ -64,7 +64,7 @@ export default function HomePage() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-2 text-sm font-medium text-white/88 transition hover:border-[#10B981]/50 hover:bg-[#10B981]/10"
+                className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-white/90 transition hover:border-[#10B981]/50 hover:bg-[#10B981]/10"
               >
                 {item.label}
               </Link>
@@ -104,14 +104,14 @@ export default function HomePage() {
         </div>
 
         {mobileMenuOpen && (
-          <div className="border-t border-white/6 px-4 py-3 md:hidden">
+          <div className="border-t border-white/10 px-4 py-3 md:hidden">
             <div className="flex flex-col gap-2">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm text-white/90"
+                  className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/90"
                 >
                   {item.label}
                 </Link>
@@ -157,7 +157,7 @@ export default function HomePage() {
               </div>
 
               <p className="mt-6 max-w-2xl text-sm leading-7 text-[#9FB0C8] sm:text-base">
-                让长文总结、课程知识点、公众号图文和封面图不再只像“AI 生成”。我们把内容组织、风格约束、画面完成度和输出规格做成了一条更稳的创作链路。
+                让长文总结、课程知识点、公众号图文和封面图不再只像 AI 生成。我们把内容组织、风格约束、画面完成度和输出规格做成了一条更稳定的创作链路。
               </p>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-[#6BE5C2] sm:text-base">
@@ -180,12 +180,12 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-white/8 bg-white/[0.04] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+            <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)] backdrop-blur-xl">
               <div className="grid gap-4">
                 {FEATURE_CARDS.map((item) => (
                   <div
                     key={item.title}
-                    className="rounded-2xl border border-white/8 bg-[#0A1323]/85 px-5 py-4 transition hover:border-[#10B981]/30"
+                    className="rounded-2xl border border-white/10 bg-[#0A1323]/85 px-5 py-4 transition hover:border-[#10B981]/30"
                   >
                     <h3 className="text-base font-bold text-white">{item.title}</h3>
                     <p className="mt-2 text-sm leading-6 text-[#94A3B8]">{item.desc}</p>
@@ -201,7 +201,7 @@ export default function HomePage() {
             {STEPS.map((step) => (
               <div
                 key={step.no}
-                className="rounded-3xl border border-white/8 bg-white/[0.035] px-6 py-6 backdrop-blur-sm"
+                className="rounded-3xl border border-white/10 bg-white/[0.035] px-6 py-6 backdrop-blur-sm"
               >
                 <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[#10B981] text-sm font-black text-[#06120F]">
                   {step.no}
@@ -214,7 +214,7 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer className="relative z-10 border-t border-white/6 bg-[#050816]/70">
+      <footer className="relative z-10 border-t border-white/10 bg-[#050816]/70">
         <div className="mx-auto flex max-w-[1320px] flex-col items-center justify-between gap-3 px-4 py-4 text-center sm:flex-row sm:px-6 sm:text-left">
           <p className="text-xs leading-6 text-[#7E90AC]">
             登录或使用本站即代表你同意

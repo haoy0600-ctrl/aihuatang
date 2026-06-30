@@ -838,7 +838,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-[#040D0A]">
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-[#040D0A]">
       <header className="border-b border-[#142D24] bg-[#040D0A]">
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-1 sm:py-2">
@@ -975,15 +975,15 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-x-hidden overflow-y-auto pb-36 sm:pb-32">
-        <div className="mx-auto max-w-[1400px] px-4 py-2 sm:px-6 lg:px-8">
-          <div className="mb-2">
+      <main className="min-h-0 flex-1 overflow-hidden">
+        <div className="mx-auto flex h-full max-w-[1400px] flex-col px-4 py-2 sm:px-6 lg:px-8">
+          <div className="mb-2 shrink-0">
             <h2 className="mb-1 text-lg font-bold text-white">创作中心</h2>
             <p className="text-xs text-[#10B981]">输入内容、选择风格，一键生成高密度知识图卡。</p>
           </div>
 
-          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[1fr,1fr,1.2fr]">
-            <section className="rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
+          <div className="grid min-h-0 flex-1 grid-cols-1 items-stretch gap-4 overflow-y-auto pb-4 lg:grid-cols-[1fr,1fr,1.2fr] lg:overflow-hidden">
+            <section className="min-h-0 overflow-y-auto rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
               <div className="mb-3 flex items-center gap-2">
                 <h3 className="text-base font-bold text-white">参数配置</h3>
               </div>
@@ -1210,7 +1210,7 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            <section className="rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
+            <section className="min-h-0 overflow-y-auto rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
               <div className="mb-3 flex items-center gap-2">
                 <h3 className="text-base font-bold text-white">风格配置</h3>
               </div>
@@ -1351,7 +1351,7 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            <section className="flex min-h-0 flex-col rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
+            <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h3 className="text-base font-bold text-white">生成预览</h3>
@@ -1380,7 +1380,7 @@ export default function DashboardPage() {
 
               <div className="flex min-h-0 flex-1 flex-col">
                 <div
-                  className={`flex w-full items-center justify-center overflow-hidden rounded-lg border-2 border-[#142D24] bg-[#040D0A] min-h-[220px] max-h-[calc(100svh-220px)] md:min-h-0 md:max-h-none md:flex-1 ${getAspectClass()}`}
+                  className={`flex w-full items-center justify-center overflow-hidden rounded-lg border-2 border-[#142D24] bg-[#040D0A] min-h-[220px] max-h-[calc(100svh-220px)] md:min-h-0 md:max-h-none md:flex-1 lg:aspect-auto ${getAspectClass()}`}
                 >
                   {generationStatus === 'idle' && (
                     <div className="p-6 text-center sm:p-8">
@@ -1597,7 +1597,7 @@ export default function DashboardPage() {
 
       <TermsModal show={showTermsModal} onClose={() => setShowTermsModal(false)} />
 
-      <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#1e293b]/50 bg-[#030712]/95 py-2.5 backdrop-blur-sm">
+      <footer className="hidden">
         <div className="mx-auto max-w-[1400px] px-4 text-center">
           <p className="text-sm text-gray-400">
             登录或使用本站即代表您同意{' '}

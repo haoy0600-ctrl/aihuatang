@@ -46,7 +46,6 @@ export async function POST(request: NextRequest) {
     }
 
     const recentRegisterCount = await getRecentRegisterCount(clientIP)
-
     if (recentRegisterCount >= REGISTER_LIMIT_MAX) {
       return NextResponse.json(
         {
@@ -59,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'IP 检查通过，可以继续注册。',
+      message: '注册检查通过。',
     })
   } catch (error) {
     console.error('[RegisterCheck] POST error:', error)

@@ -50,12 +50,11 @@ const compressImage = (file: File, maxSizeKB = 200): Promise<File> =>
         context.drawImage(image, 0, 0, width, height)
 
         let quality = 0.9
-
         const compress = () => {
           canvas.toBlob(
             (blob) => {
               if (!blob) {
-                reject(new Error('压缩失败'))
+                reject(new Error('头像压缩失败'))
                 return
               }
 
@@ -127,7 +126,7 @@ export default function ProfilePage() {
         })
         const data = await response.json()
 
-        if (!data.success || !data.user || !data.profile) {
+        if (!response.ok || !data.success || !data.user || !data.profile) {
           router.push('/login')
           return
         }
@@ -171,15 +170,15 @@ export default function ProfilePage() {
       setUploadProgress(100)
       const data = await response.json()
 
-      if (data.success) {
+      if (response.ok && data.success) {
         setProfile((prev) => (prev ? { ...prev, avatar_url: data.avatarUrl } : null))
         alert('头像上传成功。')
       } else {
-        alert(data.error || data.message || '上传失败。')
+        alert(data.error || data.message || '头像上传失败。')
       }
     } catch (error) {
       console.error('Upload error:', error)
-      alert('图片处理失败，请重试。')
+      alert(error instanceof Error ? error.message : '图片处理失败，请重试。')
     } finally {
       setUploading(false)
       setUploadProgress(0)
@@ -199,11 +198,12 @@ export default function ProfilePage() {
     )
   }
 
+  const displayName = profile.username || user.email || profile.email || 'AI画堂用户'
   const formatDate = (dateString?: string) =>
     dateString ? new Date(dateString).toLocaleDateString('zh-CN') : '-'
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-[#040D0A]">
+    <div className="flex min-h-screen w-full flex-col bg-[#040D0A] text-white">
       <header className="border-b border-[#142D24] bg-[#040D0A]">
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-2 sm:py-3">
@@ -247,38 +247,11 @@ export default function ProfilePage() {
                       <p className="truncate text-sm font-medium text-white">{user?.email || '未登录'}</p>
                     </div>
                     <div className="p-2">
-                      <MenuButton
-                        onClick={() => {
-                          router.push('/dashboard')
-                          setShowUserMenu(false)
-                        }}
-                      >
-                        创作中心
-                      </MenuButton>
-                      <MenuButton
-                        onClick={() => {
-                          router.push('/records')
-                          setShowUserMenu(false)
-                        }}
-                      >
-                        生成记录
-                      </MenuButton>
-                      <MenuButton
-                        onClick={() => {
-                          router.push('/recharge')
-                          setShowUserMenu(false)
-                        }}
-                      >
-                        卡密兑换
-                      </MenuButton>
+                      <MenuButton onClick={() => router.push('/dashboard')}>创作中心</MenuButton>
+                      <MenuButton onClick={() => router.push('/records')}>生成记录</MenuButton>
+                      <MenuButton onClick={() => router.push('/recharge')}>卡密兑换</MenuButton>
                       <div className="my-1 border-t border-[#142D24]" />
-                      <MenuButton
-                        danger
-                        onClick={() => {
-                          handleLogout()
-                          setShowUserMenu(false)
-                        }}
-                      >
+                      <MenuButton danger onClick={handleLogout}>
                         退出登录
                       </MenuButton>
                     </div>
@@ -310,10 +283,8 @@ export default function ProfilePage() {
               />
 
               <div className="min-w-0">
-                <h1 className="truncate text-2xl font-black text-white sm:text-3xl">
-                  {profile.username || '未设置用户名'}
-                </h1>
-                <p className="mt-2 truncate text-sm text-[#10B981]">{user.email}</p>
+                <h1 className="truncate text-2xl font-black text-white sm:text-3xl">{displayName}</h1>
+                <p className="mt-2 truncate text-sm text-[#10B981]">账号 ID：{profile.id}</p>
                 {uploading && <p className="mt-2 text-xs text-[#8CF5CA]">头像上传中 {uploadProgress}%</p>}
               </div>
             </div>
@@ -329,9 +300,9 @@ export default function ProfilePage() {
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
-            <InfoCard label="用户名" value={profile.username || '未设置'} />
-            <InfoCard label="邮箱地址" value={profile.email} />
-            <InfoCard label="当前积分" value={`${profile.credits}`} strong />
+            <InfoCard label="用户名" value={profile.username || '暂未设置'} />
+            <InfoCard label="邮箱地址" value={profile.email || user.email || '-'} />
+            <InfoCard label="当前积分" value={`${profile.credits || 0}`} strong />
             <InfoCard label="注册时间" value={formatDate(profile.created_at)} />
           </div>
 
@@ -411,7 +382,9 @@ function InfoCard({ label, value, strong }: { label: string; value: string; stro
   return (
     <div className="rounded-2xl border border-[#142D24] bg-[#07110E] px-5 py-4">
       <p className="text-sm text-[#7FDDBB]">{label}</p>
-      <p className={`mt-2 break-all ${strong ? 'text-2xl font-black text-[#10B981]' : 'text-base text-white'}`}>{value}</p>
+      <p className={`mt-2 break-all ${strong ? 'text-2xl font-black text-[#10B981]' : 'text-base text-white'}`}>
+        {value}
+      </p>
     </div>
   )
 }

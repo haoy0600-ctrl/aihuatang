@@ -4,32 +4,45 @@ import { DEFAULT_PROFILE_CREDITS } from '@/lib/profile'
 export type RegisterNotificationChannel = 'email' | 'dingtalk' | 'wechat_work'
 
 function getRegisterTime() {
-  return new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+  return new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })
 }
 
 export function getRegisterNotificationText(userEmail: string, username?: string) {
   return [
-    '### AI画堂新用户注册通知',
+    'AI画堂新用户注册通知',
     '',
-    `- 用户邮箱：${userEmail}`,
-    `- 用户名：${username || '未设置'}`,
-    `- 注册时间：${getRegisterTime()}`,
-    `- 初始积分：${DEFAULT_PROFILE_CREDITS}`,
+    `用户邮箱：${userEmail}`,
+    `用户名：${username || '未设置'}`,
+    `注册时间：${getRegisterTime()}`,
+    `初始积分：${DEFAULT_PROFILE_CREDITS}`,
   ].join('\n')
 }
 
 function getRegisterNotificationHtml(userEmail: string, username?: string) {
-  return [
-    '<div style="font-family:Arial,Helvetica,sans-serif;line-height:1.7;color:#111827">',
-    '<h2 style="margin:0 0 12px;color:#059669">AI画堂新用户注册通知</h2>',
-    '<table style="border-collapse:collapse;width:100%;max-width:560px">',
-    `<tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb">用户邮箱</td><td style="padding:8px;border:1px solid #e5e7eb">${userEmail}</td></tr>`,
-    `<tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb">用户名</td><td style="padding:8px;border:1px solid #e5e7eb">${username || '未设置'}</td></tr>`,
-    `<tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb">注册时间</td><td style="padding:8px;border:1px solid #e5e7eb">${getRegisterTime()}</td></tr>`,
-    `<tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb">初始积分</td><td style="padding:8px;border:1px solid #e5e7eb">${DEFAULT_PROFILE_CREDITS}</td></tr>`,
-    '</table>',
-    '</div>',
-  ].join('')
+  const rows = [
+    ['用户邮箱', userEmail],
+    ['用户名', username || '未设置'],
+    ['注册时间', getRegisterTime()],
+    ['初始积分', String(DEFAULT_PROFILE_CREDITS)],
+  ]
+
+  return `
+    <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.7;color:#111827">
+      <h2 style="margin:0 0 12px;color:#059669">AI画堂新用户注册通知</h2>
+      <table style="border-collapse:collapse;width:100%;max-width:560px">
+        ${rows
+          .map(
+            ([label, value]) => `
+              <tr>
+                <td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;width:120px">${label}</td>
+                <td style="padding:8px;border:1px solid #e5e7eb">${value}</td>
+              </tr>
+            `,
+          )
+          .join('')}
+      </table>
+    </div>
+  `
 }
 
 async function sendEmailNotification(userEmail: string, username?: string) {
@@ -41,13 +54,14 @@ async function sendEmailNotification(userEmail: string, username?: string) {
   const from = process.env.SMTP_FROM || user
 
   if (!host || !user || !pass || !from || !to) {
+    console.log('[RegisterNotification] Email channel skipped: SMTP env is incomplete')
     return false
   }
 
   const transporter = nodemailer.createTransport({
     host,
     port,
-    secure: String(process.env.SMTP_SECURE || 'true') !== 'false',
+    secure: String(process.env.SMTP_SECURE ?? 'true') !== 'false',
     auth: { user, pass },
   })
 
@@ -55,18 +69,17 @@ async function sendEmailNotification(userEmail: string, username?: string) {
     from,
     to,
     subject: `AI画堂新用户注册：${userEmail}`,
-    text: getRegisterNotificationText(userEmail, username).replace(/^###\s*/m, ''),
+    text: getRegisterNotificationText(userEmail, username),
     html: getRegisterNotificationHtml(userEmail, username),
   })
 
+  console.log('[RegisterNotification] Email sent:', { to, userEmail })
   return true
 }
 
 async function sendDingTalkNotification(userEmail: string, username?: string) {
   const webhookUrl = process.env.DINGTALK_WEBHOOK_URL
-  if (!webhookUrl) {
-    return false
-  }
+  if (!webhookUrl) return false
 
   const response = await fetch(webhookUrl, {
     method: 'POST',
@@ -91,9 +104,7 @@ async function sendDingTalkNotification(userEmail: string, username?: string) {
 
 async function sendWechatWorkNotification(userEmail: string, username?: string) {
   const webhookUrl = process.env.WECHAT_WORK_WEBHOOK_URL || process.env.WECOM_WEBHOOK_URL
-  if (!webhookUrl) {
-    return false
-  }
+  if (!webhookUrl) return false
 
   const response = await fetch(webhookUrl, {
     method: 'POST',
@@ -117,7 +128,6 @@ async function sendWechatWorkNotification(userEmail: string, username?: string) 
 
 export async function sendRegisterNotifications(userEmail: string, username?: string) {
   const channels: RegisterNotificationChannel[] = []
-
   const senders: Array<[RegisterNotificationChannel, () => Promise<boolean>]> = [
     ['email', () => sendEmailNotification(userEmail, username)],
     ['dingtalk', () => sendDingTalkNotification(userEmail, username)],

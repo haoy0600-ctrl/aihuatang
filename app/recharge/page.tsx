@@ -28,7 +28,7 @@ type RechargePlan = {
 }
 
 const RECHARGE_PLANS: RechargePlan[] = [
-  { credits: 100, price: 10, title: '体验入门', desc: '适合测试流程和少量试稿。' },
+  { credits: 100, price: 10, title: '体验入门', desc: '适合新用户试用流程、少量测试和临时出图。' },
   { credits: 320, price: 29, title: '轻量创作', desc: '适合日常图文、课程小批量生成。' },
   { credits: 700, price: 59, title: '高频创作', desc: '适合持续产出，单积分成本更低。', highlight: true },
   { credits: 1300, price: 99, title: '工作室进阶', desc: '适合多账号运营或集中制作素材。' },
@@ -78,7 +78,7 @@ export default function RechargePage() {
         })
 
         const data = await response.json()
-        if (!data.success) {
+        if (!response.ok || !data.success) {
           setProfile({ credits: 0 })
           return
         }
@@ -131,7 +131,7 @@ export default function RechargePage() {
       })
 
       const data = await response.json()
-      if (!data.success) {
+      if (!response.ok || !data.success) {
         showToast(data.error || data.message || '兑换失败，请稍后重试。', 'error')
         return
       }
@@ -245,9 +245,9 @@ export default function RechargePage() {
           <div className="grid gap-6 lg:grid-cols-[1.25fr_0.9fr]">
             <div>
               <p className="mb-2 text-sm font-medium uppercase tracking-[0.24em] text-[#10B981]">充值与卡密兑换</p>
-              <h1 className="text-3xl font-black leading-tight text-white sm:text-4xl">先选充值方案，再联系客服拿卡密</h1>
+              <h1 className="text-3xl font-black leading-tight text-white sm:text-4xl">选择充值方案，再联系客服购买卡密</h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-[#9BB7AD] sm:text-base">
-                页面直接展示各金额套餐。选中方案后复制客服微信和购买话术，客服发卡密后回到这里兑换，积分会立即到账。
+                页面直接展示各个金额的积分方案。选中方案后复制客服微信和购买话术，客服发卡密后回到这里兑换，积分会立即到账。
               </p>
               <div className="mt-6 grid max-w-xl gap-3 sm:grid-cols-2">
                 <button
@@ -260,7 +260,7 @@ export default function RechargePage() {
                   onClick={() => cardCodeInputRef.current?.focus()}
                   className="rounded-xl border border-[#1E4C3D] bg-[#0B1512] px-5 py-3 text-sm font-semibold text-white transition-colors hover:border-[#10B981]"
                 >
-                  我已有卡密，去兑换
+                  我已有卡密，立即兑换
                 </button>
               </div>
             </div>

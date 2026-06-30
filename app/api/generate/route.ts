@@ -66,7 +66,6 @@ type GenerateRequest = {
   modelType?: string
   resolution?: ResolutionLevel
   ResolutionLevel?: ResolutionLevel
-  imageSize?: string
   mode?: 'text' | 'image'
   clientRequestId?: string
 }
@@ -86,6 +85,11 @@ const BASE_IMAGE_SIZE_BY_RATIO: Record<string, string> = {
   '1:1': '1:1',
   '3:2': '3:2',
   '2:3': '2:3',
+  '21:9': '21:9',
+  '9:21': '9:21',
+  '1:3': '1:3',
+  '3:1': '3:1',
+  '1:2': '1:2',
 }
 
 function sleep(ms: number) {
@@ -177,10 +181,7 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
-    return await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    })
+    return await fetch(url, { ...options, signal: controller.signal })
   } catch (error: any) {
     if (error?.name === 'AbortError') {
       throw new Error(`${label}超时，请稍后重试。`)
@@ -199,6 +200,52 @@ async function parseJsonResponse(response: Response, label: string) {
   } catch {
     throw new Error(`${label}返回了异常响应：${raw.slice(0, 160)}`)
   }
+}
+
+function extractImageUrl(value: any, depth = 0): string | null {
+  if (!value || depth > 5) return null
+
+  if (typeof value === 'string') {
+    return /^https?:\/\//i.test(value) ? value : null
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = extractImageUrl(item, depth + 1)
+      if (found) return found
+    }
+    return null
+  }
+
+  if (typeof value === 'object') {
+    const directKeys = ['url', 'imageUrl', 'image_url', 'image', 'src', 'output', 'result']
+    for (const key of directKeys) {
+      const found = extractImageUrl(value[key], depth + 1)
+      if (found) return found
+    }
+
+    const nestedKeys = ['data', 'results', 'images', 'image_urls', 'urls', 'outputs', 'payload']
+    for (const key of nestedKeys) {
+      const found = extractImageUrl(value[key], depth + 1)
+      if (found) return found
+    }
+  }
+
+  return null
+}
+
+function normalizeTaskStatus(json: any) {
+  return String(json?.status ?? json?.data?.status ?? json?.state ?? json?.data?.state ?? '').toLowerCase()
+}
+
+function isTaskFinished(status: string) {
+  return ['succeeded', 'success', 'completed', 'complete', 'done', 'finished', 'finish'].some((item) =>
+    status.includes(item),
+  )
+}
+
+function isTaskFailed(status: string) {
+  return ['failed', 'fail', 'error', 'canceled', 'cancelled'].some((item) => status.includes(item))
 }
 
 async function submitGrsTask(prompt: string, imageSize: string, modelType: string, referenceImage?: string) {
@@ -233,12 +280,11 @@ async function submitGrsTask(prompt: string, imageSize: string, modelType: strin
   )
 
   const json = await parseJsonResponse(response, '绘图服务')
-
   if (!response.ok) {
     throw new Error(json.message || json.error || `绘图服务请求失败：${response.status}`)
   }
 
-  const taskId = json.data?.id || json.id
+  const taskId = json.data?.id || json.data?.taskId || json.taskId || json.id
   if (!taskId) {
     throw new Error(json.message || json.error || '绘图任务创建失败。')
   }
@@ -248,7 +294,7 @@ async function submitGrsTask(prompt: string, imageSize: string, modelType: strin
 
 async function pollGrsResult(taskId: string) {
   const pollUrl = `${GRS_API_BASE_URL}/v1/draw/result`
-  const maxRetries = 60
+  const maxRetries = 80
 
   for (let index = 0; index < maxRetries; index += 1) {
     const response = await fetchWithTimeout(
@@ -270,23 +316,25 @@ async function pollGrsResult(taskId: string) {
       continue
     }
 
-    const json = await response.json()
-    const status = json.status || json.data?.status
-    const results = json.results || json.data?.results
-    const firstUrl = results?.[0]?.url || results?.[0]
-
-    if (status === 'succeeded' && typeof firstUrl === 'string') {
-      return firstUrl
+    const json = await parseJsonResponse(response, '绘图轮询')
+    const imageUrl = extractImageUrl(json)
+    if (imageUrl) {
+      return imageUrl
     }
 
-    if (status === 'failed' || status === 'canceled') {
-      throw new Error(json.error || json.data?.error || '图片生成失败。')
+    const status = normalizeTaskStatus(json)
+    if (isTaskFailed(status)) {
+      throw new Error(json.error || json.message || json.data?.error || json.data?.message || '图片生成失败。')
+    }
+
+    if (isTaskFinished(status)) {
+      console.error('[Generate] Task finished without image url:', { taskId, json })
     }
 
     await sleep(3000)
   }
 
-  throw new Error('生成任务超时，请稍后到记录页查看结果。')
+  throw new Error('生成任务轮询超时，请稍后到生成记录页查看结果。')
 }
 
 async function deductCredits(userId: string, amount: number): Promise<CreditResult> {
@@ -294,12 +342,7 @@ async function deductCredits(userId: string, amount: number): Promise<CreditResu
     return { success: false, currentCredits: 0, profileId: '' }
   }
 
-  const { data: profile, error } = await supabaseAdmin
-    .from('profiles')
-    .select('id, credits')
-    .eq('id', userId)
-    .single()
-
+  const { data: profile, error } = await supabaseAdmin.from('profiles').select('id, credits').eq('id', userId).single()
   if (error || !profile) {
     return { success: false, currentCredits: 0, profileId: '' }
   }
@@ -338,6 +381,23 @@ async function rollbackCredits(profileId: string, amount: number) {
     .eq('id', profileId)
 }
 
+function withoutKeys(payload: Record<string, any>, keys: string[]) {
+  return Object.fromEntries(Object.entries(payload).filter(([key]) => !keys.includes(key)))
+}
+
+function isSchemaCompatibilityError(error: any) {
+  const message = String(error?.message || '')
+  return (
+    error?.code === 'PGRST204' ||
+    error?.code === '42703' ||
+    message.includes('schema cache') ||
+    message.includes('column') ||
+    message.includes('input_content') ||
+    message.includes('image_url_4k') ||
+    message.includes('resolution')
+  )
+}
+
 async function insertGenerationRecord(payload: Record<string, any>) {
   if (!supabaseAdmin) {
     return { data: null, error: new Error('Supabase admin not configured') }
@@ -345,13 +405,9 @@ async function insertGenerationRecord(payload: Record<string, any>) {
 
   const candidates = [
     payload,
-    Object.fromEntries(Object.entries(payload).filter(([key]) => key !== 'image_url_4k')),
-    Object.fromEntries(Object.entries(payload).filter(([key]) => key !== 'image_url_4k' && key !== 'resolution')),
-    Object.fromEntries(
-      Object.entries(payload).filter(
-        ([key]) => key !== 'image_url_4k' && key !== 'resolution' && key !== 'input_content',
-      ),
-    ),
+    withoutKeys(payload, ['image_url_4k']),
+    withoutKeys(payload, ['image_url_4k', 'resolution']),
+    withoutKeys(payload, ['image_url_4k', 'resolution', 'input_content']),
   ]
 
   let lastError: any = null
@@ -362,19 +418,7 @@ async function insertGenerationRecord(payload: Record<string, any>) {
     }
 
     lastError = error
-    const message = String(error.message || '')
-    const isSchemaError =
-      error.code === 'PGRST204' ||
-      error.code === '42703' ||
-      message.includes('schema cache') ||
-      message.includes('column') ||
-      message.includes('input_content') ||
-      message.includes('image_url_4k') ||
-      message.includes('resolution')
-
-    if (!isSchemaError) {
-      break
-    }
+    if (!isSchemaCompatibilityError(error)) break
   }
 
   return { data: null, error: lastError }
@@ -385,13 +429,9 @@ async function updateGenerationRecord(recordId: string, payload: Record<string, 
 
   const candidates = [
     payload,
-    Object.fromEntries(Object.entries(payload).filter(([key]) => key !== 'image_url_4k')),
-    Object.fromEntries(Object.entries(payload).filter(([key]) => key !== 'image_url_4k' && key !== 'resolution')),
-    Object.fromEntries(
-      Object.entries(payload).filter(
-        ([key]) => key !== 'image_url_4k' && key !== 'resolution' && key !== 'input_content',
-      ),
-    ),
+    withoutKeys(payload, ['image_url_4k']),
+    withoutKeys(payload, ['image_url_4k', 'resolution']),
+    withoutKeys(payload, ['image_url_4k', 'resolution', 'input_content']),
   ]
 
   for (const candidate of candidates) {
@@ -400,17 +440,7 @@ async function updateGenerationRecord(recordId: string, payload: Record<string, 
       return true
     }
 
-    const message = String(error.message || '')
-    const isSchemaError =
-      error.code === 'PGRST204' ||
-      error.code === '42703' ||
-      message.includes('schema cache') ||
-      message.includes('column') ||
-      message.includes('input_content') ||
-      message.includes('image_url_4k') ||
-      message.includes('resolution')
-
-    if (!isSchemaError) {
+    if (!isSchemaCompatibilityError(error)) {
       console.error('[Generate] Update record failed:', { recordId, error })
       return false
     }
@@ -574,9 +604,6 @@ export async function POST(request: NextRequest) {
       if (!imageUrls.length) {
         throw new Error('没有成功生成任何图片。')
       }
-
-      // 2K/4K no longer calls a paid server-side upscaler here.
-      // The selected resolution is stored and applied by the browser Canvas during download.
     } catch (error: any) {
       const errorMessage = error?.message || '生成失败，请稍后重试。'
       if (creditsDeducted) {

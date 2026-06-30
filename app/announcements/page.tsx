@@ -97,7 +97,7 @@ export default function AnnouncementsPage() {
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-black text-white">站内公告</h1>
-            <p className="mt-2 text-sm text-gray-400">这里会展示维护通知、活动动态和重要更新。</p>
+            <p className="mt-2 text-sm text-gray-400">维护通知、活动动态和重要更新会集中展示在这里。</p>
           </div>
           <button
             onClick={() => void fetchAnnouncements()}

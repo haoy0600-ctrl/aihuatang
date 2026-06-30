@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { DEFAULT_PROFILE_CREDITS, ensureProfileRecord, getProfileById, isUsernameTaken, USERNAME_PATTERN } from '@/lib/profile'
+import { DEFAULT_PROFILE_CREDITS, ensureProfileRecord, isUsernameTaken, USERNAME_PATTERN } from '@/lib/profile'
 import { requireAuthenticatedUser } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
 import { RegisterNotificationChannel, sendRegisterNotifications } from '@/lib/register-notification'
@@ -49,8 +49,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}))
     const username = typeof body.username === 'string' ? body.username.trim() : ''
-    const before = await getProfileById(auth.user.id)
-
     if (username) {
       if (!USERNAME_PATTERN.test(username)) {
         return NextResponse.json(

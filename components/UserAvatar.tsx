@@ -23,12 +23,5 @@ export function UserAvatar({ avatarUrl, alt = '头像', className = '' }: UserAv
     )
   }
 
-  return (
-    <img
-      src={resolveAvatarUrl(avatarUrl)}
-      alt={alt}
-      onError={() => setFailed(true)}
-      className={className}
-    />
-  )
+  return <img src={resolveAvatarUrl(avatarUrl)} alt={alt} onError={() => setFailed(true)} className={className} />
 }
