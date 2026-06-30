@@ -838,7 +838,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-[#040D0A]">
+    <div className="flex min-h-screen w-full flex-col bg-[#040D0A] lg:h-screen lg:overflow-hidden">
       <header className="border-b border-[#142D24] bg-[#040D0A]">
         <div className="mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
           <div className="flex w-full items-center justify-between py-1 sm:py-2">
@@ -975,15 +975,15 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="min-h-0 flex-1 overflow-hidden">
-        <div className="mx-auto flex h-full max-w-[1400px] flex-col px-4 py-2 sm:px-6 lg:px-8">
+      <main className="flex-1 overflow-x-hidden overflow-y-auto lg:min-h-0 lg:overflow-hidden">
+        <div className="mx-auto flex w-full max-w-[1400px] flex-col px-3 py-3 sm:px-6 lg:h-full lg:px-8">
           <div className="mb-2 shrink-0">
             <h2 className="mb-1 text-lg font-bold text-white">创作中心</h2>
             <p className="text-xs text-[#10B981]">输入内容、选择风格，一键生成高密度知识图卡。</p>
           </div>
 
-          <div className="grid min-h-0 flex-1 grid-cols-1 items-stretch gap-4 overflow-y-auto pb-4 lg:grid-cols-[1fr,1fr,1.2fr] lg:overflow-hidden">
-            <section className="min-h-0 overflow-y-auto rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
+          <div className="grid flex-1 grid-cols-1 items-stretch gap-4 pb-8 lg:min-h-0 lg:grid-cols-[1fr,1fr,1.2fr] lg:overflow-hidden lg:pb-4">
+            <section className="rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5 lg:min-h-0 lg:overflow-y-auto">
               <div className="mb-3 flex items-center gap-2">
                 <h3 className="text-base font-bold text-white">参数配置</h3>
               </div>
@@ -1210,7 +1210,7 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            <section className="min-h-0 overflow-y-auto rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
+            <section className="rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5 lg:min-h-0 lg:overflow-y-auto">
               <div className="mb-3 flex items-center gap-2">
                 <h3 className="text-base font-bold text-white">风格配置</h3>
               </div>
@@ -1351,7 +1351,7 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5">
+            <section className="flex flex-col overflow-hidden rounded-xl border border-[#142D24] bg-[#091511]/60 p-4 shadow-2xl backdrop-blur-md md:p-5 lg:min-h-0">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h3 className="text-base font-bold text-white">生成预览</h3>
@@ -1378,9 +1378,9 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              <div className="flex min-h-0 flex-1 flex-col">
+              <div className="flex flex-1 flex-col lg:min-h-0">
                 <div
-                  className={`flex w-full items-center justify-center overflow-hidden rounded-lg border-2 border-[#142D24] bg-[#040D0A] min-h-[220px] max-h-[calc(100svh-220px)] md:min-h-0 md:max-h-none md:flex-1 lg:aspect-auto ${getAspectClass()}`}
+                  className={`flex w-full items-center justify-center overflow-hidden rounded-lg border-2 border-[#142D24] bg-[#040D0A] min-h-[300px] sm:min-h-[420px] lg:min-h-0 lg:flex-1 lg:aspect-auto ${getAspectClass()}`}
                 >
                   {generationStatus === 'idle' && (
                     <div className="p-6 text-center sm:p-8">

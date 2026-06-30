@@ -263,13 +263,13 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[900px] flex-1 px-4 py-8">
-        <div className="rounded-3xl border border-[#142D24] bg-[#091511]/70 p-6 shadow-2xl backdrop-blur-md">
+      <main className="mx-auto w-full max-w-[900px] flex-1 px-3 py-5 sm:px-4 sm:py-8">
+        <div className="rounded-2xl border border-[#142D24] bg-[#091511]/70 p-4 shadow-2xl backdrop-blur-md sm:rounded-3xl sm:p-6">
           <div className="flex flex-col gap-6 md:flex-row md:items-center">
-            <div className="flex min-w-0 items-center gap-5">
+            <div className="flex min-w-0 flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-5">
               <button
                 onClick={handleAvatarClick}
-                className="relative h-24 w-24 overflow-hidden rounded-3xl border border-[#10B981]/30 bg-[#0B1511]"
+                className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-[#10B981]/30 bg-[#0B1511] sm:h-24 sm:w-24 sm:rounded-3xl"
               >
                 <UserAvatar avatarUrl={profile.avatar_url} className="h-full w-full object-cover" />
                 <div className="absolute inset-x-0 bottom-0 bg-black/55 py-1 text-xs text-white">更换头像</div>
@@ -282,17 +282,17 @@ export default function ProfilePage() {
                 onChange={handleAvatarUpload}
               />
 
-              <div className="min-w-0">
-                <h1 className="truncate text-2xl font-black text-white sm:text-3xl">{displayName}</h1>
-                <p className="mt-2 truncate text-sm text-[#10B981]">账号 ID：{profile.id}</p>
+              <div className="min-w-0 max-w-full">
+                <h1 className="break-all text-xl font-black leading-tight text-white sm:text-3xl">{displayName}</h1>
+                <p className="mt-2 break-all text-xs leading-relaxed text-[#10B981] sm:text-sm">账号 ID：{profile.id}</p>
                 {uploading && <p className="mt-2 text-xs text-[#8CF5CA]">头像上传中 {uploadProgress}%</p>}
               </div>
             </div>
 
-            <div className="md:ml-auto">
+            <div className="w-full md:ml-auto md:w-auto">
               <button
                 onClick={() => setShowChangePassword(true)}
-                className="rounded-2xl border border-[#10B981]/30 bg-[#0E1C17] px-5 py-3 text-sm font-semibold text-[#D9FFF0] transition hover:border-[#10B981]"
+                className="w-full rounded-2xl border border-[#10B981]/30 bg-[#0E1C17] px-5 py-3 text-sm font-semibold text-[#D9FFF0] transition hover:border-[#10B981] md:w-auto"
               >
                 修改密码
               </button>
@@ -306,16 +306,16 @@ export default function ProfilePage() {
             <InfoCard label="注册时间" value={formatDate(profile.created_at)} />
           </div>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+          <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Link
               href="/recharge"
-              className="rounded-2xl bg-[#10B981] px-5 py-3 text-center text-sm font-bold text-[#04120D] shadow-[0_0_20px_rgba(16,185,129,0.25)]"
+              className="w-full rounded-2xl bg-[#10B981] px-5 py-3 text-center text-sm font-bold text-[#04120D] shadow-[0_0_20px_rgba(16,185,129,0.25)]"
             >
               前往卡密兑换
             </Link>
             <Link
               href="/records"
-              className="rounded-2xl border border-[#142D24] bg-[#0A1411] px-5 py-3 text-center text-sm font-semibold text-white transition hover:border-[#10B981]"
+              className="w-full rounded-2xl border border-[#142D24] bg-[#0A1411] px-5 py-3 text-center text-sm font-semibold text-white transition hover:border-[#10B981]"
             >
               查看生成记录
             </Link>

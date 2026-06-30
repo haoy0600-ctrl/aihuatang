@@ -40,7 +40,7 @@ interface UserProfile {
 type FilterStatus = 'all' | 'success' | 'failed'
 type ResolutionLevel = '1K' | '2K' | '4K'
 
-const COLUMN_COUNT = 5
+const COLUMN_COUNT = 1
 const PAGE_SIZE = 20
 
 export default function RecordsPage() {
@@ -487,14 +487,14 @@ export default function RecordsPage() {
         </div>
       </header>
 
-      <main className="p-4 pb-24">
+      <main className="p-3 pb-8 sm:p-4 sm:pb-24">
         <div className="mx-auto max-w-7xl">
           <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div>
               <h2 className="text-xl font-bold text-white">生成记录</h2>
               <p className="mt-1 text-sm text-[#00F2FE]">你的创作资产库，共 {totalRecords} 条记录</p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => setShowDeleteAllModal(true)}
                 disabled={records.length === 0}
@@ -511,7 +511,7 @@ export default function RecordsPage() {
             </div>
           </div>
 
-          <div className="mb-6 flex w-fit gap-2 rounded-xl bg-[#141923] p-1">
+          <div className="mb-6 flex w-full gap-2 overflow-x-auto rounded-xl bg-[#141923] p-1 sm:w-fit">
             {[
               { key: 'all', label: '全部', color: 'bg-[#00F2FE] text-[#0A0F1D]' },
               { key: 'success', label: '成功', color: 'bg-[#10B981] text-[#0A0F1D]' },
@@ -520,7 +520,7 @@ export default function RecordsPage() {
               <button
                 key={tab.key}
                 onClick={() => setFilterStatus(tab.key as FilterStatus)}
-                className={`rounded-lg px-4 py-2 text-sm font-bold transition-all ${
+                className={`shrink-0 rounded-lg px-4 py-2 text-sm font-bold transition-all ${
                   filterStatus === tab.key ? `${tab.color} shadow-lg` : 'text-[#94A3B8] hover:text-white'
                 }`}
               >
@@ -538,9 +538,9 @@ export default function RecordsPage() {
           ) : filteredRecords.length === 0 ? (
             <EmptyRecords />
           ) : (
-            <div className="flex gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {columns.map((column, colIndex) => (
-                <div key={colIndex} className="flex-1 space-y-3">
+                <div key={colIndex} className="contents">
                   {column.map((record) => {
                     const imageUrls = parseImageUrls(record.image_urls)
                     const recordResolution: ResolutionLevel =
@@ -771,7 +771,7 @@ export default function RecordsPage() {
       <ChangePasswordModal show={showChangePassword} onClose={() => setShowChangePassword(false)} />
       <TermsModal show={showTermsModal} onClose={() => setShowTermsModal(false)} />
 
-      <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#1E293B]/50 bg-[#030712]/95 py-2.5 backdrop-blur-sm">
+      <footer className="hidden border-t border-[#1E293B]/50 bg-[#030712]/95 py-2.5 backdrop-blur-sm md:block">
         <div className="mx-auto max-w-[1400px] px-4 text-center">
           <p className="text-sm text-gray-400">
             使用本站即表示你同意
@@ -873,9 +873,9 @@ function LoadingState() {
         <p className="text-[#00F2FE]">正在读取生成记录...</p>
         <p className="mt-2 text-xs text-[#6B7D97]">如果持续超过 10 秒，请刷新页面重新获取。</p>
       </div>
-      <div className="mx-auto mt-8 flex max-w-6xl gap-3 px-4">
+      <div className="mx-auto mt-8 grid max-w-6xl grid-cols-1 gap-3 px-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {[1, 2, 3, 4, 5].map((column) => (
-          <div key={column} className="flex-1 space-y-3">
+          <div key={column} className="space-y-3">
             {[1, 2, 3].map((row) => (
               <div key={`${column}-${row}`} className="h-48 animate-pulse rounded-lg border border-[#1E293B] bg-[#141923]" />
             ))}
