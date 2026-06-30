@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { execFile } from 'child_process'
 import crypto from 'crypto'
+import path from 'path'
 import { promisify } from 'util'
 
 const execFileAsync = promisify(execFile)
@@ -34,7 +35,20 @@ function isAllowedRequest(request: Request, rawBody: string, deploySecret: strin
 
 export async function POST(request: Request) {
   const deploySecret = process.env.DEPLOY_SECRET
-  const deployScriptPath = process.env.DEPLOY_SCRIPT_PATH
+  const configuredDeployScriptPath = process.env.DEPLOY_SCRIPT_PATH
+  const fallbackDeployScriptPaths = [
+    configuredDeployScriptPath,
+    path.join(process.cwd(), 'deploy-server.sh'),
+    path.join(process.cwd(), 'scripts', 'deploy-server.sh'),
+  ].filter((item): item is string => Boolean(item))
+
+  const deployScriptPath = fallbackDeployScriptPaths.find((scriptPath) => {
+    try {
+      return require('fs').existsSync(scriptPath)
+    } catch {
+      return false
+    }
+  })
 
   if (!deploySecret) {
     return NextResponse.json({ success: false, message: 'DEPLOY_SECRET is not configured' }, { status: 500 })
@@ -62,9 +76,16 @@ export async function POST(request: Request) {
   }
 
   try {
+    const deployEnv = { ...process.env }
+    delete deployEnv.__NEXT_PRIVATE_STANDALONE_CONFIG
+    delete deployEnv.__NEXT_PRIVATE_ORIGIN
+    delete deployEnv.NEXT_DEPLOYMENT_ID
+
     const { stdout, stderr } = await execFileAsync(deployScriptPath, [], {
+      cwd: path.dirname(deployScriptPath),
       timeout: 1000 * 60 * 10,
       maxBuffer: 1024 * 1024 * 10,
+      env: deployEnv,
     })
 
     return NextResponse.json({
