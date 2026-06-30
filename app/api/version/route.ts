@@ -19,14 +19,32 @@ function readFileIfExists(filePath: string) {
 }
 
 export async function GET() {
-  const root = process.cwd()
-  const deployedRevision = readFileIfExists(path.join(root, '.deployed-rev'))
-  const buildInfoPath = path.join(root, 'public', 'build-info.json')
-  const buildInfo = readFileIfExists(buildInfoPath)
+  const cwd = process.cwd()
+  const candidates = [
+    cwd,
+    path.resolve(cwd, '..'),
+    path.resolve(cwd, '..', '..'),
+  ]
+
+  let appRoot = cwd
+  let deployedRevision = ''
+  let buildInfo: string | null = null
+
+  for (const candidate of candidates) {
+    const revision = readFileIfExists(path.join(candidate, '.deployed-rev'))
+    const info = readFileIfExists(path.join(candidate, 'public', 'build-info.json'))
+    if (revision || info) {
+      appRoot = candidate
+      deployedRevision = revision
+      buildInfo = info || null
+      break
+    }
+  }
 
   return NextResponse.json(
     {
       ok: true,
+      appRoot,
       revision: deployedRevision || process.env.VERCEL_GIT_COMMIT_SHA || 'unknown',
       buildInfo: buildInfo ? JSON.parse(buildInfo) : null,
       styleCount: HANDDRAWN_STYLES.length,

@@ -35,6 +35,9 @@ EOF
   npm run build
 
   echo "${NEW_REV}" > "${APP_DIR}/.deployed-rev"
+  if [ -d ".next/standalone" ]; then
+    cp "${APP_DIR}/.deployed-rev" ".next/standalone/.deployed-rev"
+  fi
   echo "Built revision: ${NEW_REV}"
 
   if command -v pm2 >/dev/null 2>&1; then
