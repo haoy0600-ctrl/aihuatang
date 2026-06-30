@@ -24,10 +24,16 @@ cd "${APP_DIR}"
   git reset --hard "origin/${BRANCH}"
   git clean -fd -e .env.local -e deploy.log -e node_modules -e deploy-server.sh
 
-  npm install
+  NEW_REV="$(git rev-parse --short HEAD)"
+  mkdir -p public
+  cat > public/build-info.json <<EOF
+{"revision":"${NEW_REV}","builtAt":"$(date -u '+%Y-%m-%dT%H:%M:%SZ')"}
+EOF
+
+  rm -rf .next
+  npm install --include=dev
   npm run build
 
-  NEW_REV="$(git rev-parse --short HEAD)"
   echo "${NEW_REV}" > "${APP_DIR}/.deployed-rev"
   echo "Built revision: ${NEW_REV}"
 
