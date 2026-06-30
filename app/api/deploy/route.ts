@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     delete deployEnv.__NEXT_PRIVATE_ORIGIN
     delete deployEnv.NEXT_DEPLOYMENT_ID
 
-    const { stdout, stderr } = await execFileAsync(deployScriptPath, [], {
+    const { stdout, stderr } = await execFileAsync('/bin/bash', [deployScriptPath], {
       cwd: path.dirname(deployScriptPath),
       timeout: 1000 * 60 * 10,
       maxBuffer: 1024 * 1024 * 10,
