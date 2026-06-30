@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { ClientVersionGuard } from '@/components/ClientVersionGuard'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -20,7 +21,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body>{children}</body>
+      <body>
+        <ClientVersionGuard />
+        {children}
+      </body>
     </html>
   )
 }
