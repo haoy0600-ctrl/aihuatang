@@ -6,7 +6,7 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '50923561@qq.com')
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean)
 
-const CLIENT_CACHE_BUSTER = '2026-07-01-cache-fix-v6'
+const CLIENT_CACHE_BUSTER = '2026-07-02-dynamic-v1'
 
 function shouldVersionPath(pathname: string) {
   const versionedPages = new Set(['/', '/dashboard', '/records', '/recharge', '/profile', '/announcements', '/login'])

@@ -5,7 +5,7 @@ import { REMEMBERED_ACCOUNT_KEY, SESSION_STORAGE_KEY } from '@/lib/session'
 
 const FRONTEND_VERSION_KEY = 'ai_huatang_frontend_revision'
 const FRONTEND_BUNDLE_KEY = 'ai_huatang_frontend_bundle'
-const CURRENT_FRONTEND_BUNDLE = '2026-07-01-cache-fix-v6'
+const CURRENT_FRONTEND_BUNDLE = '2026-07-02-dynamic-v1'
 const KEEP_LOCAL_STORAGE_KEYS = new Set([
   SESSION_STORAGE_KEY,
   REMEMBERED_ACCOUNT_KEY,
