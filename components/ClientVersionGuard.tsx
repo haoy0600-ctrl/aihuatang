@@ -4,7 +4,14 @@ import { useEffect } from 'react'
 import { REMEMBERED_ACCOUNT_KEY, SESSION_STORAGE_KEY } from '@/lib/session'
 
 const FRONTEND_VERSION_KEY = 'ai_huatang_frontend_revision'
-const KEEP_LOCAL_STORAGE_KEYS = new Set([SESSION_STORAGE_KEY, REMEMBERED_ACCOUNT_KEY, FRONTEND_VERSION_KEY])
+const FRONTEND_BUNDLE_KEY = 'ai_huatang_frontend_bundle'
+const CURRENT_FRONTEND_BUNDLE = '2026-07-01-cache-fix-v2'
+const KEEP_LOCAL_STORAGE_KEYS = new Set([
+  SESSION_STORAGE_KEY,
+  REMEMBERED_ACCOUNT_KEY,
+  FRONTEND_VERSION_KEY,
+  FRONTEND_BUNDLE_KEY,
+])
 const VERSIONED_PATHS = new Set(['/dashboard', '/records', '/recharge', '/profile', '/announcements'])
 
 function clearClientCaches(nextRevision: string) {
@@ -18,6 +25,7 @@ function clearClientCaches(nextRevision: string) {
     }
     keysToRemove.forEach((key) => localStorage.removeItem(key))
     localStorage.setItem(FRONTEND_VERSION_KEY, nextRevision)
+    localStorage.setItem(FRONTEND_BUNDLE_KEY, CURRENT_FRONTEND_BUNDLE)
   } catch (error) {
     console.error('Failed to clear local storage cache:', error)
   }
@@ -39,12 +47,36 @@ function clearClientCaches(nextRevision: string) {
   }
 }
 
+function syncSessionCookie() {
+  try {
+    const storedSession = localStorage.getItem(SESSION_STORAGE_KEY)
+    if (!storedSession) return
+
+    const session = JSON.parse(storedSession) as {
+      email?: string
+      expiresAt?: number
+    }
+    if (!session.email || !session.expiresAt || session.expiresAt < Date.now()) return
+
+    const cookieValue = encodeURIComponent(JSON.stringify({
+      email: session.email,
+      expiresAt: session.expiresAt,
+    }))
+    const secure = window.location.protocol === 'https:' ? '; secure' : ''
+    document.cookie = `${SESSION_STORAGE_KEY}=${cookieValue}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax${secure}`
+  } catch (error) {
+    console.error('Failed to sync session cookie:', error)
+  }
+}
+
 export function ClientVersionGuard() {
   useEffect(() => {
     let cancelled = false
 
     const verifyVersion = async () => {
       try {
+        syncSessionCookie()
+
         const response = await fetch(`/api/version?t=${Date.now()}`, {
           cache: 'no-store',
           headers: {
@@ -56,25 +88,33 @@ export function ClientVersionGuard() {
         if (!nextRevision || cancelled) return
 
         const currentRevision = localStorage.getItem(FRONTEND_VERSION_KEY)
+        const currentBundle = localStorage.getItem(FRONTEND_BUNDLE_KEY)
         const currentUrl = new URL(window.location.href)
         const urlRevision = currentUrl.searchParams.get('v')
+        const urlBundle = currentUrl.searchParams.get('ui')
         const shouldVersionPage = VERSIONED_PATHS.has(window.location.pathname)
 
-        if (currentRevision && currentRevision !== nextRevision) {
+        if (
+          currentRevision !== nextRevision ||
+          currentBundle !== CURRENT_FRONTEND_BUNDLE
+        ) {
           clearClientCaches(nextRevision)
           currentUrl.searchParams.set('v', nextRevision)
+          currentUrl.searchParams.set('ui', CURRENT_FRONTEND_BUNDLE)
           window.location.replace(currentUrl.toString())
           return
         }
 
-        if (shouldVersionPage && urlRevision !== nextRevision) {
+        if (shouldVersionPage && (urlRevision !== nextRevision || urlBundle !== CURRENT_FRONTEND_BUNDLE)) {
           clearClientCaches(nextRevision)
           currentUrl.searchParams.set('v', nextRevision)
+          currentUrl.searchParams.set('ui', CURRENT_FRONTEND_BUNDLE)
           window.location.replace(currentUrl.toString())
           return
         }
 
         localStorage.setItem(FRONTEND_VERSION_KEY, nextRevision)
+        localStorage.setItem(FRONTEND_BUNDLE_KEY, CURRENT_FRONTEND_BUNDLE)
       } catch (error) {
         console.error('Failed to verify frontend version:', error)
       }

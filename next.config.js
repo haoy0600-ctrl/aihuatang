@@ -1,9 +1,23 @@
 const path = require('path')
+const { execSync } = require('child_process')
+
+function getBuildId() {
+  try {
+    return execSync('git rev-parse --short HEAD', {
+      cwd: __dirname,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+  } catch {
+    return `local-${Date.now()}`
+  }
+}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
   outputFileTracingRoot: path.resolve(__dirname),
+  generateBuildId: async () => getBuildId(),
   images: {
     unoptimized: true,
   },
