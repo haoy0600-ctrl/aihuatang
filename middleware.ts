@@ -6,7 +6,7 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '50923561@qq.com')
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean)
 
-const CLIENT_CACHE_BUSTER = '2026-07-01-cache-fix-v3'
+const CLIENT_CACHE_BUSTER = '2026-07-01-cache-fix-v4'
 
 function applyNoStoreHeaders(response: NextResponse) {
   response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0')
@@ -21,7 +21,9 @@ function applyNoStoreHeaders(response: NextResponse) {
 }
 
 export async function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname === '/recharge') {
+  const versionedPages = new Set(['/', '/dashboard', '/records', '/recharge', '/profile', '/announcements', '/login'])
+
+  if (versionedPages.has(request.nextUrl.pathname)) {
     const uiVersion = request.nextUrl.searchParams.get('ui')
     if (uiVersion !== CLIENT_CACHE_BUSTER) {
       const nextUrl = request.nextUrl.clone()

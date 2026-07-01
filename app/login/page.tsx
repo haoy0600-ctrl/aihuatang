@@ -109,7 +109,11 @@ function LoginPageInner() {
     const code = searchParams.get('code') || hashParams.get('code') || ''
     const tokenHash = searchParams.get('token_hash') || hashParams.get('token_hash') || ''
 
-    const shouldEnterRecovery = mode === 'recovery' || queryType === 'recovery' || hashType === 'recovery'
+    const shouldEnterRecovery =
+      mode === 'recovery' ||
+      queryType === 'recovery' ||
+      hashType === 'recovery' ||
+      Boolean(accessToken || code || tokenHash)
     if (!shouldEnterRecovery) return
 
     setIsRecoveryMode(true)
@@ -131,6 +135,7 @@ function LoginPageInner() {
             setRecoveryAccessToken(result.data.session.access_token)
             setRecoveryRefreshToken(result.data.session.refresh_token || '')
             setError('')
+            setRecoveryMessage('已验证重置邮件，请直接设置新的登录密码。')
           } else if (result.error) {
             setError(result.error.message || '重置链接无效或已过期，请重新发送重置邮件。')
           }

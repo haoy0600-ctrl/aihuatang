@@ -161,6 +161,7 @@ function buildFinalPrompt(inputText: string, styleName: string, customStyle?: st
       '',
       '[REQUIREMENTS]',
       'Preserve the reference subject, improve visual quality, keep the layout clean, and avoid extra text artifacts.',
+      'Do not invent, distort, or render random text. If text is unclear, leave that area blank instead of drawing pseudo letters.',
     ].join('\n')
   }
 
@@ -170,6 +171,13 @@ function buildFinalPrompt(inputText: string, styleName: string, customStyle?: st
     '',
     '[STYLE]',
     activeStyle,
+    '',
+    '[TEXT ACCURACY - STRICT]',
+    'All visible Chinese and English text must come only from CORE CONTENT.',
+    'Copy the wording exactly. Do not invent extra words, random stamps, fake labels, pseudo text, malformed Chinese, or unreadable glyphs.',
+    'For dense body text, use fewer larger text blocks instead of tiny unreadable lines.',
+    'If the model is unsure about a character or phrase, leave visual space blank rather than hallucinating text.',
+    'Prefer clean title cards, section labels, and readable typography. Avoid decorative text that is not in CORE CONTENT.',
     '',
     '[REQUIREMENTS]',
     'Keep all text readable, preserve the original meaning, avoid markdown symbols in the rendered image, and produce a polished infographic composition.',

@@ -5,14 +5,14 @@ import { REMEMBERED_ACCOUNT_KEY, SESSION_STORAGE_KEY } from '@/lib/session'
 
 const FRONTEND_VERSION_KEY = 'ai_huatang_frontend_revision'
 const FRONTEND_BUNDLE_KEY = 'ai_huatang_frontend_bundle'
-const CURRENT_FRONTEND_BUNDLE = '2026-07-01-cache-fix-v3'
+const CURRENT_FRONTEND_BUNDLE = '2026-07-01-cache-fix-v4'
 const KEEP_LOCAL_STORAGE_KEYS = new Set([
   SESSION_STORAGE_KEY,
   REMEMBERED_ACCOUNT_KEY,
   FRONTEND_VERSION_KEY,
   FRONTEND_BUNDLE_KEY,
 ])
-const VERSIONED_PATHS = new Set(['/dashboard', '/records', '/recharge', '/profile', '/announcements'])
+const VERSIONED_PATHS = new Set(['/', '/dashboard', '/records', '/recharge', '/profile', '/announcements', '/login'])
 
 function buildVersionedUrl(rawHref: string, nextRevision?: string) {
   const url = new URL(rawHref, window.location.origin)
@@ -129,7 +129,7 @@ export function ClientVersionGuard() {
 
     void verifyVersion()
 
-    const forceFreshRechargeNavigation = (event: MouseEvent) => {
+    const forceFreshAppNavigation = (event: MouseEvent) => {
       const target = event.target
       if (!(target instanceof Element)) return
 
@@ -137,18 +137,18 @@ export function ClientVersionGuard() {
       if (!(anchor instanceof HTMLAnchorElement)) return
 
       const url = new URL(anchor.href, window.location.origin)
-      if (url.origin !== window.location.origin || url.pathname !== '/recharge') return
+      if (url.origin !== window.location.origin || !VERSIONED_PATHS.has(url.pathname)) return
 
       event.preventDefault()
       event.stopPropagation()
       window.location.assign(buildVersionedUrl(url.toString()))
     }
 
-    document.addEventListener('click', forceFreshRechargeNavigation, true)
+    document.addEventListener('click', forceFreshAppNavigation, true)
 
     return () => {
       cancelled = true
-      document.removeEventListener('click', forceFreshRechargeNavigation, true)
+      document.removeEventListener('click', forceFreshAppNavigation, true)
     }
   }, [])
 
