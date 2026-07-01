@@ -6,12 +6,24 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '50923561@qq.com')
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean)
 
+function applyNoStoreHeaders(response: NextResponse) {
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0')
+  response.headers.set('Pragma', 'no-cache')
+  response.headers.set('Expires', '0')
+  response.headers.set('Surrogate-Control', 'no-store')
+  response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('X-Frame-Options', 'DENY')
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  return response
+}
+
 export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/admin')) {
     const session = request.cookies.get('ai_handdrawn_login_session')?.value
 
     if (!session) {
-      return NextResponse.redirect(new URL('/login', request.url))
+      return applyNoStoreHeaders(NextResponse.redirect(new URL('/login', request.url)))
     }
 
     try {
@@ -21,25 +33,22 @@ export async function middleware(request: NextRequest) {
       }
 
       if (!parsed.email || !parsed.expiresAt || parsed.expiresAt < Date.now()) {
-        return NextResponse.redirect(new URL('/login', request.url))
+        return applyNoStoreHeaders(NextResponse.redirect(new URL('/login', request.url)))
       }
 
       if (!ADMIN_EMAILS.includes(parsed.email.trim().toLowerCase())) {
-        return NextResponse.redirect(new URL('/', request.url))
+        return applyNoStoreHeaders(NextResponse.redirect(new URL('/', request.url)))
       }
     } catch {
-      return NextResponse.redirect(new URL('/login', request.url))
+      return applyNoStoreHeaders(NextResponse.redirect(new URL('/login', request.url)))
     }
   }
 
-  const response = NextResponse.next()
-  response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('X-Frame-Options', 'DENY')
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-  return response
+  return applyNoStoreHeaders(NextResponse.next())
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|logo.svg|default-avatar.svg|wechat-qrcode.png).*)',
+  ],
 }

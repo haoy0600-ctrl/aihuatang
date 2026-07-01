@@ -38,14 +38,16 @@ export default function HomePage() {
     setIsAdmin(isAdminEmail(session?.email))
   }, [])
 
+  const rechargeHref = '/recharge?from=home'
+
   const navItems = useMemo(
     () => [
       { href: '/dashboard', label: '创作台' },
       { href: '/records', label: '生成记录' },
-      { href: '/recharge', label: '充值中心' },
+      { href: rechargeHref, label: '充值中心' },
       { href: '/announcements', label: '站内公告' },
     ],
-    [],
+    [rechargeHref],
   )
 
   return (
@@ -64,6 +66,7 @@ export default function HomePage() {
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={item.href.startsWith('/recharge') ? false : undefined}
                 className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-white/90 transition hover:border-[#10B981]/50 hover:bg-[#10B981]/10"
               >
                 {item.label}
@@ -110,6 +113,7 @@ export default function HomePage() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={item.href.startsWith('/recharge') ? false : undefined}
                   onClick={() => setMobileMenuOpen(false)}
                   className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/90"
                 >
@@ -172,7 +176,8 @@ export default function HomePage() {
                   开始创作
                 </Link>
                 <Link
-                  href="/recharge"
+                  href={rechargeHref}
+                  prefetch={false}
                   className="inline-flex items-center rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-semibold text-white/92 transition hover:border-[#10B981]/50 hover:bg-white/[0.06]"
                 >
                   查看充值方案
