@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type MouseEvent } from 'react'
 import { TermsModal } from '@/components/TermsModal'
 import { BrandLogo } from '@/components/BrandLogo'
 import { isAdminEmail } from '@/lib/auth'
@@ -40,6 +40,11 @@ export default function HomePage() {
 
   const rechargeHref = '/recharge?from=home'
 
+  const handleRechargeClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    window.location.assign(`/recharge?from=home&t=${Date.now()}`)
+  }
+
   const navItems = useMemo(
     () => [
       { href: '/dashboard', label: '创作台' },
@@ -67,6 +72,7 @@ export default function HomePage() {
                 key={item.href}
                 href={item.href}
                 prefetch={item.href.startsWith('/recharge') ? false : undefined}
+                onClick={item.href.startsWith('/recharge') ? handleRechargeClick : undefined}
                 className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-white/90 transition hover:border-[#10B981]/50 hover:bg-[#10B981]/10"
               >
                 {item.label}
@@ -114,7 +120,12 @@ export default function HomePage() {
                   key={item.href}
                   href={item.href}
                   prefetch={item.href.startsWith('/recharge') ? false : undefined}
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={(event) => {
+                    setMobileMenuOpen(false)
+                    if (item.href.startsWith('/recharge')) {
+                      handleRechargeClick(event)
+                    }
+                  }}
                   className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/90"
                 >
                   {item.label}
@@ -178,6 +189,7 @@ export default function HomePage() {
                 <Link
                   href={rechargeHref}
                   prefetch={false}
+                  onClick={handleRechargeClick}
                   className="inline-flex items-center rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-semibold text-white/92 transition hover:border-[#10B981]/50 hover:bg-white/[0.06]"
                 >
                   查看充值方案

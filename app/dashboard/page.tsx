@@ -39,6 +39,10 @@ const STYLE_STORAGE_VERSION_KEY = 'ai_huatang_style_storage_version'
 const CURRENT_STYLE_STORAGE_VERSION = '2026-06-28-v2'
 const EXPAND_HISTORY_KEY = 'ai_huatang_expand_history'
 
+function goToRecharge() {
+  window.location.assign(`/recharge?from=dashboard&t=${Date.now()}`)
+}
+
 const ASPECT_RATIOS = [
   { label: 'auto', value: 'auto', note: '自动适配' },
   { label: '1:1', value: '1:1', note: '方形封面' },
@@ -720,7 +724,7 @@ export default function DashboardPage() {
             '当前账号没有 VIP 4K 权限，无法使用 4K 导出规格。\n\n4K 需要更高等级卡密或高级权益解锁。\n\n现在前往充值页吗？',
           )
           if (confirmed) {
-            router.push('/recharge')
+            goToRecharge()
           }
         } else {
           alert(errorMessage)
@@ -846,7 +850,12 @@ export default function DashboardPage() {
                 生成记录
               </Link>
               <Link
-                href="/recharge"
+                href="/recharge?from=dashboard"
+                prefetch={false}
+                onClick={(event) => {
+                  event.preventDefault()
+                  goToRecharge()
+                }}
                 className="rounded-xl border border-[#142D24] bg-[#091511]/60 px-5 py-2.5 text-base font-semibold tracking-wide text-white transition-all hover:border-[#10B981] hover:bg-[#142D24] md:text-lg"
               >
                 卡密兑换
@@ -908,7 +917,7 @@ export default function DashboardPage() {
                       </button>
                       <button
                         onClick={() => {
-                          router.push('/recharge')
+                          goToRecharge()
                           setShowUserMenu(false)
                         }}
                         className="w-full rounded-lg px-3 py-2 text-left text-sm text-white transition-colors hover:bg-[#142D24] hover:text-[#10B981]"

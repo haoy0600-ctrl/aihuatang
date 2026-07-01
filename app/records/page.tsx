@@ -43,6 +43,10 @@ type ResolutionLevel = '1K' | '2K' | '4K'
 const COLUMN_COUNT = 1
 const PAGE_SIZE = 20
 
+function goToRecharge() {
+  window.location.assign(`/recharge?from=records&t=${Date.now()}`)
+}
+
 export default function RecordsPage() {
   const router = useRouter()
   const observerRef = useRef<HTMLDivElement>(null)
@@ -410,7 +414,7 @@ export default function RecordsPage() {
               <NavLink href="/records" active>
                 生成记录
               </NavLink>
-              <NavLink href="/recharge">卡密兑换</NavLink>
+              <NavLink href="/recharge?from=records">卡密兑换</NavLink>
             </nav>
 
             <div className="flex shrink-0 items-center gap-2 sm:gap-4">
@@ -450,7 +454,7 @@ export default function RecordsPage() {
                       </MenuButton>
                       <MenuButton
                         onClick={() => {
-                          router.push('/recharge')
+                          goToRecharge()
                           setShowUserMenu(false)
                         }}
                       >
@@ -801,9 +805,20 @@ function NavLink({
   children: ReactNode
   active?: boolean
 }) {
+  const isRechargeLink = href.startsWith('/recharge')
+
   return (
     <Link
       href={href}
+      prefetch={isRechargeLink ? false : undefined}
+      onClick={
+        isRechargeLink
+          ? (event) => {
+              event.preventDefault()
+              goToRecharge()
+            }
+          : undefined
+      }
       className={`rounded-xl border px-5 py-2.5 text-base font-semibold tracking-wide transition-all md:text-lg ${
         active
           ? 'border-[#202B3A] bg-[#10B981] text-[#0B0D17] shadow-[0_0_15px_rgba(16,185,129,0.4)]'

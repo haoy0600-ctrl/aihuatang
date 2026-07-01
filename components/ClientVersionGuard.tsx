@@ -5,6 +5,7 @@ import { REMEMBERED_ACCOUNT_KEY, SESSION_STORAGE_KEY } from '@/lib/session'
 
 const FRONTEND_VERSION_KEY = 'ai_huatang_frontend_revision'
 const KEEP_LOCAL_STORAGE_KEYS = new Set([SESSION_STORAGE_KEY, REMEMBERED_ACCOUNT_KEY, FRONTEND_VERSION_KEY])
+const VERSIONED_PATHS = new Set(['/dashboard', '/records', '/recharge', '/profile', '/announcements'])
 
 function clearClientCaches(nextRevision: string) {
   try {
@@ -55,9 +56,21 @@ export function ClientVersionGuard() {
         if (!nextRevision || cancelled) return
 
         const currentRevision = localStorage.getItem(FRONTEND_VERSION_KEY)
+        const currentUrl = new URL(window.location.href)
+        const urlRevision = currentUrl.searchParams.get('v')
+        const shouldVersionPage = VERSIONED_PATHS.has(window.location.pathname)
+
         if (currentRevision && currentRevision !== nextRevision) {
           clearClientCaches(nextRevision)
-          window.location.replace(`${window.location.pathname}?v=${encodeURIComponent(nextRevision)}`)
+          currentUrl.searchParams.set('v', nextRevision)
+          window.location.replace(currentUrl.toString())
+          return
+        }
+
+        if (shouldVersionPage && urlRevision !== nextRevision) {
+          clearClientCaches(nextRevision)
+          currentUrl.searchParams.set('v', nextRevision)
+          window.location.replace(currentUrl.toString())
           return
         }
 

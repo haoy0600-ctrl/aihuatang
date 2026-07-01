@@ -22,6 +22,10 @@ interface UserInfo {
   email?: string
 }
 
+function goToRecharge() {
+  window.location.assign(`/recharge?from=profile&t=${Date.now()}`)
+}
+
 const compressImage = (file: File, maxSizeKB = 200): Promise<File> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -218,7 +222,7 @@ export default function ProfilePage() {
             <nav className="hidden items-center gap-4 min-[981px]:flex">
               <NavLink href="/dashboard">创作中心</NavLink>
               <NavLink href="/records">生成记录</NavLink>
-              <NavLink href="/recharge">卡密兑换</NavLink>
+              <NavLink href="/recharge?from=profile">卡密兑换</NavLink>
               <NavLink href="/profile" active>
                 个人中心
               </NavLink>
@@ -231,7 +235,12 @@ export default function ProfilePage() {
               </div>
 
               <Link
-                href="/recharge"
+                href="/recharge?from=profile"
+                prefetch={false}
+                onClick={(event) => {
+                  event.preventDefault()
+                  goToRecharge()
+                }}
                 className="flex items-center gap-1 rounded-lg border border-[#142D24] bg-[#091511]/60 px-2 py-1 min-[981px]:gap-1.5 min-[981px]:px-3 min-[981px]:py-1.5"
               >
                 <span className="h-2 w-2 rounded-full bg-[#10B981]" />
@@ -258,7 +267,7 @@ export default function ProfilePage() {
                     <div className="p-2">
                       <MenuButton onClick={() => router.push('/dashboard')}>创作中心</MenuButton>
                       <MenuButton onClick={() => router.push('/records')}>生成记录</MenuButton>
-                      <MenuButton onClick={() => router.push('/recharge')}>卡密兑换</MenuButton>
+                      <MenuButton onClick={goToRecharge}>卡密兑换</MenuButton>
                       <MenuButton onClick={() => setShowChangePassword(true)}>修改密码</MenuButton>
                       <div className="my-1 border-t border-[#142D24]" />
                       <MenuButton danger onClick={handleLogout}>
@@ -323,7 +332,12 @@ export default function ProfilePage() {
 
           <div className="mt-8 grid grid-cols-1 gap-3 min-[981px]:grid-cols-2">
             <Link
-              href="/recharge"
+              href="/recharge?from=profile"
+              prefetch={false}
+              onClick={(event) => {
+                event.preventDefault()
+                goToRecharge()
+              }}
               className="w-full rounded-2xl bg-[#10B981] px-5 py-3 text-center text-sm font-bold text-[#04120D] shadow-[0_0_20px_rgba(16,185,129,0.25)]"
             >
               前往卡密兑换
@@ -360,9 +374,20 @@ function NavLink({
   active?: boolean
   children: React.ReactNode
 }) {
+  const isRechargeLink = href.startsWith('/recharge')
+
   return (
     <Link
       href={href}
+      prefetch={isRechargeLink ? false : undefined}
+      onClick={
+        isRechargeLink
+          ? (event) => {
+              event.preventDefault()
+              goToRecharge()
+            }
+          : undefined
+      }
       className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
         active ? 'bg-[#10B981] text-[#04120D]' : 'text-white hover:bg-[#101E18]'
       }`}
