@@ -5,7 +5,7 @@ import { REMEMBERED_ACCOUNT_KEY, SESSION_STORAGE_KEY } from '@/lib/session'
 
 const FRONTEND_VERSION_KEY = 'ai_huatang_frontend_revision'
 const FRONTEND_BUNDLE_KEY = 'ai_huatang_frontend_bundle'
-const CURRENT_FRONTEND_BUNDLE = '2026-07-01-cache-fix-v4'
+const CURRENT_FRONTEND_BUNDLE = '2026-07-01-cache-fix-v6'
 const KEEP_LOCAL_STORAGE_KEYS = new Set([
   SESSION_STORAGE_KEY,
   REMEMBERED_ACCOUNT_KEY,
@@ -13,6 +13,10 @@ const KEEP_LOCAL_STORAGE_KEYS = new Set([
   FRONTEND_BUNDLE_KEY,
 ])
 const VERSIONED_PATHS = new Set(['/', '/dashboard', '/records', '/recharge', '/profile', '/announcements', '/login'])
+
+function shouldVersionPath(pathname: string) {
+  return VERSIONED_PATHS.has(pathname) || pathname === '/admin' || pathname.startsWith('/admin/')
+}
 
 function buildVersionedUrl(rawHref: string, nextRevision?: string) {
   const url = new URL(rawHref, window.location.origin)
@@ -103,7 +107,7 @@ export function ClientVersionGuard() {
         const currentUrl = new URL(window.location.href)
         const urlRevision = currentUrl.searchParams.get('v')
         const urlBundle = currentUrl.searchParams.get('ui')
-        const shouldVersionPage = VERSIONED_PATHS.has(window.location.pathname)
+        const shouldVersionPage = shouldVersionPath(window.location.pathname)
 
         if (
           currentRevision !== nextRevision ||
@@ -127,7 +131,28 @@ export function ClientVersionGuard() {
       }
     }
 
+    const enforceCurrentUrlVersion = () => {
+      try {
+        const currentUrl = new URL(window.location.href)
+        if (!shouldVersionPath(currentUrl.pathname)) return
+
+        const storedRevision = localStorage.getItem(FRONTEND_VERSION_KEY)
+        const urlRevision = currentUrl.searchParams.get('v')
+        const urlBundle = currentUrl.searchParams.get('ui')
+
+        if (
+          storedRevision &&
+          (urlRevision !== storedRevision || urlBundle !== CURRENT_FRONTEND_BUNDLE)
+        ) {
+          window.location.replace(buildVersionedUrl(currentUrl.toString(), storedRevision))
+        }
+      } catch (error) {
+        console.error('Failed to enforce frontend version URL:', error)
+      }
+    }
+
     void verifyVersion()
+    const versionTimer = window.setInterval(enforceCurrentUrlVersion, 1000)
 
     const forceFreshAppNavigation = (event: MouseEvent) => {
       const target = event.target
@@ -137,7 +162,7 @@ export function ClientVersionGuard() {
       if (!(anchor instanceof HTMLAnchorElement)) return
 
       const url = new URL(anchor.href, window.location.origin)
-      if (url.origin !== window.location.origin || !VERSIONED_PATHS.has(url.pathname)) return
+      if (url.origin !== window.location.origin || !shouldVersionPath(url.pathname)) return
 
       event.preventDefault()
       event.stopPropagation()
@@ -148,6 +173,7 @@ export function ClientVersionGuard() {
 
     return () => {
       cancelled = true
+      window.clearInterval(versionTimer)
       document.removeEventListener('click', forceFreshAppNavigation, true)
     }
   }, [])

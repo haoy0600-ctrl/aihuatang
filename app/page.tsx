@@ -38,11 +38,11 @@ export default function HomePage() {
     setIsAdmin(isAdminEmail(session?.email))
   }, [])
 
-  const rechargeHref = '/recharge?from=home'
+  const rechargeHref = '/recharge?from=home&force=1'
 
   const handleRechargeClick = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault()
-    window.location.assign(`/recharge?from=home&t=${Date.now()}`)
+    window.location.assign(`/recharge?from=home&force=1&t=${Date.now()}`)
   }
 
   const navItems = useMemo(

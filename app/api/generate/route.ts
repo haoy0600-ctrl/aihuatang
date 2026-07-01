@@ -592,6 +592,7 @@ export async function POST(request: NextRequest) {
 
     const imageUrls: string[] = []
     const finalPrompts: string[] = []
+    const taskIds: string[] = []
 
     try {
       if (isTextMode) {
@@ -600,6 +601,14 @@ export async function POST(request: NextRequest) {
           finalPrompts.push(finalPrompt)
 
           const taskId = await submitGrsTask(finalPrompt, aspectRatio, modelType)
+          taskIds.push(taskId)
+          await updateGenerationRecord(recordId, {
+            input_content: {
+              ...baseRecordMeta,
+              taskIds,
+              activeTaskId: taskId,
+            },
+          })
           const imageUrl = await pollGrsResult(taskId)
           imageUrls.push(imageUrl)
         }
@@ -609,6 +618,14 @@ export async function POST(request: NextRequest) {
           finalPrompts.push(finalPrompt)
 
           const taskId = await submitGrsTask(finalPrompt, aspectRatio, modelType, referenceImages[index])
+          taskIds.push(taskId)
+          await updateGenerationRecord(recordId, {
+            input_content: {
+              ...baseRecordMeta,
+              taskIds,
+              activeTaskId: taskId,
+            },
+          })
           const imageUrl = await pollGrsResult(taskId)
           imageUrls.push(imageUrl)
         }
@@ -628,6 +645,7 @@ export async function POST(request: NextRequest) {
         input_content: {
           ...baseRecordMeta,
           errorMessage,
+          taskIds,
         },
       })
 
@@ -653,7 +671,10 @@ export async function POST(request: NextRequest) {
       image_url_4k: null,
       resolution,
       status: 'success',
-      input_content: baseRecordMeta,
+      input_content: {
+        ...baseRecordMeta,
+        taskIds,
+      },
     })
 
     if (!updateOk) {

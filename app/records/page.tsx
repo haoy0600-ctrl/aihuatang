@@ -44,7 +44,7 @@ const COLUMN_COUNT = 1
 const PAGE_SIZE = 20
 
 function goToRecharge() {
-  window.location.assign(`/recharge?from=records&t=${Date.now()}`)
+  window.location.assign(`/recharge?from=records&force=1&t=${Date.now()}`)
 }
 
 export default function RecordsPage() {
@@ -209,7 +209,7 @@ export default function RecordsPage() {
     setLoading(true)
     void fetchRecords(1, true)
 
-    const timer = setInterval(() => void fetchRecords(1, true), 5000)
+    const timer = setInterval(() => void fetchRecords(1, true), 2500)
     const handleGenerationComplete = () => void fetchRecords(1, true)
     window.addEventListener('ai-huatang-generation-complete', handleGenerationComplete)
 
@@ -274,7 +274,11 @@ export default function RecordsPage() {
     return result
   }, [filteredRecords])
 
-  const getModelPrice = () => 3
+  const getResolutionPrice = (resolutionLevel: ResolutionLevel) => {
+    if (resolutionLevel === '4K') return 8
+    if (resolutionLevel === '2K') return 4
+    return 2
+  }
 
   const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('zh-CN')
 
@@ -414,7 +418,7 @@ export default function RecordsPage() {
               <NavLink href="/records" active>
                 生成记录
               </NavLink>
-              <NavLink href="/recharge?from=records">卡密兑换</NavLink>
+              <NavLink href="/recharge?from=records&force=1">卡密兑换</NavLink>
             </nav>
 
             <div className="flex shrink-0 items-center gap-2 sm:gap-4">
@@ -556,7 +560,7 @@ export default function RecordsPage() {
                         ? record.resolution
                         : '1K'
                     const coverUrl = imageUrls[0] || ''
-                    const totalCost = getModelPrice() * Math.max(1, record.image_count || 1)
+                    const totalCost = getResolutionPrice(recordResolution) * Math.max(1, record.image_count || 1)
                     const firstSentence = getFirstSentence(record.prompt)
                     const success = record.status === 'success' || record.status === 'completed'
                     const failed = record.status === 'failed' || record.status === 'error'

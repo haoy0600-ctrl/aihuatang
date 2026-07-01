@@ -40,7 +40,7 @@ const CURRENT_STYLE_STORAGE_VERSION = '2026-06-28-v2'
 const EXPAND_HISTORY_KEY = 'ai_huatang_expand_history'
 
 function goToRecharge() {
-  window.location.assign(`/recharge?from=dashboard&t=${Date.now()}`)
+  window.location.assign(`/recharge?from=dashboard&force=1&t=${Date.now()}`)
 }
 
 const ASPECT_RATIOS = [
@@ -850,7 +850,7 @@ export default function DashboardPage() {
                 生成记录
               </Link>
               <Link
-                href="/recharge?from=dashboard"
+                href="/recharge?from=dashboard&force=1"
                 prefetch={false}
                 onClick={(event) => {
                   event.preventDefault()

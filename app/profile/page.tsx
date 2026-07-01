@@ -19,21 +19,21 @@ interface UserProfile {
 }
 
 interface UserInfo {
+  id?: string
   email?: string
 }
 
 function goToRecharge() {
-  window.location.assign(`/recharge?from=profile&t=${Date.now()}`)
+  window.location.assign(`/recharge?from=profile&force=1&t=${Date.now()}`)
 }
 
 const compressImage = (file: File, maxSizeKB = 200): Promise<File> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.readAsDataURL(file)
 
     reader.onload = (event) => {
       const image = new Image()
-      image.src = event.target?.result as string
+      image.src = String(event.target?.result || '')
 
       image.onload = () => {
         const canvas = document.createElement('canvas')
@@ -93,6 +93,7 @@ const compressImage = (file: File, maxSizeKB = 200): Promise<File> =>
     }
 
     reader.onerror = () => reject(new Error('文件读取失败，请重试'))
+    reader.readAsDataURL(file)
   })
 
 export default function ProfilePage() {
@@ -107,6 +108,7 @@ export default function ProfilePage() {
   const [showTermsModal, setShowTermsModal] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
     const updateTime = () => setCurrentTime(new Date().toLocaleTimeString('zh-CN', { hour12: false }))
@@ -119,7 +121,7 @@ export default function ProfilePage() {
     const fetchUserAndProfile = async () => {
       const session = getStoredSession()
       if (!session) {
-        router.push('/login')
+        router.replace('/login?next=/profile')
         return
       }
 
@@ -128,12 +130,13 @@ export default function ProfilePage() {
           method: 'POST',
           headers: authHeaders(),
           body: JSON.stringify({}),
+          cache: 'no-store',
         })
         const data = await response.json()
 
         if (!response.ok || !data.success || !data.user || !data.profile) {
           clearStoredSession()
-          router.push('/login')
+          router.replace('/login?next=/profile')
           return
         }
 
@@ -141,7 +144,7 @@ export default function ProfilePage() {
         setProfile(data.profile)
       } catch (error) {
         console.error('Fetch profile error:', error)
-        router.push('/login')
+        setErrorMessage('个人中心加载失败，请刷新后重试。')
       }
     }
 
@@ -150,7 +153,7 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     clearStoredSession()
-    router.push('/login')
+    router.replace('/login')
   }
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,16 +195,14 @@ export default function ProfilePage() {
     } finally {
       setUploading(false)
       setUploadProgress(0)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
   if (!profile || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#040D0A]">
-        <p className="text-sm text-[#03F09C]">正在加载...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#040D0A] px-4">
+        <p className="text-sm text-[#03F09C]">{errorMessage || '正在加载...'}</p>
       </div>
     )
   }
@@ -222,7 +223,7 @@ export default function ProfilePage() {
             <nav className="hidden items-center gap-4 min-[981px]:flex">
               <NavLink href="/dashboard">创作中心</NavLink>
               <NavLink href="/records">生成记录</NavLink>
-              <NavLink href="/recharge?from=profile">卡密兑换</NavLink>
+              <NavLink href="/recharge?from=profile&force=1">卡密兑换</NavLink>
               <NavLink href="/profile" active>
                 个人中心
               </NavLink>
@@ -235,7 +236,7 @@ export default function ProfilePage() {
               </div>
 
               <Link
-                href="/recharge?from=profile"
+                href="/recharge?from=profile&force=1"
                 prefetch={false}
                 onClick={(event) => {
                   event.preventDefault()
@@ -262,7 +263,7 @@ export default function ProfilePage() {
                   <div className="absolute right-0 top-11 z-50 w-56 overflow-hidden rounded-xl border border-[#142D24] bg-[#091511]/95 shadow-2xl backdrop-blur-md">
                     <div className="border-b border-[#142D24] p-3">
                       <p className="mb-1 text-xs text-[#10B981]">当前账号</p>
-                      <p className="break-all text-sm font-medium text-white">{email || '未登录'}</p>
+                      <p className="break-all text-sm font-medium text-white">{email}</p>
                     </div>
                     <div className="p-2">
                       <MenuButton onClick={() => router.push('/dashboard')}>创作中心</MenuButton>
@@ -282,69 +283,60 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[920px] flex-1 px-3 py-5 min-[981px]:py-8">
-        <section className="rounded-2xl border border-[#142D24] bg-[#091511]/70 p-4 shadow-2xl backdrop-blur-md min-[981px]:rounded-3xl min-[981px]:p-6">
-          <div className="flex flex-col gap-5 min-[981px]:flex-row min-[981px]:items-center min-[981px]:justify-between">
-            <div className="flex min-w-0 flex-col gap-4 min-[520px]:flex-row min-[520px]:items-center">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-3 py-6 min-[981px]:px-6 min-[981px]:py-8">
+        <section className="rounded-2xl border border-[#142D24] bg-[#07110D] p-4 shadow-2xl min-[981px]:rounded-3xl min-[981px]:p-8">
+          <div className="flex flex-col gap-5 min-[720px]:flex-row min-[720px]:items-center min-[720px]:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-[#10B981]/30 bg-[#0B1511] min-[981px]:h-24 min-[981px]:w-24 min-[981px]:rounded-3xl"
-                aria-label="更换头像"
+                disabled={uploading}
+                className="group relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-[#10B981]/40 bg-[#091511] shadow-lg"
               >
                 <UserAvatar avatarUrl={profile.avatar_url || undefined} className="h-full w-full object-cover" />
-                <span className="absolute inset-x-0 bottom-0 bg-black/55 py-1 text-xs text-white">更换头像</span>
+                <span className="absolute inset-x-0 bottom-0 bg-black/55 px-1 py-1 text-center text-xs text-white">
+                  {uploading ? `${uploadProgress}%` : '更换头像'}
+                </span>
               </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/jpg"
-                className="hidden"
-                onChange={handleAvatarUpload}
-              />
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
 
               <div className="min-w-0">
-                <h1 className="break-all text-2xl font-black leading-tight text-white min-[981px]:text-3xl">
-                  {displayName}
-                </h1>
-                <p className="mt-2 break-all text-xs leading-relaxed text-[#10B981] min-[981px]:text-sm">
-                  账号 ID：{profile.id}
-                </p>
-                {uploading && <p className="mt-2 text-xs text-[#8CF5CA]">头像上传中：{uploadProgress}%</p>}
+                <h1 className="break-all text-2xl font-black text-white min-[720px]:text-3xl">{displayName}</h1>
+                <p className="mt-1 break-all text-xs text-[#10B981]">账号 ID：{profile.id}</p>
               </div>
             </div>
 
             <button
               type="button"
               onClick={() => setShowChangePassword(true)}
-              className="w-full rounded-2xl border border-[#10B981]/30 bg-[#0E1C17] px-5 py-3 text-sm font-semibold text-[#D9FFF0] transition hover:border-[#10B981] min-[981px]:w-auto"
+              className="rounded-xl border border-[#1E4C3D] px-5 py-3 text-sm font-semibold text-white transition-colors hover:border-[#10B981] hover:text-[#10B981]"
             >
               修改密码
             </button>
           </div>
 
-          <div className="mt-8 grid gap-4 min-[981px]:grid-cols-2">
-            <InfoCard label="用户名" value={profile.username || '未设置'} />
-            <InfoCard label="邮箱地址" value={email || '-'} />
-            <InfoCard label="当前积分" value={`${profile.credits || 0}`} strong />
+          <div className="mt-6 grid gap-3 min-[720px]:grid-cols-2">
+            <InfoCard label="用户名" value={profile.username || '暂未设置'} />
+            <InfoCard label="邮箱地址" value={email} />
+            <InfoCard label="当前积分" value={String(profile.credits || 0)} highlight />
             <InfoCard label="注册时间" value={createdAt} />
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-3 min-[981px]:grid-cols-2">
+          <div className="mt-6 grid gap-3 min-[720px]:grid-cols-2">
             <Link
-              href="/recharge?from=profile"
+              href="/recharge?from=profile&force=1"
               prefetch={false}
               onClick={(event) => {
                 event.preventDefault()
                 goToRecharge()
               }}
-              className="w-full rounded-2xl bg-[#10B981] px-5 py-3 text-center text-sm font-bold text-[#04120D] shadow-[0_0_20px_rgba(16,185,129,0.25)]"
+              className="rounded-xl bg-gradient-to-r from-[#10B981] to-[#06B6D4] px-5 py-3 text-center text-sm font-bold text-[#04110D]"
             >
               前往卡密兑换
             </Link>
             <Link
               href="/records"
-              className="w-full rounded-2xl border border-[#142D24] bg-[#0A1411] px-5 py-3 text-center text-sm font-semibold text-white transition hover:border-[#10B981]"
+              className="rounded-xl border border-[#1E4C3D] px-5 py-3 text-center text-sm font-semibold text-white transition-colors hover:border-[#10B981] hover:text-[#10B981]"
             >
               查看生成记录
             </Link>
@@ -352,9 +344,13 @@ export default function ProfilePage() {
         </section>
       </main>
 
-      <footer className="border-t border-[#142D24] bg-[#040D0A]/95 py-3 text-center text-xs text-gray-400">
-        使用本站即代表你同意
-        <button type="button" onClick={() => setShowTermsModal(true)} className="ml-1 text-[#10B981] underline underline-offset-2">
+      <footer className="border-t border-[#142D24] bg-[#040D0A] px-4 py-4 text-center text-xs text-[#8AA096]">
+        使用本站即代表你同意{' '}
+        <button
+          type="button"
+          onClick={() => setShowTermsModal(true)}
+          className="font-semibold text-[#10B981] underline underline-offset-4"
+        >
           《安全合规与使用须知》
         </button>
       </footer>
@@ -365,15 +361,16 @@ export default function ProfilePage() {
   )
 }
 
-function NavLink({
-  href,
-  active,
-  children,
-}: {
-  href: string
-  active?: boolean
-  children: React.ReactNode
-}) {
+function InfoCard({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="rounded-2xl border border-[#142D24] bg-[#091511]/70 p-4">
+      <p className="mb-2 text-sm font-medium text-[#78D8B6]">{label}</p>
+      <p className={`break-all text-lg font-bold ${highlight ? 'text-[#10B981]' : 'text-white'}`}>{value}</p>
+    </div>
+  )
+}
+
+function NavLink({ href, active, children }: { href: string; active?: boolean; children: React.ReactNode }) {
   const isRechargeLink = href.startsWith('/recharge')
 
   return (
@@ -388,8 +385,8 @@ function NavLink({
             }
           : undefined
       }
-      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-        active ? 'bg-[#10B981] text-[#04120D]' : 'text-white hover:bg-[#101E18]'
+      className={`rounded-lg px-4 py-2 text-sm font-bold transition-all ${
+        active ? 'bg-[#10B981] text-[#04110D]' : 'text-white hover:bg-[#091511] hover:text-[#10B981]'
       }`}
     >
       {children}
@@ -400,7 +397,7 @@ function NavLink({
 function MenuButton({
   children,
   onClick,
-  danger,
+  danger = false,
 }: {
   children: React.ReactNode
   onClick: () => void
@@ -410,22 +407,11 @@ function MenuButton({
     <button
       type="button"
       onClick={onClick}
-      className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-        danger ? 'text-red-400 hover:bg-red-500/10' : 'text-white hover:bg-[#123527] hover:text-[#10B981]'
+      className={`block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+        danger ? 'text-red-400 hover:bg-red-500/10' : 'text-white hover:bg-[#142D24]'
       }`}
     >
       {children}
     </button>
-  )
-}
-
-function InfoCard({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className="min-w-0 rounded-2xl border border-[#142D24] bg-[#07110E] px-5 py-4">
-      <p className="text-sm text-[#7FDDBB]">{label}</p>
-      <p className={`mt-2 break-all ${strong ? 'text-2xl font-black text-[#10B981]' : 'text-base text-white'}`}>
-        {value}
-      </p>
-    </div>
   )
 }
