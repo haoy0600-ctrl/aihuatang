@@ -6,6 +6,8 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '50923561@qq.com')
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean)
 
+const CLIENT_CACHE_BUSTER = '2026-07-01-cache-fix-v3'
+
 function applyNoStoreHeaders(response: NextResponse) {
   response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0')
   response.headers.set('Pragma', 'no-cache')
@@ -19,6 +21,16 @@ function applyNoStoreHeaders(response: NextResponse) {
 }
 
 export async function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname === '/recharge') {
+    const uiVersion = request.nextUrl.searchParams.get('ui')
+    if (uiVersion !== CLIENT_CACHE_BUSTER) {
+      const nextUrl = request.nextUrl.clone()
+      nextUrl.searchParams.set('ui', CLIENT_CACHE_BUSTER)
+      nextUrl.searchParams.set('t', String(Date.now()))
+      return applyNoStoreHeaders(NextResponse.redirect(nextUrl))
+    }
+  }
+
   if (request.nextUrl.pathname.startsWith('/admin')) {
     const session = request.cookies.get('ai_handdrawn_login_session')?.value
 
