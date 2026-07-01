@@ -8,6 +8,8 @@ node_modules/
 out/
 dist/
 build/
+.deployed-rev
+public/build-info.json
 
 # Testing
 coverage/
