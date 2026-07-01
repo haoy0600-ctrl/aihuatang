@@ -13,6 +13,8 @@ import {
   saveRememberedAccount,
   saveStoredSession,
 } from '@/lib/session'
+import { BrandLogo } from '@/components/BrandLogo'
+import { supabase } from '@/lib/supabase'
 
 const QQ_EMAIL_REGEX = /^[^\s@]+@qq\.com$/i
 const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,20}$/
@@ -102,8 +104,10 @@ function LoginPageInner() {
     const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : ''
     const hashParams = new URLSearchParams(hash)
     const hashType = hashParams.get('type')
-    const accessToken = hashParams.get('access_token') || ''
-    const refreshToken = hashParams.get('refresh_token') || ''
+    const accessToken = hashParams.get('access_token') || searchParams.get('access_token') || ''
+    const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token') || ''
+    const code = searchParams.get('code') || hashParams.get('code') || ''
+    const tokenHash = searchParams.get('token_hash') || hashParams.get('token_hash') || ''
 
     const shouldEnterRecovery = mode === 'recovery' || queryType === 'recovery' || hashType === 'recovery'
     if (!shouldEnterRecovery) return
@@ -115,6 +119,27 @@ function LoginPageInner() {
     setResetSent(false)
     setRecoveryAccessToken(accessToken)
     setRecoveryRefreshToken(refreshToken)
+
+    if (!accessToken && supabase && (code || tokenHash)) {
+      void (async () => {
+        try {
+          const result = code
+            ? await supabase.auth.exchangeCodeForSession(code)
+            : await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+
+          if (result.data.session?.access_token) {
+            setRecoveryAccessToken(result.data.session.access_token)
+            setRecoveryRefreshToken(result.data.session.refresh_token || '')
+            setError('')
+          } else if (result.error) {
+            setError(result.error.message || '重置链接无效或已过期，请重新发送重置邮件。')
+          }
+        } catch (recoveryError) {
+          console.error('Failed to verify recovery link:', recoveryError)
+          setError('重置链接验证失败，请重新发送重置邮件。')
+        }
+      })()
+    }
 
     if (accessToken || refreshToken || hash) {
       window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}?mode=recovery`)
@@ -482,8 +507,8 @@ function LoginPageInner() {
         </div>
 
         <div className="relative z-10 text-center">
-          <div className="mx-auto mb-6 h-24 w-24 sm:h-28 sm:w-28">
-            <img src="/logo.svg?v=3" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
+          <div className="mx-auto mb-6 flex justify-center">
+            <BrandLogo className="justify-center" />
           </div>
 
           <p className="mx-auto mb-8 max-w-md text-lg text-[#64748B]">
@@ -501,8 +526,8 @@ function LoginPageInner() {
       <div className="flex items-center justify-center bg-[#1E293B] p-4 sm:p-6 lg:p-8">
         <div className="w-full max-w-md">
           <div className="mb-6 text-center md:hidden">
-            <div className="mx-auto mb-3 h-36 w-36">
-              <img src="/logo.svg?v=3" alt="AI画堂" className="h-full w-full rounded-xl object-contain" />
+            <div className="mx-auto mb-3 flex justify-center">
+              <BrandLogo className="justify-center" />
             </div>
             <p className="text-sm text-[#64748B]">自媒体知识图卡与视觉排版工作台</p>
           </div>

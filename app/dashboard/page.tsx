@@ -393,26 +393,6 @@ export default function DashboardPage() {
   const totalCost = currentSinglePrice * outputCount
   const currentWordCount = getEffectiveWordCount(textSegments[activeTab - 1] || '')
 
-  const getAspectClass = () => {
-    const ratioMap: Record<string, string> = {
-      auto: 'aspect-[9/16]',
-      '1:1': 'aspect-square',
-      '3:4': 'aspect-[3/4]',
-      '9:16': 'aspect-[9/16]',
-      '16:9': 'aspect-video',
-      '3:2': 'aspect-[3/2]',
-      '2:3': 'aspect-[2/3]',
-      '4:3': 'aspect-[4/3]',
-      '21:9': 'aspect-[21/9]',
-      '9:21': 'aspect-[9/21]',
-      '1:3': 'aspect-[1/3]',
-      '3:1': 'aspect-[3/1]',
-      '1:2': 'aspect-[1/2]',
-    }
-
-    return ratioMap[selectedRatio] || 'aspect-[9/16]'
-  }
-
   const handleLogout = () => {
     clearStoredSession()
     router.replace('/login')
@@ -1383,9 +1363,7 @@ export default function DashboardPage() {
               </div>
 
               <div className="flex flex-1 flex-col lg:min-h-0">
-                <div
-                  className={`flex w-full items-center justify-center overflow-hidden rounded-lg border-2 border-[#142D24] bg-[#040D0A] min-h-[300px] sm:min-h-[420px] lg:min-h-0 lg:flex-1 lg:aspect-auto ${getAspectClass()}`}
-                >
+                <div className="flex min-h-[300px] w-full flex-1 items-center justify-center overflow-hidden rounded-lg border-2 border-[#142D24] bg-[#040D0A] sm:min-h-[420px] lg:min-h-0">
                   {generationStatus === 'idle' && (
                     <div className="p-6 text-center sm:p-8">
                       <div className="mb-3 text-4xl sm:mb-4 sm:text-5xl">等待</div>

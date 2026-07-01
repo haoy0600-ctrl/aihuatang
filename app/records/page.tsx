@@ -216,6 +216,10 @@ export default function RecordsPage() {
   }, [fetchRecords])
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) {
+      return
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries

@@ -96,13 +96,14 @@ export async function POST(request: NextRequest) {
     }
 
     const isNewProfile = !existing.profile
-    const shouldNotify = notifyRegister && isNewProfile && !(await hasSentRegisterNotification(auth.user.id))
+    const notifyUsername = ensured.profile?.username || username || existing.profile?.username || undefined
+    const shouldNotify = notifyRegister && !(await hasSentRegisterNotification(auth.user.id))
     if (shouldNotify) {
-      const channels = await sendRegisterNotifications(auth.user.email, username)
+      const channels = await sendRegisterNotifications(auth.user.email, notifyUsername)
       await markRegisterNotificationSent(auth.user.id, auth.user.email, channels)
     }
 
-    return NextResponse.json({ success: true, isNewProfile })
+    return NextResponse.json({ success: true, isNewProfile, notificationQueued: shouldNotify })
   } catch (error) {
     console.error('[EnsureProfile] Error:', error)
     return NextResponse.json({ success: false, error: '创建用户资料失败，请稍后重试。' }, { status: 500 })

@@ -133,6 +133,8 @@ export default function CardsAdminPage() {
     [creditFilter, summary],
   )
 
+  const unusedCardsOnPage = useMemo(() => cards.filter((card) => !card.is_used), [cards])
+
   const handleGenerateCards = async () => {
     if (cardCount <= 0 || cardCount > 1000) {
       alert('生成数量必须在 1 到 1000 之间。')
@@ -191,6 +193,10 @@ export default function CardsAdminPage() {
     await handleCopyCards(cards)
   }
 
+  const handleCopyUnusedCurrentPage = async () => {
+    await handleCopyCards(unusedCardsOnPage)
+  }
+
   const setCreditFilterAndReset = (value: number | 'all') => {
     setCreditFilter(value)
     setPage(1)
@@ -243,13 +249,22 @@ export default function CardsAdminPage() {
               <h2 className="text-lg font-bold text-[#10B981]">生成新卡密</h2>
               <p className="mt-1 text-sm text-gray-400">支持一次生成 1-1000 张，生成后只弹出新卡密，列表按需分页查看。</p>
             </div>
-            <button
-              onClick={handleCopyCurrentPage}
-              disabled={cards.length === 0}
-              className="rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 px-4 py-2 text-sm font-semibold text-[#10B981] transition hover:bg-[#10B981]/20 disabled:cursor-not-allowed disabled:border-gray-700 disabled:text-gray-600"
-            >
-              复制当前页
-            </button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                onClick={handleCopyCurrentPage}
+                disabled={cards.length === 0}
+                className="rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 px-4 py-2 text-sm font-semibold text-[#10B981] transition hover:bg-[#10B981]/20 disabled:cursor-not-allowed disabled:border-gray-700 disabled:text-gray-600"
+              >
+                复制当前页
+              </button>
+              <button
+                onClick={handleCopyUnusedCurrentPage}
+                disabled={unusedCardsOnPage.length === 0}
+                className="rounded-lg border border-[#38BDF8]/30 bg-[#38BDF8]/10 px-4 py-2 text-sm font-semibold text-[#67E8F9] transition hover:bg-[#38BDF8]/20 disabled:cursor-not-allowed disabled:border-gray-700 disabled:text-gray-600"
+              >
+                复制本页未使用
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_1fr_1.2fr]">

@@ -248,16 +248,22 @@ function isTaskFailed(status: string) {
   return ['failed', 'fail', 'error', 'canceled', 'cancelled'].some((item) => status.includes(item))
 }
 
-async function submitGrsTask(prompt: string, imageSize: string, modelType: string, referenceImage?: string) {
+async function submitGrsTask(prompt: string, aspectRatio: string, modelType: string, referenceImage?: string) {
   if (!GRS_API_KEY) {
     throw new Error('绘图服务尚未配置，请联系管理员补全 GRS API。')
   }
 
   const { endpoint, model } = getGrsModelConfig(modelType)
+  const imageSize = getBaseImageSize(aspectRatio)
   const payload: Record<string, any> = {
     model,
     prompt,
     imageSize,
+    image_size: imageSize,
+    size: imageSize,
+    aspectRatio,
+    aspect_ratio: aspectRatio,
+    ratio: aspectRatio,
     webHook: '-1',
   }
 
@@ -578,7 +584,6 @@ export async function POST(request: NextRequest) {
 
     const imageUrls: string[] = []
     const finalPrompts: string[] = []
-    const baseImageSize = getBaseImageSize(aspectRatio)
 
     try {
       if (isTextMode) {
@@ -586,7 +591,7 @@ export async function POST(request: NextRequest) {
           const finalPrompt = buildFinalPrompt(sentence, styleName, customStyle, false)
           finalPrompts.push(finalPrompt)
 
-          const taskId = await submitGrsTask(finalPrompt, baseImageSize, modelType)
+          const taskId = await submitGrsTask(finalPrompt, aspectRatio, modelType)
           const imageUrl = await pollGrsResult(taskId)
           imageUrls.push(imageUrl)
         }
@@ -595,7 +600,7 @@ export async function POST(request: NextRequest) {
           const finalPrompt = buildFinalPrompt(`参考图风格重绘 ${index + 1}`, styleName, customStyle, true)
           finalPrompts.push(finalPrompt)
 
-          const taskId = await submitGrsTask(finalPrompt, baseImageSize, modelType, referenceImages[index])
+          const taskId = await submitGrsTask(finalPrompt, aspectRatio, modelType, referenceImages[index])
           const imageUrl = await pollGrsResult(taskId)
           imageUrls.push(imageUrl)
         }
