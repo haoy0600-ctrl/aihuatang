@@ -1,17 +1,11 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { CURRENT_FRONTEND_BUNDLE, shouldVersionPathname } from '@/lib/frontend-version'
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '50923561@qq.com')
   .split(',')
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean)
-
-const CLIENT_CACHE_BUSTER = '2026-07-02-dynamic-v1'
-
-function shouldVersionPath(pathname: string) {
-  const versionedPages = new Set(['/', '/dashboard', '/records', '/recharge', '/profile', '/announcements', '/login'])
-  return versionedPages.has(pathname) || pathname === '/admin' || pathname.startsWith('/admin/')
-}
 
 function applyNoStoreHeaders(response: NextResponse) {
   response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0')
@@ -26,11 +20,11 @@ function applyNoStoreHeaders(response: NextResponse) {
 }
 
 export async function middleware(request: NextRequest) {
-  if (shouldVersionPath(request.nextUrl.pathname)) {
+  if (shouldVersionPathname(request.nextUrl.pathname)) {
     const uiVersion = request.nextUrl.searchParams.get('ui')
-    if (uiVersion !== CLIENT_CACHE_BUSTER) {
+    if (uiVersion !== CURRENT_FRONTEND_BUNDLE) {
       const nextUrl = request.nextUrl.clone()
-      nextUrl.searchParams.set('ui', CLIENT_CACHE_BUSTER)
+      nextUrl.searchParams.set('ui', CURRENT_FRONTEND_BUNDLE)
       nextUrl.searchParams.set('t', String(Date.now()))
       return applyNoStoreHeaders(NextResponse.redirect(nextUrl))
     }

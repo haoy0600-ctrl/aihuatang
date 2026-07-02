@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type MouseEvent } from 'react'
 import { TermsModal } from '@/components/TermsModal'
 import { BrandLogo } from '@/components/BrandLogo'
 import { isAdminEmail } from '@/lib/auth'
+import { hardNavigate } from '@/lib/fresh-navigation'
 import { getStoredSession } from '@/lib/session'
 
 const FEATURE_CARDS = [
@@ -42,7 +43,7 @@ export default function HomePage() {
 
   const handleRechargeClick = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault()
-    window.location.assign(`/recharge?from=home&force=1&t=${Date.now()}`)
+    hardNavigate('/recharge?from=home&force=1')
   }
 
   const navItems = useMemo(

@@ -1,32 +1,24 @@
 'use client'
 
 import { useEffect } from 'react'
+import {
+  CURRENT_FRONTEND_BUNDLE,
+  FRONTEND_BUNDLE_KEY,
+  FRONTEND_VERSION_KEY,
+  shouldVersionPathname,
+} from '@/lib/frontend-version'
+import { buildFreshUrl } from '@/lib/fresh-navigation'
 import { REMEMBERED_ACCOUNT_KEY, SESSION_STORAGE_KEY } from '@/lib/session'
 
-const FRONTEND_VERSION_KEY = 'ai_huatang_frontend_revision'
-const FRONTEND_BUNDLE_KEY = 'ai_huatang_frontend_bundle'
-const CURRENT_FRONTEND_BUNDLE = '2026-07-02-dynamic-v1'
 const KEEP_LOCAL_STORAGE_KEYS = new Set([
   SESSION_STORAGE_KEY,
   REMEMBERED_ACCOUNT_KEY,
   FRONTEND_VERSION_KEY,
   FRONTEND_BUNDLE_KEY,
 ])
-const VERSIONED_PATHS = new Set(['/', '/dashboard', '/records', '/recharge', '/profile', '/announcements', '/login'])
-
-function shouldVersionPath(pathname: string) {
-  return VERSIONED_PATHS.has(pathname) || pathname === '/admin' || pathname.startsWith('/admin/')
-}
 
 function buildVersionedUrl(rawHref: string, nextRevision?: string) {
-  const url = new URL(rawHref, window.location.origin)
-  const revision = nextRevision || localStorage.getItem(FRONTEND_VERSION_KEY) || String(Date.now())
-
-  url.searchParams.set('v', revision)
-  url.searchParams.set('ui', CURRENT_FRONTEND_BUNDLE)
-  url.searchParams.set('t', String(Date.now()))
-
-  return url.toString()
+  return buildFreshUrl(rawHref, nextRevision)
 }
 
 function clearClientCaches(nextRevision: string) {
@@ -107,7 +99,7 @@ export function ClientVersionGuard() {
         const currentUrl = new URL(window.location.href)
         const urlRevision = currentUrl.searchParams.get('v')
         const urlBundle = currentUrl.searchParams.get('ui')
-        const shouldVersionPage = shouldVersionPath(window.location.pathname)
+        const shouldVersionPage = shouldVersionPathname(window.location.pathname)
 
         if (
           currentRevision !== nextRevision ||
@@ -134,7 +126,7 @@ export function ClientVersionGuard() {
     const enforceCurrentUrlVersion = () => {
       try {
         const currentUrl = new URL(window.location.href)
-        if (!shouldVersionPath(currentUrl.pathname)) return
+        if (!shouldVersionPathname(currentUrl.pathname)) return
 
         const storedRevision = localStorage.getItem(FRONTEND_VERSION_KEY)
         const urlRevision = currentUrl.searchParams.get('v')
@@ -162,7 +154,7 @@ export function ClientVersionGuard() {
       if (!(anchor instanceof HTMLAnchorElement)) return
 
       const url = new URL(anchor.href, window.location.origin)
-      if (url.origin !== window.location.origin || !shouldVersionPath(url.pathname)) return
+      if (url.origin !== window.location.origin || !shouldVersionPathname(url.pathname)) return
 
       event.preventDefault()
       event.stopPropagation()

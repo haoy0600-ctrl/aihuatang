@@ -7,6 +7,7 @@ import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
 import { UserAvatar } from '@/components/UserAvatar'
 import { RECHARGE_PLANS, type RechargePlan } from '@/lib/recharge-plans'
+import { hardNavigate } from '@/lib/fresh-navigation'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
 
 type UserInfo = {
@@ -137,7 +138,7 @@ export default function RechargeClient() {
 
   const handleLogout = () => {
     clearStoredSession()
-    window.location.href = '/login'
+    hardNavigate('/login')
   }
 
   return (
@@ -190,9 +191,9 @@ export default function RechargeClient() {
                       <p className="break-all text-sm font-medium text-white">{user?.email || '未登录'}</p>
                     </div>
                     <div className="p-2">
-                      <MenuButton onClick={() => (window.location.href = '/dashboard')}>创作中心</MenuButton>
-                      <MenuButton onClick={() => (window.location.href = '/records')}>生成记录</MenuButton>
-                      <MenuButton onClick={() => (window.location.href = '/profile')}>个人中心</MenuButton>
+                      <MenuButton onClick={() => hardNavigate('/dashboard')}>创作中心</MenuButton>
+                      <MenuButton onClick={() => hardNavigate('/records')}>生成记录</MenuButton>
+                      <MenuButton onClick={() => hardNavigate('/profile')}>个人中心</MenuButton>
                       <MenuButton onClick={() => setShowChangePassword(true)}>修改密码</MenuButton>
                       <div className="my-1 border-t border-[#142D24]" />
                       <MenuButton danger onClick={handleLogout}>

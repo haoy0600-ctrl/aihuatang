@@ -14,6 +14,7 @@ import {
   saveStoredSession,
 } from '@/lib/session'
 import { BrandLogo } from '@/components/BrandLogo'
+import { hardNavigate } from '@/lib/fresh-navigation'
 import { supabase } from '@/lib/supabase'
 
 const QQ_EMAIL_REGEX = /^[^\s@]+@qq\.com$/i
@@ -92,7 +93,7 @@ function LoginPageInner() {
 
     const session = getStoredSession()
     if (session && mode !== 'recovery') {
-      router.push('/dashboard')
+      hardNavigate('/dashboard')
     }
   }, [router, searchParams])
 
@@ -276,7 +277,7 @@ function LoginPageInner() {
 
       saveSession(data.user.id, data.user.email || account, data.session)
       await ensureProfileExists(data.user.id, data.user.email || account)
-      router.push('/dashboard')
+      hardNavigate('/dashboard')
     } catch (loginError) {
       console.error('Login error:', loginError)
       setError('登录失败，请稍后重试。')
@@ -392,7 +393,7 @@ function LoginPageInner() {
       }
 
       saveSession(loginData.user.id, loginData.user.email || email, loginData.session)
-      router.push('/dashboard')
+      hardNavigate('/dashboard')
     } catch (registerError) {
       console.error('Register error:', registerError)
       setError('注册失败，请稍后重试。')

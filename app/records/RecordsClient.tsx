@@ -10,6 +10,7 @@ import { TermsModal } from '@/components/TermsModal'
 import { BrandLogo } from '@/components/BrandLogo'
 import { UserAvatar } from '@/components/UserAvatar'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
+import { hardNavigate } from '@/lib/fresh-navigation'
 import {
   createExportedImageBlob,
   downloadBlob,
@@ -44,7 +45,7 @@ const COLUMN_COUNT = 1
 const PAGE_SIZE = 20
 
 function goToRecharge() {
-  window.location.assign(`/recharge?from=records&force=1&t=${Date.now()}`)
+  hardNavigate('/recharge?from=records&force=1')
 }
 
 export default function RecordsPage() {
@@ -401,7 +402,7 @@ export default function RecordsPage() {
 
   const handleLogout = () => {
     clearStoredSession()
-    window.location.href = '/login'
+    hardNavigate('/login')
   }
 
   return (
@@ -450,7 +451,7 @@ export default function RecordsPage() {
                     <div className="p-2">
                       <MenuButton
                         onClick={() => {
-                          router.push('/dashboard')
+                          hardNavigate('/dashboard')
                           setShowUserMenu(false)
                         }}
                       >
@@ -466,7 +467,7 @@ export default function RecordsPage() {
                       </MenuButton>
                       <MenuButton
                         onClick={() => {
-                          router.push('/profile')
+                          hardNavigate('/profile')
                           setShowUserMenu(false)
                         }}
                       >

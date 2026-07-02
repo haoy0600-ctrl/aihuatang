@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { TermsModal } from '@/components/TermsModal'
 import { isAdminEmail } from '@/lib/auth'
+import { hardNavigate } from '@/lib/fresh-navigation'
 import { authHeaders, getStoredSession } from '@/lib/session'
 
 interface Card {
@@ -95,12 +96,12 @@ export default function CardsAdminPage() {
   useEffect(() => {
     const session = getStoredSession()
     if (!session) {
-      router.push('/login')
+      hardNavigate('/login')
       return
     }
 
     if (!isAdminEmail(session.email)) {
-      router.push('/dashboard')
+      hardNavigate('/dashboard')
       return
     }
 

@@ -9,6 +9,7 @@ import { TermsModal } from '@/components/TermsModal'
 import { BrandLogo } from '@/components/BrandLogo'
 import { UserAvatar } from '@/components/UserAvatar'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
+import { hardNavigate } from '@/lib/fresh-navigation'
 import {
   createExportedImageBlob,
   downloadBlob,
@@ -40,7 +41,7 @@ const CURRENT_STYLE_STORAGE_VERSION = '2026-06-28-v2'
 const EXPAND_HISTORY_KEY = 'ai_huatang_expand_history'
 
 function goToRecharge() {
-  window.location.assign(`/recharge?from=dashboard&force=1&t=${Date.now()}`)
+  hardNavigate('/recharge?from=dashboard&force=1')
 }
 
 const ASPECT_RATIOS = [
@@ -899,7 +900,7 @@ export default function DashboardPage() {
                     <div className="border-b border-[#142D24] p-2 md:hidden">
                       <button
                         onClick={() => {
-                          router.push('/dashboard')
+                          hardNavigate('/dashboard')
                           setShowUserMenu(false)
                         }}
                         className="w-full rounded-lg px-3 py-2 text-left text-sm text-white transition-colors hover:bg-[#142D24] hover:text-[#10B981]"
@@ -908,7 +909,7 @@ export default function DashboardPage() {
                       </button>
                       <button
                         onClick={() => {
-                          router.push('/records')
+                          hardNavigate('/records')
                           setShowUserMenu(false)
                         }}
                         className="w-full rounded-lg px-3 py-2 text-left text-sm text-white transition-colors hover:bg-[#142D24] hover:text-[#10B981]"
@@ -929,7 +930,7 @@ export default function DashboardPage() {
                     <div className="p-2">
                       <button
                         onClick={() => {
-                          router.push('/profile')
+                          hardNavigate('/profile')
                           setShowUserMenu(false)
                         }}
                         className="w-full rounded-lg px-3 py-2 text-left text-sm text-white transition-colors hover:bg-[#142D24] hover:text-[#10B981]"

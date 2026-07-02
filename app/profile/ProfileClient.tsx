@@ -8,6 +8,7 @@ import { ChangePasswordModal } from '@/components/ChangePasswordModal'
 import { TermsModal } from '@/components/TermsModal'
 import { UserAvatar } from '@/components/UserAvatar'
 import { authHeaders, clearStoredSession, getStoredSession } from '@/lib/session'
+import { hardNavigate } from '@/lib/fresh-navigation'
 
 interface UserProfile {
   id: string
@@ -24,7 +25,7 @@ interface UserInfo {
 }
 
 function goToRecharge() {
-  window.location.assign(`/recharge?from=profile&force=1&t=${Date.now()}`)
+  hardNavigate('/recharge?from=profile&force=1')
 }
 
 const compressImage = (file: File, maxSizeKB = 200): Promise<File> =>
@@ -266,8 +267,8 @@ export default function ProfilePage() {
                       <p className="break-all text-sm font-medium text-white">{email}</p>
                     </div>
                     <div className="p-2">
-                      <MenuButton onClick={() => router.push('/dashboard')}>创作中心</MenuButton>
-                      <MenuButton onClick={() => router.push('/records')}>生成记录</MenuButton>
+                      <MenuButton onClick={() => hardNavigate('/dashboard')}>创作中心</MenuButton>
+                      <MenuButton onClick={() => hardNavigate('/records')}>生成记录</MenuButton>
                       <MenuButton onClick={goToRecharge}>卡密兑换</MenuButton>
                       <MenuButton onClick={() => setShowChangePassword(true)}>修改密码</MenuButton>
                       <div className="my-1 border-t border-[#142D24]" />
